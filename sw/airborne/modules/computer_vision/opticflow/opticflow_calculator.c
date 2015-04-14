@@ -161,7 +161,7 @@ void opticflow_calc_frame(struct opticflow_t *opticflow, struct opticflow_state_
   // Corner detection
   // *************************************************************************************
 
-  // FAST corner detection (TODO: non fixed threashold)
+  // FAST corner detection (TODO: non fixed threshold)
   struct point_t *corners = fast9_detect(img, opticflow->fast9_threshold, opticflow->fast9_min_distance,
                                          20, 20, &result->corner_cnt);
 
