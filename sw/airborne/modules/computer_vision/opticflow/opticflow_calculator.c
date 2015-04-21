@@ -34,6 +34,7 @@
 
 // Own Header
 #include "opticflow_calculator.h"
+#include "linear_flow_fit.h"
 
 // Computer Vision
 #include "lib/vision/image.h"
@@ -200,6 +201,9 @@ void opticflow_calc_frame(struct opticflow_t *opticflow, struct opticflow_state_
 #if OPTICFLOW_DEBUG && OPTICFLOW_SHOW_FLOW
   image_show_flow(img, vectors, result->tracked_cnt, opticflow->subpixel_factor);
 #endif
+
+  // Estimate ventral flow and divergence:
+  // analyseTTI(float *z_x, float *z_y, float *three_dimensionality, float *POE_x, float *POE_y, float *divergence, float *mean_tti, float *median_tti, float *d_heading, float *d_pitch, float *divergence_error, int *x, int *y, int *dx, int *dy, int *n_inlier_minu, int *n_inlier_minv, int count, int imW, int imH, int *DIV_FILTER);
 
   // Get the median flow
   qsort(vectors, result->tracked_cnt, sizeof(struct flow_t), cmp_flow);
