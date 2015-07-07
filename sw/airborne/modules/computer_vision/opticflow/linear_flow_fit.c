@@ -36,10 +36,12 @@
 #include <stdio.h>
 #include <math.h>
 #include <string.h>
-#include "optic_flow_gdc.h"
+//#include "optic_flow_gdc.h"
 #include "defs_and_types.h"
 #include "nrutil.h"
-#include "../../modules/OpticFlow/opticflow_module.h"
+//#include "../../modules/OpticFlow/opticflow_module.h"
+#include "linear_flow_fit.h"
+//#include "lib/vision/image.h"
 
 #define MAX_COUNT_PT 50
 
@@ -556,7 +558,7 @@ void svdSolve(float *x_svd, float **u, int m, int n, float *b)
 	free(b_copy);
 }
 
-void fitLinearFlowField(float* pu, float* pv, float* divergence_error, int *x, int *y, int *dx, int *dy, int count, int n_samples, float* min_error_u, float* min_error_v, int n_iterations, float error_threshold, int *n_inlier_minu, int *n_inlier_minv)
+void fitLinearFlowField(float* pu, float* pv, float* divergence_error, struct flow_t* vectors, int count, int n_samples, float* min_error_u, float* min_error_v, int n_iterations, float error_threshold, int *n_inlier_minu, int *n_inlier_minv)
 {
 		//	printf("count=%d, n_sample=%d, n_iterations=%d, error_threshold=%f\n",count,n_samples,n_iterations,error_threshold);
 		//	for (int i=0; i<count;i++) {
@@ -595,11 +597,11 @@ void fitLinearFlowField(float* pu, float* pv, float* divergence_error, int *x, i
 		for(sam = 0; sam < count; sam++)
 		{
 			AA[sam] = (float *) calloc(3,sizeof(float));
-			AA[sam][0] = (float) x[sam];
-			AA[sam][1] = (float) y[sam];
+			AA[sam][0] = (float) vectors[sam].pos.x;
+			AA[sam][1] = (float) vectors[sam].pos.y;
 			AA[sam][2] = 1.0f;
-			bu_all[sam] = (float) dx[sam];
-			bv_all[sam] = (float) dy[sam];
+			bu_all[sam] = (float) vectors[sam].flow_x;
+			bv_all[sam] = (float) vectors[sam].flow_y;
 		}
 
 		// ***************
@@ -632,11 +634,11 @@ void fitLinearFlowField(float* pu, float* pv, float* divergence_error, int *x, i
 			// Setup the system:
 			for(sam = 0; sam < n_samples; sam++)
 			{
-				A[sam][0] = (float) x[sample_indices[sam]];
-				A[sam][1] = (float) y[sample_indices[sam]];
+				A[sam][0] = (float) vectors[sample_indices[sam]].pos.x;
+				A[sam][1] = (float) vectors[sample_indices[sam]].pos.y;
 				A[sam][2] = 1.0f;
-				bu[sam] = (float) dx[sample_indices[sam]];
-				bv[sam] = (float) dy[sample_indices[sam]];
+				bu[sam] = (float) vectors[sample_indices[sam]].flow_x;
+				bv[sam] = (float) vectors[sample_indices[sam]].flow_y;
 				//printf("%d,%d,%d,%d,%d\n",A[sam][0],A[sam][1],A[sam][2],bu[sam],bv[sam]);
 			}
 
@@ -788,7 +790,7 @@ float ofs_filter_val_dx_prev = 0.0;
 float ofs_filter_val_dx_prev_prev = 0.0;
 float temp_divergence = 0.0;
 
-void extractInformationFromLinearFlowField(float *divergence, float *mean_tti, float *median_tti, float *d_heading, float *d_pitch, float* pu, float* pv, int imgWidth, int imgHeight, int *DIV_FILTER)
+void extractInformationFromLinearFlowField(float *divergence, float *mean_tti, float *median_tti, float *d_heading, float *d_pitch, float* pu, float* pv, int imgWidth, int imgHeight, int *DIV_FILTER, float FPS)
 {
 		// This method assumes a linear flow field in x- and y- direction according to the formulas:
 		// u = pu[0] * x + pu[1] * y + pu[2]
@@ -931,7 +933,7 @@ void slopeEstimation(float *z_x, float *z_y, float *three_dimensionality, float 
 	else *POE_y = 0.0f;
 }
 
-void analyseTTI(float *z_x, float *z_y, float *three_dimensionality, float *POE_x, float *POE_y, float *divergence, float *mean_tti, float *median_tti, float *d_heading, float *d_pitch, float *divergence_error, int *x, int *y, int *dx, int *dy, int *n_inlier_minu, int *n_inlier_minv, int count, int imW, int imH, int *DIV_FILTER)
+void analyseTTI(float *z_x, float *z_y, float *three_dimensionality, float *POE_x, float *POE_y, float *divergence, float *mean_tti, float *median_tti, float *d_heading, float *d_pitch, float *divergence_error, struct flow_t* vectors, int *n_inlier_minu, int *n_inlier_minv, int count, int imW, int imH, int *DIV_FILTER, float FPS)
 {
 		// linear fit of the optic flow field
 		float error_threshold = 10; // 10
@@ -953,9 +955,9 @@ void analyseTTI(float *z_x, float *z_y, float *three_dimensionality, float *POE_
 
 		float pu[3], pv[3], min_error_u, min_error_v;
 
-		fitLinearFlowField(pu, pv, divergence_error, x, y, dx, dy, count, n_samples, &min_error_u, &min_error_v, n_iterations, error_threshold, n_inlier_minu, n_inlier_minv);
+		fitLinearFlowField(pu, pv, divergence_error, vectors, count, n_samples, &min_error_u, &min_error_v, n_iterations, error_threshold, n_inlier_minu, n_inlier_minv);
 
-		extractInformationFromLinearFlowField(divergence, mean_tti, median_tti, d_heading, d_pitch, pu, pv, imW, imH, DIV_FILTER);
+		extractInformationFromLinearFlowField(divergence, mean_tti, median_tti, d_heading, d_pitch, pu, pv, imW, imH, DIV_FILTER, FPS);
 
 		slopeEstimation(z_x, z_y, three_dimensionality, POE_x, POE_y, *d_heading, *d_pitch, pu, pv, min_error_u, min_error_v);
 

@@ -26,6 +26,8 @@
  * Sensors from vertical camera and IMU of Parrot AR.Drone 2.0
  */
 
+#include "lib/vision/image.h"
+
 #ifndef LINEAR_FLOW_FIT
 #define LINEAR_FLOW_FIT
 void quick_sort (float *a, int n);
@@ -36,8 +38,8 @@ void ScaleAdd(float* Mat3, float* Mat1, float Scale, float* Mat2, int MatW, int 
 int dsvd(float **a, int m, int n, float *w, float **v);
 void svbksb(float **u, float *w, float **v, int m, int n, float *b, float *x);
 void svdSolve(float *x_svd, float **u, int m, int n, float *b);
-void fitLinearFlowField(float* pu, float* pv, float* divergence_error, int *x, int *y, int *dx, int *dy, int count, int n_samples, float* min_error_u, float* min_error_v, int n_iterations, float error_threshold, int *n_inlier_minu, int *n_inlier_minv);
-void extractInformationFromLinearFlowField(float *divergence, float *mean_tti, float *median_tti, float *d_heading, float *d_pitch, float* pu, float* pv, int imgWidth, int imgHeight, int *DIV_FILTER);
+void fitLinearFlowField(float* pu, float* pv, float* divergence_error, struct flow_t* vectors, int count, int n_samples, float* min_error_u, float* min_error_v, int n_iterations, float error_threshold, int *n_inlier_minu, int *n_inlier_minv);
+void extractInformationFromLinearFlowField(float *divergence, float *mean_tti, float *median_tti, float *d_heading, float *d_pitch, float* pu, float* pv, int imgWidth, int imgHeight, int *DIV_FILTER, float FPS);
 void slopeEstimation(float *z_x, float *z_y, float *three_dimensionality, float *POE_x, float *POE_y, float d_heading, float d_pitch, float* pu, float* pv, float min_error_u, float min_error_v);
-void analyseTTI(float *z_x, float *z_y, float *three_dimensionality, float *POE_x, float *POE_y, float *divergence, float *mean_tti, float *median_tti, float *d_heading, float *d_pitch, float *divergence_error, int *x, int *y, int *dx, int *dy, int *n_inlier_minu, int *n_inlier_minv, int count, int imW, int imH, int *DIV_FILTER);
+void analyseTTI(float *z_x, float *z_y, float *three_dimensionality, float *POE_x, float *POE_y, float *divergence, float *mean_tti, float *median_tti, float *d_heading, float *d_pitch, float *divergence_error, struct flow_t* vectors, int *n_inlier_minu, int *n_inlier_minv, int count, int imW, int imH, int *DIV_FILTER, float fps);
 #endif

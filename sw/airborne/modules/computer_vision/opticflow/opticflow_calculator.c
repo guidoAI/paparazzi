@@ -34,12 +34,14 @@
 
 // Own Header
 #include "opticflow_calculator.h"
-#include "linear_flow_fit.h"
+
 
 // Computer Vision
 #include "lib/vision/image.h"
 #include "lib/vision/lucas_kanade.h"
 #include "lib/vision/fast_rosten.h"
+
+#include "linear_flow_fit.h"
 
 // Camera parameters (defaults are from an ARDrone 2)
 #ifndef OPTICFLOW_FOV_W
@@ -145,6 +147,12 @@ void opticflow_calc_init(struct opticflow_t *opticflow, uint16_t w, uint16_t h)
  */
 void opticflow_calc_frame(struct opticflow_t *opticflow, struct opticflow_state_t *state, struct image_t *img, struct opticflow_result_t *result)
 {
+  // parameters to get from linear flow fit:
+  float *z_x; float *z_y; float *three_dimensionality; float *POE_x; float *POE_y;
+  float *divergence; float *mean_tti; float *median_tti;
+  float *d_heading; float *d_pitch; float *divergence_error;
+  int *n_inlier_minu; int *n_inlier_minv; int *DIV_FILTER;
+
   // Update FPS for information
   result->fps = 1 / (timeval_diff(&opticflow->prev_timestamp, &img->ts) / 1000.);
   memcpy(&opticflow->prev_timestamp, &img->ts, sizeof(struct timeval));
@@ -203,7 +211,7 @@ void opticflow_calc_frame(struct opticflow_t *opticflow, struct opticflow_state_
 #endif
 
   // Estimate ventral flow and divergence:
-  // analyseTTI(float *z_x, float *z_y, float *three_dimensionality, float *POE_x, float *POE_y, float *divergence, float *mean_tti, float *median_tti, float *d_heading, float *d_pitch, float *divergence_error, int *x, int *y, int *dx, int *dy, int *n_inlier_minu, int *n_inlier_minv, int count, int imW, int imH, int *DIV_FILTER);
+  analyseTTI(z_x, z_y, three_dimensionality, POE_x, POE_y, divergence, mean_tti, median_tti, d_heading, d_pitch, divergence_error, vectors, n_inlier_minu, n_inlier_minv, result->tracked_cnt, opticflow->img_gray.w, opticflow->img_gray.h, DIV_FILTER, result->fps);
 
   // Get the median flow
   qsort(vectors, result->tracked_cnt, sizeof(struct flow_t), cmp_flow);
