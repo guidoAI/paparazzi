@@ -42,6 +42,7 @@
 #include "lib/vision/fast_rosten.h"
 
 #include "linear_flow_fit.h"
+#include "size_divergence.h"
 
 // Camera parameters (defaults are from an ARDrone 2)
 #ifndef OPTICFLOW_FOV_W
@@ -153,6 +154,9 @@ void opticflow_calc_frame(struct opticflow_t *opticflow, struct opticflow_state_
   float *d_heading; float *d_pitch; float *divergence_error;
   int *n_inlier_minu; int *n_inlier_minv; int *DIV_FILTER;
 
+  // variables for size_divergence:
+  float size_divergence; int n_samples;
+
   // Update FPS for information
   result->fps = 1 / (timeval_diff(&opticflow->prev_timestamp, &img->ts) / 1000.);
   memcpy(&opticflow->prev_timestamp, &img->ts, sizeof(struct timeval));
@@ -212,6 +216,10 @@ void opticflow_calc_frame(struct opticflow_t *opticflow, struct opticflow_state_
 
   // Estimate ventral flow and divergence:
   analyseTTI(z_x, z_y, three_dimensionality, POE_x, POE_y, divergence, mean_tti, median_tti, d_heading, d_pitch, divergence_error, vectors, n_inlier_minu, n_inlier_minv, result->tracked_cnt, opticflow->img_gray.w, opticflow->img_gray.h, DIV_FILTER, result->fps);
+
+  // Estimate size divergence:
+  n_samples = 100;
+  size_divergence = get_size_divergence(vectors, result->tracked_cnt, n_samples);
 
   // Get the median flow
   qsort(vectors, result->tracked_cnt, sizeof(struct flow_t), cmp_flow);

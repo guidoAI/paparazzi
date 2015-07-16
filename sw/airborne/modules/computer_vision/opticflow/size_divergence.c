@@ -91,7 +91,7 @@ float get_size_divergence(struct flow_t* vectors, int count, int n_samples)
 		}
 		
 		// calculate the mean divergence:
-		mean_divergence = get_mean(divs, n_elements);
+		mean_divergence = get_mean(divs, n_samples);
 				
 		// free the memory of divs:
 		free(divs);
