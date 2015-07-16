@@ -1,4 +1,7 @@
 #include "size_divergence.h"
+#include <stdlib.h>
+
+#define NO_DIV 0.0
 
 /**
  * Get divergence from optical flow vectors based on line sizes between corners
@@ -17,6 +20,10 @@ float get_size_divergence(struct flow_t* vectors, int count, int n_samples)
 	float dy;
 	float mean_divergence;
 	int n_elements;
+	unsigned int i, j;
+	
+	if(count < 2)
+		return NO_DIV;
 	
 	if(n_samples == 0)
 	{
@@ -46,6 +53,7 @@ float get_size_divergence(struct flow_t* vectors, int count, int n_samples)
 			}
 		}
 		
+		// calculate the mean divergence:
 		mean_divergence = get_mean(divs, n_elements);
 		
 		// free the memory of divs:
@@ -53,10 +61,44 @@ float get_size_divergence(struct flow_t* vectors, int count, int n_samples)
 	}
 	else
 	{
+		// vector that will contain individual divergence estimates:
+		divs = (float*) malloc(sizeof(float) * n_samples);
+		
 		// take random samples:
+		for(sample = 0; sample < n_samples; sample++)
+		{
+			// take two random indices:
+			i = rand() % count;
+			j = rand() % count;
+			// ensure it is not the same index:			
+			while(i == j)
+			{
+				j = rand() % count;
+			}
+			
+			// distance in previous image:
+			dx = vectors[i].pos.x - vectors[j].pos.x;
+			dy = vectors[i].pos.y - vectors[j].pos.y; 
+			distance_1 = sqrt(dx*dx + dy*dy);
+							
+			// distance in current image:
+			dx = vectors[i].pos.x + vectors[i].flow_x - vectors[j].pos.x - vectors[j].flow_x;
+			dy = vectors[i].pos.y + vectors[i].flow_y - vectors[j].pos.y - vectors[j].flow_y;
+			distance_2 = sqrt(dx*dx + dy*dy);
+							
+			// calculate divergence for this sample:
+			divs[sample] = distance_1 / (distance_2 - distance_1);
+		}
 		
-		
+		// calculate the mean divergence:
+		mean_divergence = get_mean(divs, n_elements);
+				
+		// free the memory of divs:
+		free(divs);
 	}
+	
+	// return the calculated divergence:
+	return mean_divergence;
 }
 
 /**
