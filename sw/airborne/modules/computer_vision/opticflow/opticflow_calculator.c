@@ -215,11 +215,12 @@ void opticflow_calc_frame(struct opticflow_t *opticflow, struct opticflow_state_
 #endif
 
   // Estimate ventral flow and divergence:
-  analyseTTI(z_x, z_y, three_dimensionality, POE_x, POE_y, divergence, mean_tti, median_tti, d_heading, d_pitch, divergence_error, vectors, n_inlier_minu, n_inlier_minv, result->tracked_cnt, opticflow->img_gray.w, opticflow->img_gray.h, DIV_FILTER, result->fps);
+  // analyseTTI(z_x, z_y, three_dimensionality, POE_x, POE_y, divergence, mean_tti, median_tti, d_heading, d_pitch, divergence_error, vectors, n_inlier_minu, n_inlier_minv, result->tracked_cnt, opticflow->img_gray.w, opticflow->img_gray.h, DIV_FILTER, result->fps);
 
   // Estimate size divergence:
   n_samples = 100;
   size_divergence = get_size_divergence(vectors, result->tracked_cnt, n_samples);
+  result->div_size = size_divergence;
 
   // Get the median flow
   qsort(vectors, result->tracked_cnt, sizeof(struct flow_t), cmp_flow);
