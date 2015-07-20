@@ -1,6 +1,10 @@
 /*
  * Copyright (C) 2015 Guido de Croon <guido.de.croon@gmail.com>
  *
+ * From:
+ * Characterization of Flow Field Divergence for Vertical Landing Control of MAVs 
+ * by H.W. Ho and G.C.H.E. de Croon (submitted)
+ *
  * This file is part of Paparazzi.
  *
  * Paparazzi is free software; you can redistribute it and/or modify
