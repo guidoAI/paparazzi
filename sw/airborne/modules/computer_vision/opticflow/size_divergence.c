@@ -48,7 +48,7 @@ float get_size_divergence(struct flow_t* vectors, int count, int n_samples)
 				distance_2 = sqrt(dx*dx + dy*dy);
 				
 				// calculate divergence for this sample:
-				divs[sample] = distance_1 / (distance_2 - distance_1);
+				divs[sample] = (distance_2 - distance_1) / distance_1;
 				sample++;
 			}
 		}
@@ -87,7 +87,7 @@ float get_size_divergence(struct flow_t* vectors, int count, int n_samples)
 			distance_2 = sqrt(dx*dx + dy*dy);
 							
 			// calculate divergence for this sample:
-			divs[sample] = distance_1 / (distance_2 - distance_1);
+			divs[sample] = (distance_2 - distance_1) / distance_1;
 		}
 		
 		// calculate the mean divergence:
