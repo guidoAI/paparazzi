@@ -38,12 +38,15 @@
 #include <string.h>
 #include "defs_and_types.h"
 #include "linear_flow_fit.h"
+#include "math/pprz_algebra_float.h"
+#include "math/pprz_matrix_decomp_float.h"
 
 // Is this still necessary?
 #define MAX_COUNT_PT 50
 
 #define MIN_SAMPLES_FIT 3
 #define NO_FIT 0
+#define FIT 1
 
 /**
  * Analyze a linear flow field, retrieving information such as divergence, surface roughness, focus of expansion, etc.
@@ -74,33 +77,55 @@ int analyze_linear_flow_field(struct flow_t* vectors, int count, float error_thr
 	// Are there enough flow vectors to perform a fit?		
 	if(count < MIN_SAMPLES_FIT)
 	{
+		// return that no fit was made:
 		return NO_FIT;
 	}
 
-		float pu[3], pv[3], min_error_u, min_error_v;
+	// fit linear flow field:
+	float parameters_u[3], parameters_v[3], min_error_u, min_error_v;
+	fit_linear_flow_field(vectors, count, n_iterations, error_threshold, n_samples, parameters_u, parameters_v, fit_error, &min_error_u, &min_error_v, n_inliers_u, n_inliers_v);
 
-		fitLinearFlowField(pu, pv, divergence_error, vectors, count, n_samples, &min_error_u, &min_error_v, n_iterations, error_threshold, n_inlier_minu, n_inlier_minv);
+	// extract information from the parameters:
+	extract_information_from_parameters(parameters_u, parameters_v, relative_velocity_x, relative_velocity_y, relative_velocity_z, slope_x, slope_y, focus_of_expansion_x, focus_of_expansion_y, im_width, im_height);
 
-		extractInformationFromLinearFlowField(divergence, mean_tti, median_tti, d_heading, d_pitch, pu, pv, imW, imH, DIV_FILTER, FPS);
+	// surface roughness is equal to fit error:
+	(*surface_roughness) = (*fit_error);
 
-		slopeEstimation(z_x, z_y, three_dimensionality, POE_x, POE_y, *d_heading, *d_pitch, pu, pv, min_error_u, min_error_v);
-
+	// return successful fit:
+	return FIT;
 }
 
-
-void fitLinearFlowField(float* pu, float* pv, float* divergence_error, struct flow_t* vectors, int count, int n_samples, float* min_error_u, float* min_error_v, int n_iterations, float error_threshold, int *n_inlier_minu, int *n_inlier_minv)
+/**
+ * Analyze a linear flow field, retrieving information such as divergence, surface roughness, focus of expansion, etc.
+ * @param[in] flow_t* vectors The optical flow vectors
+ * @param[in] count The number of optical flow vectors
+ * @param[in] error_threshold Error used to determine inliers / outliers. 
+ * @param[in] n_iterations Number of RANSAC iterations.
+ * @param[in] n_samples Number of samples used for a single fit (min. 3).
+ * @param[in] parameters_u* Parameters of the horizontal flow field
+ * @param[in] parameters_v* Parameters of the vertical flow field
+ * @param[in] fit_error* Total error of the finally selected fit
+ * @param[in] min_error_u* Error fit horizontal flow field
+ * @param[in] min_error_v* Error fit vertical flow field
+ * @param[in] n_inliers_u* Number of inliers in the horizontal flow fit.
+ * @param[in] n_inliers_v* Number of inliers in the vertical flow fit.
+ */
+void fit_linear_flow_field(struct flow_t* vectors, int count, float error_threshold, int n_iterations, int n_samples, float* parameters_u, float* parameters_v, float* fit_error, float* min_error_u, float* min_error_v, int *n_inliers_u, int *n_inliers_v)
 {
+
+	// We will solve systems of the form A x = b, 
+	// where A = [nx3] matrix with entries [x, y, 1] for each optic flow location
+	// and b = [nx1] vector with either the horizontal (bu) or vertical (bv) flow.
+	// x in the system are the parameters for the horizontal (pu) or vertical (pv) flow field.
+
+	// local iterators:
+	int sam, p;
 
 	// ensure that n_samples is high enough to ensure a result for a single fit:
 	n_samples = (n_samples < MIN_SAMPLES_FIT) ? MIN_SAMPLES_FIT : n_samples;
 
-		//	printf("count=%d, n_sample=%d, n_iterations=%d, error_threshold=%f\n",count,n_samples,n_iterations,error_threshold);
-		//	for (int i=0; i<count;i++) {
-		//		printf("%d_%d, ",dx[i],dy[i]);
-		//	}
-		//	printf("\n");
-	
-		int *sample_indices;
+/*
+	int *sample_indices;
 		float **A, *bu, *bv, **AA, *bu_all, *bv_all;
 		sample_indices =(int *) calloc(n_samples,sizeof(int));
 		A = (float **) calloc(n_samples,sizeof(float*));// A1 is a N x 3 matrix with rows [x, y, 1]
@@ -125,204 +150,235 @@ void fitLinearFlowField(float* pu, float* pv, float* divergence_error, struct fl
 		float *bb, *C;
 		bb = (float *) calloc(count,sizeof(float));
 		C = (float *) calloc(count,sizeof(float));
+*/
 
-		// initialize matrices and vectors for the full point set problem:
-		// this is used for determining inliers
-		for(sam = 0; sam < count; sam++)
-		{
-			AA[sam] = (float *) calloc(3,sizeof(float));
-			AA[sam][0] = (float) vectors[sam].pos.x;
-			AA[sam][1] = (float) vectors[sam].pos.y;
-			AA[sam][2] = 1.0f;
-			bu_all[sam] = (float) vectors[sam].flow_x;
-			bv_all[sam] = (float) vectors[sam].flow_y;
-		}
+	/*
+	float w[p + 1], _v[p + 1][p + 1];
+	  MAKE_MATRIX_PTR(v, _v, p + 1);
+	  pprz_svd_float(XtX, w, v, p + 1, p + 1);
+	  float _c[p + 1][1];
+	  MAKE_MATRIX_PTR(c_tmp, _c, p + 1);
+	  pprz_svd_solve_float(c_tmp, XtX, w, v, T, p + 1, p + 1, 1);
+	  // set output vector
+	  for (i = 0; i < p + 1; i++) {
+	    c[i] = c_tmp[i][0];
+	  }	
+	*/
 
-		// ***************
-		// perform RANSAC:
-		// ***************
+
+
+	// initialize matrices and vectors for the full point set problem:
+	// this is used for determining inliers
+	float _AA[count][3];
+	MAKE_MATRIX_PTR(AA, _AA, count);
+	float _bu_all[count];
+	MAKE_MATRIX_PTR(bu_all, _bu_all, count);
+	float _bv_all[count];
+	MAKE_MATRIX_PTR(bv_all, _bv_all, count);
+	for(sam = 0; sam < count; sam++)
+	{
+		AA[sam][0] = (float) vectors[sam].pos.x;
+		AA[sam][1] = (float) vectors[sam].pos.y;
+		AA[sam][2] = 1.0f;
+		bu_all[sam] = (float) vectors[sam].flow_x;
+		bv_all[sam] = (float) vectors[sam].flow_y;
+	}
+	// later used to determine the error of a set of parameters on the whole set:
+	float _bb[count];
+	MAKE_MATRIX_PTR(bb, _bb, count);
+	float _C[count];
+	MAKE_MATRIX_PTR(C, _C, count);
+
+	// ***************
+	// perform RANSAC:
+	// ***************
 		
-		int it, ii;
-		for(it = 0; it < n_iterations; it++)
+	// set up variables for small linear system solved repeatedly inside RANSAC:
+	float _A[n_samples][3];
+	MAKE_MATRIX_PTR(A, _A, n_samples);
+	float _bu[n_samples];
+	MAKE_MATRIX_PTR(bu, _bu, n_samples);
+	float _bv[n_samples];
+	MAKE_MATRIX_PTR(bv, _bv, n_samples);
+	float w[n_samples], _v[3][3];
+	MAKE_MATRIX_PTR(v, _v, 3);
+	float _pu[3][1];
+	MAKE_MATRIX_PTR(pu, _pu, 3);
+	float _pv[3][1];
+	MAKE_MATRIX_PTR(pv, _pv, 3);
+
+	// iterate and store parameters, errors, inliers per fit:
+	float PU[n_iterations*3];
+	float PV[n_iterations*3];
+	float errors_pu[n_iterations];
+	float errors_pv[n_iterations];
+	int n_inliers_pu[n_iterations];
+	int n_inliers_pv[n_iterations];
+	int it, ii;
+	for(it = 0; it < n_iterations; it++)
+	{
+		// select a random sample of n_sample points:
+		int sample_indices[n_samples];
+		i_rand = 0;
+
+		// sampling without replacement:
+		while(i_rand < n_samples)
 		{
-			// select a random sample of n_sample points:
-			memset(sample_indices, 0, n_samples*sizeof(int));
-			i_rand = 0;
-
-			// sampling without replacement:
-			while(i_rand < n_samples)
+			si = rand() % count;
+			add_si = 1;
+			for(ii = 0; ii < i_rand; ii++)
 			{
-				si = rand() % count;
-				add_si = 1;
-				for(ii = 0; ii < i_rand; ii++)
-				{
-					if(sample_indices[ii] == si) add_si = 0;
-				}
-				if(add_si)
-				{
-					sample_indices[i_rand] = si;
-					i_rand ++;
-				}
+				if(sample_indices[ii] == si) add_si = 0;
 			}
-
-			// Setup the system:
-			for(sam = 0; sam < n_samples; sam++)
+			if(add_si)
 			{
-				A[sam][0] = (float) vectors[sample_indices[sam]].pos.x;
-				A[sam][1] = (float) vectors[sample_indices[sam]].pos.y;
-				A[sam][2] = 1.0f;
-				bu[sam] = (float) vectors[sample_indices[sam]].flow_x;
-				bv[sam] = (float) vectors[sample_indices[sam]].flow_y;
-				//printf("%d,%d,%d,%d,%d\n",A[sam][0],A[sam][1],A[sam][2],bu[sam],bv[sam]);
-			}
-
-			// Solve the small system:
-
-			// for horizontal flow:
-			svdSolve(pu, A, n_samples, 3, bu);
-			PU[it*3] = pu[0];
-			PU[it*3+1] = pu[1];
-			PU[it*3+2] = pu[2];
-
-			// for vertical flow:
-			svdSolve(pv, A, n_samples, 3, bv);
-			PV[it*3] = pv[0];
-			PV[it*3+1] = pv[1];
-			PV[it*3+2] = pv[2];
-
-			// count inliers and determine their error on all points:
-			errors_pu[it] = 0;
-			errors_pv[it] = 0;
-			n_inliers_pu[it] = 0;
-			n_inliers_pv[it] = 0;
-
-			// for horizontal flow:
-			MatVVMul(bb, AA, pu, 3, count);
-			float scaleM;
-			scaleM = -1.0;
-			ScaleAdd(C, bb, scaleM, bu_all, 1, count);
-
-			for(p = 0; p < count; p++)
-			{
-				if(C[p] < error_threshold)
-				{
-					errors_pu[it] += abs(C[p]);
-					n_inliers_pu[it]++;
-				}
-				else
-				{
-					errors_pu[it] += error_threshold;
-				}
-			}
-			// for vertical flow:
-			MatVVMul(bb, AA, pv, 3, count);
-			ScaleAdd(C, bb, scaleM, bv_all, 1, count);
-
-			for(p = 0; p < count; p++)
-			{
-				if(C[p] < error_threshold)
-				{
-					errors_pv[it] += abs(C[p]);
-					n_inliers_pv[it]++;
-				}
-				else
-				{
-					errors_pv[it] += error_threshold;
-				}
+				sample_indices[i_rand] = si;
+				i_rand ++;
 			}
 		}
+		
+		// Setup the system:
+		for(sam = 0; sam < n_samples; sam++)
+		{
+			A[sam][0] = (float) vectors[sample_indices[sam]].pos.x;
+			A[sam][1] = (float) vectors[sample_indices[sam]].pos.y;
+			A[sam][2] = 1.0f;
+			bu[sam] = (float) vectors[sample_indices[sam]].flow_x;
+			bv[sam] = (float) vectors[sample_indices[sam]].flow_y;
+			//printf("%d,%d,%d,%d,%d\n",A[sam][0],A[sam][1],A[sam][2],bu[sam],bv[sam]);
+		}
 
-		// select the parameters with lowest error:
+		// Solve the small system:
+
 		// for horizontal flow:
-		int param;
-		int min_ind = 0;
-		*min_error_u = (float)errors_pu[0];
-		for(it = 1; it < n_iterations; it++)
-		{
-			if(errors_pu[it] < *min_error_u)
-			{
-				*min_error_u = (float)errors_pu[it];
-				min_ind = it;
-			}
-		}
-		for(param = 0; param < 3; param++)
-		{
-			pu[param] = PU[min_ind*3+param];
-		}
-		*n_inlier_minu = n_inliers_pu[min_ind];
-		
+		// decompose A in u, w, v with singular value decomposition A = u * w * vT.
+		// u replaces A as output: 
+		pprz_svd_float(A, w, v, n_samples, 3);
+		pprz_svd_solve_float(pu, A, w, v, bu, n_samples, 3, 1);
+		PU[it*3] = pu[0];
+		PU[it*3+1] = pu[1];
+		PU[it*3+2] = pu[2];
+
 		// for vertical flow:
-		min_ind = 0;
-		*min_error_v = (float)errors_pv[0];
+		pprz_svd_solve_float(pv, A, w, v, bv, n_samples, 3, 1);
+		PV[it*3] = pv[0];
+		PV[it*3+1] = pv[1];
+		PV[it*3+2] = pv[2];
 
-		for(it = 0; it < n_iterations; it++)
-		{
-			if(errors_pv[it] < *min_error_v)
-			{
-				*min_error_v = (float)errors_pv[it];
-				min_ind = it;
-			}
-		}
-		for(param = 0; param < 3; param++)
-		{
-			pv[param] = PV[min_ind*3+param];
-		}		
-		*n_inlier_minv = n_inliers_pv[min_ind];
+		// count inliers and determine their error on all points:
+		errors_pu[it] = 0;
+		errors_pv[it] = 0;
+		n_inliers_pu[it] = 0;
+		n_inliers_pv[it] = 0;
+		
+		// for horizontal flow:
+		// bb = AA * PU:
+		MAT_MUL(count, 3, 1, bb, AA, PU)
+		// subtract bu_all: C = 0 in case of perfect fit:
+		MAT_SUB(count, 1, C, bb, bu_all);
 
-		// error has to be determined on the entire set:
-		MatVVMul(bb, AA, pu, 3, count);
-		float scaleM;
-		scaleM = -1.0;
-		ScaleAdd(C, bb, scaleM, bu_all, 1, count);
-
-		*min_error_u = 0;
 		for(p = 0; p < count; p++)
 		{
-			*min_error_u += abs(C[p]);
+			if(C[p] < error_threshold)
+			{
+				errors_pu[it] += abs(C[p]);
+				n_inliers_pu[it]++;
+			}
+			else
+			{
+				errors_pu[it] += error_threshold;
+			}
 		}
+		// for vertical flow:
 		MatVVMul(bb, AA, pv, 3, count);
 		ScaleAdd(C, bb, scaleM, bv_all, 1, count);
 
-		*min_error_v = 0;
 		for(p = 0; p < count; p++)
 		{
-			*min_error_v += abs(C[p]);
+			if(C[p] < error_threshold)
+			{
+				errors_pv[it] += abs(C[p]);
+				n_inliers_pv[it]++;
+			}
+			else
+			{
+				errors_pv[it] += error_threshold;
+			}
 		}
-		*divergence_error = (*min_error_u + *min_error_v) / (2 * count);
-
+	}
+		// select the parameters with lowest error:
+	// for horizontal flow:
+	int param;
+	int min_ind = 0;
+	*min_error_u = (float)errors_pu[0];
+	for(it = 1; it < n_iterations; it++)
+	{
+		if(errors_pu[it] < *min_error_u)
+		{
+			*min_error_u = (float)errors_pu[it];
+			min_ind = it;
+		}
+	}
+	for(param = 0; param < 3; param++)
+	{
+		pu[param] = PU[min_ind*3+param];
+	}
+	*n_inlier_minu = n_inliers_pu[min_ind];
+		
+	// for vertical flow:
+	min_ind = 0;
+	*min_error_v = (float)errors_pv[0];
+		for(it = 0; it < n_iterations; it++)
+	{
+		if(errors_pv[it] < *min_error_v)
+		{
+			*min_error_v = (float)errors_pv[it];
+			min_ind = it;
+		}
+	}
+	for(param = 0; param < 3; param++)
+	{
+			pv[param] = PV[min_ind*3+param];
+	}		
+	*n_inlier_minv = n_inliers_pv[min_ind];
+	// error has to be determined on the entire set:
+	MatVVMul(bb, AA, pu, 3, count);
+	float scaleM;
+		scaleM = -1.0;
+	ScaleAdd(C, bb, scaleM, bu_all, 1, count);
+		*min_error_u = 0;
+	for(p = 0; p < count; p++)
+	{
+		*min_error_u += abs(C[p]);
+	}
+	MatVVMul(bb, AA, pv, 3, count);
+	ScaleAdd(C, bb, scaleM, bv_all, 1, count);
+		*min_error_v = 0;
+	for(p = 0; p < count; p++)
+	{
+		*min_error_v += abs(C[p]);
+	}
+	*divergence_error = (*min_error_u + *min_error_v) / (2 * count);
 		// delete allocated dynamic arrays
-		for(sam = 0; sam < n_samples; sam++) free(A[sam]);
-		for(sam = 0; sam < count; sam++) free(AA[sam]);
-		free(A);
-		free(PU);
-		free(PV);
-		free(n_inliers_pu);
-		free(n_inliers_pv);
-		free(errors_pu);
-		free(errors_pv);
-		free(bu);
-		free(bv);
-		free(AA);
-		free(bu_all);
-		free(bv_all);
-		free(bb);
-		free(C);
-		free(sample_indices);
+	for(sam = 0; sam < n_samples; sam++) free(A[sam]);
+	for(sam = 0; sam < count; sam++) free(AA[sam]);
+	free(A);
+	free(PU);
+	free(PV);
+	free(n_inliers_pu);
+	free(n_inliers_pv);
+	free(errors_pu);
+	free(errors_pv);
+	free(bu);
+	free(bv);
+	free(AA);
+	free(bu_all);
+	free(bv_all);
+	free(bb);
+	free(C);
+	free(sample_indices);
 }
 
-unsigned int mov_block = 15; //default: 30
-float div_buf[30];
-unsigned int div_point = 0;
-float OFS_BUTTER_NUM_1 = 0.0004260;
-float OFS_BUTTER_NUM_2 = 0.0008519;
-float OFS_BUTTER_NUM_3 = 0.0004260;
-float OFS_BUTTER_DEN_2 = -1.9408;
-float OFS_BUTTER_DEN_3 = 0.9425;
-float ofs_meas_dx_prev = 0.0;
-float ofs_meas_dx_prev_prev = 0.0;
-float ofs_filter_val_dx_prev = 0.0;
-float ofs_filter_val_dx_prev_prev = 0.0;
-float temp_divergence = 0.0;
 
 void extractInformationFromLinearFlowField(float *divergence, float *mean_tti, float *median_tti, float *d_heading, float *d_pitch, float* pu, float* pv, int imgWidth, int imgHeight, int *DIV_FILTER, float FPS)
 {

@@ -36,10 +36,10 @@
 #define LINEAR_FLOW_FIT
 
 // This is the function called externally, passing the vector of optical flow vectors and information on the number of vectors and image size: 
-void analyze_linear_flow_field(struct flow_t* vectors, int count, float error_threshold, int n_iterations, int im_width, int im_height, float *slope_x, float *slope_y, float *surface_roughness, float *focus_of_expansion_x, float *focus_of_expansion_y, float *relative_velocity_x, float *relative_velocity_y, float *relative_velocity_z, float *time_to_contact, float* divergence, float *fit_error, int *n_inliers_u, int *n_inliers_v);
+int analyze_linear_flow_field(struct flow_t* vectors, int count, float error_threshold, int n_iterations, int n_samples, int im_width, int im_height, float *slope_x, float *slope_y, float *surface_roughness, float *focus_of_expansion_x, float *focus_of_expansion_y, float *relative_velocity_x, float *relative_velocity_y, float *relative_velocity_z, float *time_to_contact, float* divergence, float *fit_error, int *n_inliers_u, int *n_inliers_v);
 
 // Fits the linear flow field with RANSAC:
-void fit_linear_flow_field(float* parameters_u, float* parameters_v, float* fit_error, struct flow_t* vectors, int count, int n_samples, float* min_error_u, float* min_error_v, int n_iterations, float error_threshold, int *n_inliers_u, int *n_inliers_v);
+void fit_linear_flow_field(struct flow_t* vectors, int count, float error_threshold, int n_iterations, int n_samples, float* parameters_u, float* parameters_v, float* fit_error, float* min_error_u, float* min_error_v, int *n_inliers_u, int *n_inliers_v);
 
 // Extracts relevant information from the fit parameters:
 void extract_information_from_parameters(float* parameters_u, float* parameters_v, float *relative_velocity_x, float *relative_velocity_y, float *relative_velocity_z, float *slope_x, float *slope_y, float *focus_of_expansion_x, float *focus_of_expansion_y, int im_width, int im_height);
