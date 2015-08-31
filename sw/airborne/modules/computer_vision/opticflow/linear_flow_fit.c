@@ -210,8 +210,10 @@ void fit_linear_flow_field(struct flow_t* vectors, int count, float error_thresh
 	// iterate and store parameters, errors, inliers per fit:
 	float PU[n_iterations*3];
 	float PV[n_iterations*3];
-	float errors_pu[n_iterations];
+	float errors_pu[n_iterations]; 
+	errors_pu[0] = 0.0;
 	float errors_pv[n_iterations];
+	errors_pv[0] = 0.0;
 	int n_inliers_pu[n_iterations];
 	int n_inliers_pv[n_iterations];
 	int it, ii;
@@ -272,16 +274,17 @@ void fit_linear_flow_field(struct flow_t* vectors, int count, float error_thresh
 		n_inliers_pv[it] = 0;
 		
 		// for horizontal flow:
-		// bb = AA * PU:
-		MAT_MUL(count, 3, 1, bb, AA, PU)
+		// bb = AA * pu:
+		MAT_MUL(count, 3, 1, bb, AA, pu)
 		// subtract bu_all: C = 0 in case of perfect fit:
 		MAT_SUB(count, 1, C, bb, bu_all);
 
 		for(p = 0; p < count; p++)
 		{
+			C[p] = abs(C[p]);
 			if(C[p] < error_threshold)
 			{
-				errors_pu[it] += abs(C[p]);
+				errors_pu[it] += C[p];
 				n_inliers_pu[it]++;
 			}
 			else
@@ -289,15 +292,19 @@ void fit_linear_flow_field(struct flow_t* vectors, int count, float error_thresh
 				errors_pu[it] += error_threshold;
 			}
 		}
+
 		// for vertical flow:
-		MatVVMul(bb, AA, pv, 3, count);
-		ScaleAdd(C, bb, scaleM, bv_all, 1, count);
+		// bb = AA * pv:
+		MAT_MUL(count, 3, 1, bb, AA, pv)
+		// subtract bv_all: C = 0 in case of perfect fit:
+		MAT_SUB(count, 1, C, bb, bv_all);
 
 		for(p = 0; p < count; p++)
 		{
+			C[p] = abs(C[p]);
 			if(C[p] < error_threshold)
 			{
-				errors_pv[it] += abs(C[p]);
+				errors_pv[it] += C[p];
 				n_inliers_pv[it]++;
 			}
 			else
@@ -306,7 +313,9 @@ void fit_linear_flow_field(struct flow_t* vectors, int count, float error_thresh
 			}
 		}
 	}
-		// select the parameters with lowest error:
+
+	// After all iterations:
+	// select the parameters with lowest error:
 	// for horizontal flow:
 	int param;
 	int min_ind = 0;
@@ -321,14 +330,14 @@ void fit_linear_flow_field(struct flow_t* vectors, int count, float error_thresh
 	}
 	for(param = 0; param < 3; param++)
 	{
-		pu[param] = PU[min_ind*3+param];
+		parameters_u[param] = PU[min_ind*3+param];
 	}
 	*n_inlier_minu = n_inliers_pu[min_ind];
 		
 	// for vertical flow:
 	min_ind = 0;
 	*min_error_v = (float)errors_pv[0];
-		for(it = 0; it < n_iterations; it++)
+	for(it = 0; it < n_iterations; it++)
 	{
 		if(errors_pv[it] < *min_error_v)
 		{
@@ -338,9 +347,10 @@ void fit_linear_flow_field(struct flow_t* vectors, int count, float error_thresh
 	}
 	for(param = 0; param < 3; param++)
 	{
-			pv[param] = PV[min_ind*3+param];
+		parameters_v[param] = PV[min_ind*3+param];
 	}		
 	*n_inlier_minv = n_inliers_pv[min_ind];
+
 	// error has to be determined on the entire set:
 	MatVVMul(bb, AA, pu, 3, count);
 	float scaleM;
@@ -359,24 +369,6 @@ void fit_linear_flow_field(struct flow_t* vectors, int count, float error_thresh
 		*min_error_v += abs(C[p]);
 	}
 	*divergence_error = (*min_error_u + *min_error_v) / (2 * count);
-		// delete allocated dynamic arrays
-	for(sam = 0; sam < n_samples; sam++) free(A[sam]);
-	for(sam = 0; sam < count; sam++) free(AA[sam]);
-	free(A);
-	free(PU);
-	free(PV);
-	free(n_inliers_pu);
-	free(n_inliers_pv);
-	free(errors_pu);
-	free(errors_pv);
-	free(bu);
-	free(bv);
-	free(AA);
-	free(bu_all);
-	free(bv_all);
-	free(bb);
-	free(C);
-	free(sample_indices);
 }
 
 
