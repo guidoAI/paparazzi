@@ -40,6 +40,7 @@
 #include "linear_flow_fit.h"
 #include "../../../math/pprz_algebra_float.h"
 #include "../../../math/pprz_matrix_decomp_float.h"
+#include "../../../math/pprz_simple_matrix.h"
 
 // Is this still necessary?
 #define MAX_COUNT_PT 50
@@ -118,8 +119,8 @@ void fit_linear_flow_field(struct flow_t* vectors, int count, float error_thresh
 	// and b = [nx1] vector with either the horizontal (bu) or vertical (bv) flow.
 	// x in the system are the parameters for the horizontal (pu) or vertical (pv) flow field.
 
-	// local iterators:
-	int sam, p;
+	// local vars for iterating, random numbers:
+	int sam, p, i_rand, si, add_si;
 
 	// ensure that n_samples is high enough to ensure a result for a single fit:
 	n_samples = (n_samples < MIN_SAMPLES_FIT) ? MIN_SAMPLES_FIT : n_samples;
@@ -132,9 +133,6 @@ void fit_linear_flow_field(struct flow_t* vectors, int count, float error_thresh
 	MAKE_MATRIX_PTR(bu_all, _bu_all, count);
 	float _bv_all[count][1];
 	MAKE_MATRIX_PTR(bv_all, _bv_all, count);
-	/*float AA[count][3];
-	float bu_all[count];
-	float bv_all[count];*/
 	for(sam = 0; sam < count; sam++)
 	{
 		AA[sam][0] = (float) vectors[sam].pos.x;
@@ -144,19 +142,11 @@ void fit_linear_flow_field(struct flow_t* vectors, int count, float error_thresh
 		bv_all[sam][0] = (float) vectors[sam].flow_y;
 	}
 
-	float w[count], _v[3][3];
-	MAKE_MATRIX_PTR(v, _v, 3);
-	float _pu[3][1];
-	MAKE_MATRIX_PTR(pu, _pu, 3);
 
-	pprz_svd_float(AA, w, v, count, 3);
-	pprz_svd_solve_float(pu, AA, w, v, bu_all, count, 3, 1);
-
-/*
 	// later used to determine the error of a set of parameters on the whole set:
-	float _bb[count];
+	float _bb[count][1];
 	MAKE_MATRIX_PTR(bb, _bb, count);
-	float _C[count];
+	float _C[count][1];
 	MAKE_MATRIX_PTR(C, _C, count);
 
 	// ***************
@@ -166,9 +156,9 @@ void fit_linear_flow_field(struct flow_t* vectors, int count, float error_thresh
 	// set up variables for small linear system solved repeatedly inside RANSAC:
 	float _A[n_samples][3];
 	MAKE_MATRIX_PTR(A, _A, n_samples);
-	float _bu[n_samples];
+	float _bu[n_samples][1];
 	MAKE_MATRIX_PTR(bu, _bu, n_samples);
-	float _bv[n_samples];
+	float _bv[n_samples][1];
 	MAKE_MATRIX_PTR(bv, _bv, n_samples);
 	float w[n_samples], _v[3][3];
 	MAKE_MATRIX_PTR(v, _v, 3);
@@ -215,9 +205,9 @@ void fit_linear_flow_field(struct flow_t* vectors, int count, float error_thresh
 			A[sam][0] = (float) vectors[sample_indices[sam]].pos.x;
 			A[sam][1] = (float) vectors[sample_indices[sam]].pos.y;
 			A[sam][2] = 1.0f;
-			bu[sam] = (float) vectors[sample_indices[sam]].flow_x;
-			bv[sam] = (float) vectors[sample_indices[sam]].flow_y;
-			//printf("%d,%d,%d,%d,%d\n",A[sam][0],A[sam][1],A[sam][2],bu[sam],bv[sam]);
+			bu[sam][0] = (float) vectors[sample_indices[sam]].flow_x;
+			bv[sam][0] = (float) vectors[sample_indices[sam]].flow_y;
+			//printf("%d,%d,%d,%d,%d\n",A[sam][0],A[sam][1],A[sam][2],bu[sam][0],bv[sam][0]);
 		}
 
 		// Solve the small system:
@@ -227,15 +217,15 @@ void fit_linear_flow_field(struct flow_t* vectors, int count, float error_thresh
 		// u replaces A as output: 
 		pprz_svd_float(A, w, v, n_samples, 3);
 		pprz_svd_solve_float(pu, A, w, v, bu, n_samples, 3, 1);
-		PU[it*3] = pu[0];
-		PU[it*3+1] = pu[1];
-		PU[it*3+2] = pu[2];
+		PU[it*3] = pu[0][0];
+		PU[it*3+1] = pu[1][0];
+		PU[it*3+2] = pu[2][0];
 
 		// for vertical flow:
 		pprz_svd_solve_float(pv, A, w, v, bv, n_samples, 3, 1);
-		PV[it*3] = pv[0];
-		PV[it*3+1] = pv[1];
-		PV[it*3+2] = pv[2];
+		PV[it*3] = pv[0][0];
+		PV[it*3+1] = pv[1][0];
+		PV[it*3+2] = pv[2][0];
 
 		// count inliers and determine their error on all points:
 		errors_pu[it] = 0;
@@ -245,16 +235,16 @@ void fit_linear_flow_field(struct flow_t* vectors, int count, float error_thresh
 		
 		// for horizontal flow:
 		// bb = AA * pu:
-		MAT_MUL(count, 3, 1, bb, AA, pu)
+		MAT_MUL(count, 3, 1, bb, AA, pu);
 		// subtract bu_all: C = 0 in case of perfect fit:
 		MAT_SUB(count, 1, C, bb, bu_all);
 
 		for(p = 0; p < count; p++)
 		{
-			C[p] = abs(C[p]);
-			if(C[p] < error_threshold)
+			C[p][0] = abs(C[p][0]);
+			if(C[p][0] < error_threshold)
 			{
-				errors_pu[it] += C[p];
+				errors_pu[it] += C[p][0];
 				n_inliers_pu[it]++;
 			}
 			else
@@ -265,16 +255,16 @@ void fit_linear_flow_field(struct flow_t* vectors, int count, float error_thresh
 
 		// for vertical flow:
 		// bb = AA * pv:
-		MAT_MUL(count, 3, 1, bb, AA, pv)
+		MAT_MUL(count, 3, 1, bb, AA, pv);
 		// subtract bv_all: C = 0 in case of perfect fit:
 		MAT_SUB(count, 1, C, bb, bv_all);
 
 		for(p = 0; p < count; p++)
 		{
-			C[p] = abs(C[p]);
-			if(C[p] < error_threshold)
+			C[p][0] = abs(C[p][0]);
+			if(C[p][0] < error_threshold)
 			{
-				errors_pv[it] += C[p];
+				errors_pv[it] += C[p][0];
 				n_inliers_pv[it]++;
 			}
 			else
@@ -302,7 +292,7 @@ void fit_linear_flow_field(struct flow_t* vectors, int count, float error_thresh
 	{
 		parameters_u[param] = PU[min_ind*3+param];
 	}
-	*n_inlier_u = n_inliers_pu[min_ind];
+	*n_inliers_u = n_inliers_pu[min_ind];
 		
 	// for vertical flow:
 	min_ind = 0;
@@ -319,29 +309,29 @@ void fit_linear_flow_field(struct flow_t* vectors, int count, float error_thresh
 	{
 		parameters_v[param] = PV[min_ind*3+param];
 	}		
-	*n_inlier_v = n_inliers_pv[min_ind];
+	*n_inliers_v = n_inliers_pv[min_ind];
 
 	// error has to be determined on the entire set without threshold:	
 	// bb = AA * pu:
-	MAT_MUL(count, 3, 1, bb, AA, pu)
+	MAT_MUL(count, 3, 1, bb, AA, pu);
 	// subtract bu_all: C = 0 in case of perfect fit:
 	MAT_SUB(count, 1, C, bb, bu_all);
 	*min_error_u = 0;
 	for(p = 0; p < count; p++)
 	{
-		*min_error_u += abs(C[p]);
+		*min_error_u += abs(C[p][0]);
 	}
 	// bb = AA * pv:
-	MAT_MUL(count, 3, 1, bb, AA, pv)
+	MAT_MUL(count, 3, 1, bb, AA, pv);
 	// subtract bv_all: C = 0 in case of perfect fit:
 	MAT_SUB(count, 1, C, bb, bv_all);
 	*min_error_v = 0;
 	for(p = 0; p < count; p++)
 	{
-		*min_error_v += abs(C[p]);
+		*min_error_v += abs(C[p][0]);
 	}
 	*fit_error = (*min_error_u + *min_error_v) / (2 * count);
-*/
+
 }
 /**
  * Extract information from the parameters that were fit to the optical flow field.
