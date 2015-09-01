@@ -124,49 +124,6 @@ void fit_linear_flow_field(struct flow_t* vectors, int count, float error_thresh
 	// ensure that n_samples is high enough to ensure a result for a single fit:
 	n_samples = (n_samples < MIN_SAMPLES_FIT) ? MIN_SAMPLES_FIT : n_samples;
 
-/*
-	int *sample_indices;
-		float **A, *bu, *bv, **AA, *bu_all, *bv_all;
-		sample_indices =(int *) calloc(n_samples,sizeof(int));
-		A = (float **) calloc(n_samples,sizeof(float*));// A1 is a N x 3 matrix with rows [x, y, 1]
-		bu = (float *) calloc(n_samples,sizeof(float)); // bu is a N x 1 vector with elements dx (or dy)
-		bv = (float *) calloc(n_samples,sizeof(float)); // bv is a N x 1 vector with elements dx (or dy)
-		AA = (float **) calloc(count,sizeof(float*));   // AA contains all points with rows [x, y, 1]
-		bu_all = (float *) calloc(count,sizeof(float)); // bu is a N x 1 vector with elements dx (or dy)
-		bv_all = (float *) calloc(count,sizeof(float)); // bv is a N x 1 vector with elements dx (or dy)
-		int si, add_si, p, i_rand, sam;
-		for(sam = 0; sam < n_samples; sam++) A[sam] = (float *) calloc(3,sizeof(float));
-		pu[0] = 0.0f; pu[1] = 0.0f; pu[2] = 0.0f;
-		pv[0] = 0.0f; pv[1] = 0.0f; pv[2] = 0.0f;
-		float * PU, * errors_pu, * PV, * errors_pv;
-		int * n_inliers_pu, * n_inliers_pv;
-		PU = (float *) calloc(n_iterations*3,sizeof(float));
-		PV = (float *) calloc(n_iterations*3,sizeof(float));
-		errors_pu = (float *) calloc(n_iterations,sizeof(float));
-		errors_pv = (float *) calloc(n_iterations,sizeof(float));
-		n_inliers_pu = (int *) calloc(n_iterations,sizeof(int));
-		n_inliers_pv = (int *) calloc(n_iterations,sizeof(int));
-
-		float *bb, *C;
-		bb = (float *) calloc(count,sizeof(float));
-		C = (float *) calloc(count,sizeof(float));
-*/
-
-	/*
-	float w[p + 1], _v[p + 1][p + 1];
-	  MAKE_MATRIX_PTR(v, _v, p + 1);
-	  pprz_svd_float(XtX, w, v, p + 1, p + 1);
-	  float _c[p + 1][1];
-	  MAKE_MATRIX_PTR(c_tmp, _c, p + 1);
-	  pprz_svd_solve_float(c_tmp, XtX, w, v, T, p + 1, p + 1, 1);
-	  // set output vector
-	  for (i = 0; i < p + 1; i++) {
-	    c[i] = c_tmp[i][0];
-	  }	
-	*/
-
-
-
 	// initialize matrices and vectors for the full point set problem:
 	// this is used for determining inliers
 	float _AA[count][3];
@@ -332,7 +289,7 @@ void fit_linear_flow_field(struct flow_t* vectors, int count, float error_thresh
 	{
 		parameters_u[param] = PU[min_ind*3+param];
 	}
-	*n_inlier_minu = n_inliers_pu[min_ind];
+	*n_inlier_u = n_inliers_pu[min_ind];
 		
 	// for vertical flow:
 	min_ind = 0;
@@ -349,62 +306,58 @@ void fit_linear_flow_field(struct flow_t* vectors, int count, float error_thresh
 	{
 		parameters_v[param] = PV[min_ind*3+param];
 	}		
-	*n_inlier_minv = n_inliers_pv[min_ind];
+	*n_inlier_v = n_inliers_pv[min_ind];
 
-	// error has to be determined on the entire set:
-	MatVVMul(bb, AA, pu, 3, count);
-	float scaleM;
-		scaleM = -1.0;
-	ScaleAdd(C, bb, scaleM, bu_all, 1, count);
-		*min_error_u = 0;
+	// error has to be determined on the entire set without threshold:	
+	// bb = AA * pu:
+	MAT_MUL(count, 3, 1, bb, AA, pu)
+	// subtract bu_all: C = 0 in case of perfect fit:
+	MAT_SUB(count, 1, C, bb, bu_all);
+	*min_error_u = 0;
 	for(p = 0; p < count; p++)
 	{
 		*min_error_u += abs(C[p]);
 	}
-	MatVVMul(bb, AA, pv, 3, count);
-	ScaleAdd(C, bb, scaleM, bv_all, 1, count);
-		*min_error_v = 0;
+	// bb = AA * pv:
+	MAT_MUL(count, 3, 1, bb, AA, pv)
+	// subtract bv_all: C = 0 in case of perfect fit:
+	MAT_SUB(count, 1, C, bb, bv_all);
+	*min_error_v = 0;
 	for(p = 0; p < count; p++)
 	{
 		*min_error_v += abs(C[p]);
 	}
-	*divergence_error = (*min_error_u + *min_error_v) / (2 * count);
+	*fit_error = (*min_error_u + *min_error_v) / (2 * count);
 }
+/**
+ * Extract information from the parameters that were fit to the optical flow field.
+ * @param[in] parameters_u* Parameters of the horizontal flow field
+ * @param[in] parameters_v* Parameters of the vertical flow field 
+ * @param[in] slope_x* Slope of the surface in x-direction - given sufficient lateral motion.
+ * @param[in] slope_y* Slope of the surface in y-direction - given sufficient lateral motion.
+ * @param[in] surface_roughness* The error of the linear fit is a measure of surface roughness.
+ * @param[in] focus_of_expansion_x* Image x-coordinate of the focus of expansion (contraction).
+ * @param[in] focus_of_expansion_y* Image y-coordinate of the focus of expansion (contraction).
+ * @param[in] relative_velocity_x* Relative velocity in x-direction, i.e., vx / z, where z is the depth in direction of the camera's principal axis.
+ * @param[in] relative_velocity_y* Relative velocity in y-direction, i.e., vy / z, where z is the depth in direction of the camera's principal axis.
+ * @param[in] relative_velocity_z* Relative velocity in z-direction, i.e., vz / z, where z is the depth in direction of the camera's principal axis.
+ */
 
-
-void extractInformationFromLinearFlowField(float *divergence, float *mean_tti, float *median_tti, float *d_heading, float *d_pitch, float* pu, float* pv, int imgWidth, int imgHeight, int *DIV_FILTER, float FPS)
+void extract_information_from_parameters(float* parameters_u, float* parameters_v, float *relative_velocity_x, float *relative_velocity_y, float *relative_velocity_z, float *slope_x, float *slope_y, float *focus_of_expansion_x, float *focus_of_expansion_y, int im_width, int im_height)
 {
-		// This method assumes a linear flow field in x- and y- direction according to the formulas:
-		// u = pu[0] * x + pu[1] * y + pu[2]
-		// v = pv[0] * x + pv[1] * y + pv[2]
-		// where u is the horizontal flow at image coordinate (x,y)
-		// and v is the vertical flow at image coordinate (x,y)
+	// This method assumes a linear flow field in x- and y- direction according to the formulas:
+	// u = parameters_u[0] * x + parameters_u[1] * y + parameters_u[2]
+	// v = parameters_v[0] * x + parameters_v[1] * y + parameters_v[2]
+	// where u is the horizontal flow at image coordinate (x,y)
+	// and v is the vertical flow at image coordinate (x,y)
 	
-		// divergence:
-		*divergence = pu[0] + pv[1];
-		
-		// minimal measurable divergence:
-		float minimal_divergence = 2E-3;
-		if(abs(*divergence) > minimal_divergence)
-		{
-			*mean_tti = 2.0f / *divergence;
-			if(FPS > 1E-3) *mean_tti /= FPS;
-			else *mean_tti = ((2.0f / minimal_divergence) / FPS); // TODO: precompute this
-			*median_tti = *mean_tti; // TODO: remove median tti?
-		}
-		else
-		{
-			*mean_tti = ((2.0f / minimal_divergence) / FPS); // TODO: precompute this
-			*median_tti = *mean_tti; // TODO: remove median tti?
-		}
-
-		// also adjust the divergence to the number of frames:
-		*divergence = *divergence * FPS;
-
-		// translation orthogonal to the camera axis:
-		// flow in the center of the image:
-		*d_heading = -(pu[2] + (imgWidth/2.0f) * pu[0] + (imgHeight/2.0f) * pu[1]); // TODO: why -? 
-		*d_pitch = -(pv[2] + (imgWidth/2.0f) * pv[0] + (imgHeight/2.0f) * pv[1]);
+	// relative velocities:
+	*relative_velocity_z = (parameters_u[0] + parameters_v[1]) / 2.0f; // divergence / 2
+	
+	// translation orthogonal to the camera axis:
+	// flow in the center of the image:
+	*relative_velocity_x = -(parameters_u[2] + (im_width/2.0f) * parameters_u[0] + (im_height/2.0f) * parameters_u[1]);
+	*relative_velocity_y = -(parameters_v[2] + (imgWidth/2.0f) * parameters_v[0] + (imgHeight/2.0f) * parameters_v[1]);
 
 		//apply a moving average
 		int medianfilter = 1;
