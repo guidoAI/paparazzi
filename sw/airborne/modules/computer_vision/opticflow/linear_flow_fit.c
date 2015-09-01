@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2014 Hann Woei Ho
- *					  Guido de Croon
+ *		      Guido de Croon
  *					  
  * Code based on the article:
  * "Optic-flow based slope estimation for autonomous landing", 
@@ -36,10 +36,10 @@
 #include <stdio.h>
 #include <math.h>
 #include <string.h>
-#include "defs_and_types.h"
+//#include "defs_and_types.h"
 #include "linear_flow_fit.h"
-#include "math/pprz_algebra_float.h"
-#include "math/pprz_matrix_decomp_float.h"
+#include "../../../math/pprz_algebra_float.h"
+#include "../../../math/pprz_matrix_decomp_float.h"
 
 // Is this still necessary?
 #define MAX_COUNT_PT 50
@@ -58,19 +58,19 @@
  * @param[in] n_samples Number of samples used for a single fit (min. 3).
  * @param[in] im_width Image width in pixels
  * @param[in] im_height Image height in pixels
- * @param[in] slope_x* Slope of the surface in x-direction - given sufficient lateral motion.
- * @param[in] slope_y* Slope of the surface in y-direction - given sufficient lateral motion.
- * @param[in] surface_roughness* The error of the linear fit is a measure of surface roughness.
- * @param[in] focus_of_expansion_x* Image x-coordinate of the focus of expansion (contraction).
- * @param[in] focus_of_expansion_y* Image y-coordinate of the focus of expansion (contraction).
- * @param[in] relative_velocity_x* Relative velocity in x-direction, i.e., vx / z, where z is the depth in direction of the camera's principal axis.
- * @param[in] relative_velocity_y* Relative velocity in y-direction, i.e., vy / z, where z is the depth in direction of the camera's principal axis.
- * @param[in] relative_velocity_z* Relative velocity in z-direction, i.e., vz / z, where z is the depth in direction of the camera's principal axis.
- * @param[in] time_to_contact* Basically, 1 / relative_velocity_z.
- * @param[in] divergence* Basically, relative_velocity_z. Actual divergence of a 2D flow field is 2 * relative_velocity_z.
- * @param[in] fit_error* Error of the fit (same as surface roughness).
- * @param[in] n_inliers_u Number of inliers in the horizontal flow fit.
- * @param[in] n_inliers_v Number of inliers in the vertical flow fit.
+ * @param[out] slope_x* Slope of the surface in x-direction - given sufficient lateral motion.
+ * @param[out] slope_y* Slope of the surface in y-direction - given sufficient lateral motion.
+ * @param[out] surface_roughness* The error of the linear fit is a measure of surface roughness.
+ * @param[out] focus_of_expansion_x* Image x-coordinate of the focus of expansion (contraction).
+ * @param[out] focus_of_expansion_y* Image y-coordinate of the focus of expansion (contraction).
+ * @param[out] relative_velocity_x* Relative velocity in x-direction, i.e., vx / z, where z is the depth in direction of the camera's principal axis.
+ * @param[out] relative_velocity_y* Relative velocity in y-direction, i.e., vy / z, where z is the depth in direction of the camera's principal axis.
+ * @param[out] relative_velocity_z* Relative velocity in z-direction, i.e., vz / z, where z is the depth in direction of the camera's principal axis.
+ * @param[out] time_to_contact* Basically, 1 / relative_velocity_z.
+ * @param[out] divergence* Basically, relative_velocity_z. Actual divergence of a 2D flow field is 2 * relative_velocity_z.
+ * @param[out] fit_error* Error of the fit (same as surface roughness).
+ * @param[out] n_inliers_u Number of inliers in the horizontal flow fit.
+ * @param[out] n_inliers_v Number of inliers in the vertical flow fit.
  */
 int analyze_linear_flow_field(struct flow_t* vectors, int count, float error_threshold, int n_iterations, int n_samples, int im_width, int im_height, float *slope_x, float *slope_y, float *surface_roughness, float *focus_of_expansion_x, float *focus_of_expansion_y, float *relative_velocity_x, float *relative_velocity_y, float *relative_velocity_z, float *time_to_contact, float* divergence, float *fit_error, int *n_inliers_u, int *n_inliers_v)
 {
@@ -86,7 +86,7 @@ int analyze_linear_flow_field(struct flow_t* vectors, int count, float error_thr
 	fit_linear_flow_field(vectors, count, n_iterations, error_threshold, n_samples, parameters_u, parameters_v, fit_error, &min_error_u, &min_error_v, n_inliers_u, n_inliers_v);
 
 	// extract information from the parameters:
-	extract_information_from_parameters(parameters_u, parameters_v, relative_velocity_x, relative_velocity_y, relative_velocity_z, slope_x, slope_y, focus_of_expansion_x, focus_of_expansion_y, im_width, im_height);
+	extract_information_from_parameters(parameters_u, parameters_v, im_width, im_height, relative_velocity_x, relative_velocity_y, relative_velocity_z, slope_x, slope_y, focus_of_expansion_x, focus_of_expansion_y);
 
 	// surface roughness is equal to fit error:
 	(*surface_roughness) = (*fit_error);
@@ -102,13 +102,13 @@ int analyze_linear_flow_field(struct flow_t* vectors, int count, float error_thr
  * @param[in] error_threshold Error used to determine inliers / outliers. 
  * @param[in] n_iterations Number of RANSAC iterations.
  * @param[in] n_samples Number of samples used for a single fit (min. 3).
- * @param[in] parameters_u* Parameters of the horizontal flow field
- * @param[in] parameters_v* Parameters of the vertical flow field
- * @param[in] fit_error* Total error of the finally selected fit
- * @param[in] min_error_u* Error fit horizontal flow field
- * @param[in] min_error_v* Error fit vertical flow field
- * @param[in] n_inliers_u* Number of inliers in the horizontal flow fit.
- * @param[in] n_inliers_v* Number of inliers in the vertical flow fit.
+ * @param[out] parameters_u* Parameters of the horizontal flow field
+ * @param[out] parameters_v* Parameters of the vertical flow field
+ * @param[out] fit_error* Total error of the finally selected fit
+ * @param[out] min_error_u* Error fit horizontal flow field
+ * @param[out] min_error_v* Error fit vertical flow field
+ * @param[out] n_inliers_u* Number of inliers in the horizontal flow fit.
+ * @param[out] n_inliers_v* Number of inliers in the vertical flow fit.
  */
 void fit_linear_flow_field(struct flow_t* vectors, int count, float error_threshold, int n_iterations, int n_samples, float* parameters_u, float* parameters_v, float* fit_error, float* min_error_u, float* min_error_v, int *n_inliers_u, int *n_inliers_v)
 {
@@ -128,18 +128,31 @@ void fit_linear_flow_field(struct flow_t* vectors, int count, float error_thresh
 	// this is used for determining inliers
 	float _AA[count][3];
 	MAKE_MATRIX_PTR(AA, _AA, count);
-	float _bu_all[count];
+	float _bu_all[count][1];
 	MAKE_MATRIX_PTR(bu_all, _bu_all, count);
-	float _bv_all[count];
+	float _bv_all[count][1];
 	MAKE_MATRIX_PTR(bv_all, _bv_all, count);
+	/*float AA[count][3];
+	float bu_all[count];
+	float bv_all[count];*/
 	for(sam = 0; sam < count; sam++)
 	{
 		AA[sam][0] = (float) vectors[sam].pos.x;
 		AA[sam][1] = (float) vectors[sam].pos.y;
 		AA[sam][2] = 1.0f;
-		bu_all[sam] = (float) vectors[sam].flow_x;
-		bv_all[sam] = (float) vectors[sam].flow_y;
+		bu_all[sam][0] = (float) vectors[sam].flow_x;
+		bv_all[sam][0] = (float) vectors[sam].flow_y;
 	}
+
+	float w[count], _v[3][3];
+	MAKE_MATRIX_PTR(v, _v, 3);
+	float _pu[3][1];
+	MAKE_MATRIX_PTR(pu, _pu, 3);
+
+	pprz_svd_float(AA, w, v, count, 3);
+	pprz_svd_solve_float(pu, AA, w, v, bu_all, count, 3, 1);
+
+/*
 	// later used to determine the error of a set of parameters on the whole set:
 	float _bb[count];
 	MAKE_MATRIX_PTR(bb, _bb, count);
@@ -328,22 +341,24 @@ void fit_linear_flow_field(struct flow_t* vectors, int count, float error_thresh
 		*min_error_v += abs(C[p]);
 	}
 	*fit_error = (*min_error_u + *min_error_v) / (2 * count);
+*/
 }
 /**
  * Extract information from the parameters that were fit to the optical flow field.
  * @param[in] parameters_u* Parameters of the horizontal flow field
  * @param[in] parameters_v* Parameters of the vertical flow field 
- * @param[in] slope_x* Slope of the surface in x-direction - given sufficient lateral motion.
- * @param[in] slope_y* Slope of the surface in y-direction - given sufficient lateral motion.
- * @param[in] surface_roughness* The error of the linear fit is a measure of surface roughness.
- * @param[in] focus_of_expansion_x* Image x-coordinate of the focus of expansion (contraction).
- * @param[in] focus_of_expansion_y* Image y-coordinate of the focus of expansion (contraction).
- * @param[in] relative_velocity_x* Relative velocity in x-direction, i.e., vx / z, where z is the depth in direction of the camera's principal axis.
- * @param[in] relative_velocity_y* Relative velocity in y-direction, i.e., vy / z, where z is the depth in direction of the camera's principal axis.
- * @param[in] relative_velocity_z* Relative velocity in z-direction, i.e., vz / z, where z is the depth in direction of the camera's principal axis.
+ * @param[in] im_width Width of image in pixels
+ * @param[in] im_height Height of image in pixels
+ * @param[out] relative_velocity_x* Relative velocity in x-direction, i.e., vx / z, where z is the depth in direction of the camera's principal axis.
+ * @param[out] relative_velocity_y* Relative velocity in y-direction, i.e., vy / z, where z is the depth in direction of the camera's principal axis.
+ * @param[out] relative_velocity_z* Relative velocity in z-direction, i.e., vz / z, where z is the depth in direction of the camera's principal axis.
+ * @param[out] slope_x* Slope of the surface in x-direction - given sufficient lateral motion.
+ * @param[out] slope_y* Slope of the surface in y-direction - given sufficient lateral motion.
+ * @param[out] focus_of_expansion_x* Image x-coordinate of the focus of expansion (contraction).
+ * @param[out] focus_of_expansion_y* Image y-coordinate of the focus of expansion (contraction).
  */
 
-void extract_information_from_parameters(float* parameters_u, float* parameters_v, float *relative_velocity_x, float *relative_velocity_y, float *relative_velocity_z, float *slope_x, float *slope_y, float *focus_of_expansion_x, float *focus_of_expansion_y, int im_width, int im_height)
+void extract_information_from_parameters(float* parameters_u, float* parameters_v, int im_width, int im_height, float *relative_velocity_x, float *relative_velocity_y, float *relative_velocity_z, float *slope_x, float *slope_y, float *focus_of_expansion_x, float *focus_of_expansion_y)
 {
 	// This method assumes a linear flow field in x- and y- direction according to the formulas:
 	// u = parameters_u[0] * x + parameters_u[1] * y + parameters_u[2]
@@ -357,114 +372,64 @@ void extract_information_from_parameters(float* parameters_u, float* parameters_
 	// translation orthogonal to the camera axis:
 	// flow in the center of the image:
 	*relative_velocity_x = -(parameters_u[2] + (im_width/2.0f) * parameters_u[0] + (im_height/2.0f) * parameters_u[1]);
-	*relative_velocity_y = -(parameters_v[2] + (imgWidth/2.0f) * parameters_v[0] + (imgHeight/2.0f) * parameters_v[1]);
+	*relative_velocity_y = -(parameters_v[2] + (im_width/2.0f) * parameters_v[0] + (im_height/2.0f) * parameters_v[1]);
+	float arv_x = abs(*relative_velocity_x);
+	float arv_y = abs(*relative_velocity_y);
 
-		//apply a moving average
-		int medianfilter = 1;
-		int averagefilter = 0;
-		int butterworthfilter = 0;
-		int kalmanfilter = 0;
-		float div_avg = 0.0f;
+	// extract inclination from flow field:
+	float threshold_slope = 1.0;
+	float eta = 0.002;
 
-		if(averagefilter == 1)
-		{
-			*DIV_FILTER = 1;
-			if (*divergence < 3.0 && *divergence > -3.0) {
-				div_buf[div_point] = *divergence;
-				div_point = (div_point+1) %mov_block; // index starts from 0 to mov_block
-			}
-
-			int im;
-			for (im=0;im<mov_block;im++) {
-				div_avg+=div_buf[im];
-			}
-			*divergence = div_avg/ mov_block;
-		}
-		else if(medianfilter == 1)
-		{
-			*DIV_FILTER = 2;
-			//apply a median filter
-			div_buf[div_point] = *divergence;
-			div_point = (div_point+1) %15;
-			quick_sort(div_buf,15);
-			*divergence  = div_buf[8];
-		}
-		else if(butterworthfilter == 1)
-		{
-			*DIV_FILTER = 3;
-			temp_divergence = *divergence;
-			*divergence = OFS_BUTTER_NUM_1* (*divergence) + OFS_BUTTER_NUM_2*ofs_meas_dx_prev+ OFS_BUTTER_NUM_3*ofs_meas_dx_prev_prev- OFS_BUTTER_DEN_2*ofs_filter_val_dx_prev- OFS_BUTTER_DEN_3*ofs_filter_val_dx_prev_prev;
-		    ofs_meas_dx_prev_prev = ofs_meas_dx_prev;
-		    ofs_meas_dx_prev = temp_divergence;
-		    ofs_filter_val_dx_prev_prev = ofs_filter_val_dx_prev;
-		    ofs_filter_val_dx_prev = *divergence;
-		}
-		else if(kalmanfilter == 1)
-		{
-			*DIV_FILTER = 4;
-			// TODO: implement Kalman filter
-		}
-}
-
-void slopeEstimation(float *z_x, float *z_y, float *three_dimensionality, float *POE_x, float *POE_y, float d_heading, float d_pitch, float* pu, float* pv, float min_error_u, float min_error_v)
-{
-	float v_prop_x, v_prop_y, threshold_slope, eta;
-
-	// extract proportional velocities / inclination from flow field:
-	v_prop_x  = d_heading;
-	v_prop_y = d_pitch;
-	threshold_slope = 1.0;
-	eta = 0.002;
-	if(abs(pv[1]) < eta && abs(v_prop_y) < threshold_slope && abs(v_prop_x) >= 2* threshold_slope)
+	if(abs(parameters_v[1]) < eta && arv_y < threshold_slope && arv_x >= 2* threshold_slope)
 	{
-		// there is not enough vertical motion, but also no forward motion:
-		*z_x = pu[0] / v_prop_x;
+		// there is no forward motion and not enough vertical motion, but enough horizontal motion:
+		*slope_x = parameters_u[0] / *relative_velocity_x;
 	}
-	else if(abs(v_prop_y) >= 2 * threshold_slope)
+	else if(arv_y >= 2 * threshold_slope)
 	{
 		// there is sufficient vertical motion:
-		*z_x = pv[0] / v_prop_y;
+		*slope_x = parameters_v[0] / *relative_velocity_y;
 	}
 	else
 	{
 		// there may be forward motion, then we can do a quadratic fit:
-		*z_x = 0.0f;
+		// a linear fit provides no information though
+		*slope_x = 0.0f;
 	}
 
-	*three_dimensionality = min_error_v + min_error_u;
-
-	if(abs(pu[0]) < eta && abs(v_prop_x) < threshold_slope && abs(v_prop_y) >= 2*threshold_slope)
+	if(abs(parameters_u[0]) < eta && arv_x < threshold_slope && arv_y >= 2*threshold_slope)
 	{
-		// there is little horizontal movement, but also no forward motion, and sufficient vertical motion:
-		*z_y = pv[1] / v_prop_y;
+		// there is no forward motion, little horizontal movement, but sufficient vertical motion:
+		*slope_y = parameters_v[1] / *relative_velocity_y;
 	}
-	else if(abs(v_prop_x) >= 2*threshold_slope)
+	else if(arv_x >= 2*threshold_slope)
 	{
 		// there is sufficient horizontal motion:
-		*z_y = pu[1] / v_prop_x;
+		*slope_y = parameters_u[1] / *relative_velocity_x;
 	}
 	else
 	{
 		// there could be forward motion, then we can do a quadratic fit:
-		*z_y = 0.0f;
+		// a linear fit provides no information though
+		*slope_y = 0.0f;
 	}
 
 	// Focus of Expansion:
 	// the flow planes intersect the flow=0 plane in a line
 	// the FoE is the point where these 2 lines intersect (flow = (0,0))
 	// x:
-	float denominator = pv[0]*pu[1] - pu[0]*pv[1];
+	float denominator = parameters_v[0] * parameters_u[1] - parameters_u[0] * parameters_v[1];
 	if(abs(denominator) > 1E-5)
 	{
-		*POE_x = ((pu[2]*pv[1] - pv[2] * pu[1]) / denominator);
+		*focus_of_expansion_x = ((parameters_u[2] * parameters_v[1] - parameters_v[2] * parameters_u[1]) / denominator);
 	}
-	else *POE_x = 0.0f;
+	else *focus_of_expansion_x = 0.0f;
 	// y:
-	denominator = pu[1];
+	denominator = parameters_u[1];
 	if(abs(denominator) > 1E-5)
 	{
-		*POE_y = (-(pu[0] * *POE_x + pu[2]) / denominator);
+		*focus_of_expansion_y = (-(parameters_u[0] * (*focus_of_expansion_x) + parameters_u[2]) / denominator);
 	}
-	else *POE_y = 0.0f;
+	else *focus_of_expansion_y = 0.0f;
 }
 

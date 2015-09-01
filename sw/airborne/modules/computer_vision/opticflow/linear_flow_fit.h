@@ -42,7 +42,7 @@ int analyze_linear_flow_field(struct flow_t* vectors, int count, float error_thr
 void fit_linear_flow_field(struct flow_t* vectors, int count, float error_threshold, int n_iterations, int n_samples, float* parameters_u, float* parameters_v, float* fit_error, float* min_error_u, float* min_error_v, int *n_inliers_u, int *n_inliers_v);
 
 // Extracts relevant information from the fit parameters:
-void extract_information_from_parameters(float* parameters_u, float* parameters_v, float *relative_velocity_x, float *relative_velocity_y, float *relative_velocity_z, float *slope_x, float *slope_y, float *focus_of_expansion_x, float *focus_of_expansion_y, int im_width, int im_height);
+void extract_information_from_parameters(float* parameters_u, float* parameters_v, int im_width, int im_height, float *relative_velocity_x, float *relative_velocity_y, float *relative_velocity_z, float *slope_x, float *slope_y, float *focus_of_expansion_x, float *focus_of_expansion_y);
 
 
 #endif

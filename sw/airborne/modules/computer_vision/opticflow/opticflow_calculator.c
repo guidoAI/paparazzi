@@ -42,6 +42,7 @@
 #include "lib/vision/fast_rosten.h"
 
 #include "size_divergence.h"
+#include "linear_flow_fit.h"
 
 // Camera parameters (defaults are from an ARDrone 2)
 #ifndef OPTICFLOW_FOV_W
