@@ -222,6 +222,9 @@ void opticflow_calc_frame(struct opticflow_t *opticflow, struct opticflow_state_
   n_samples_RANSAC = 5;
   success_fit = analyze_linear_flow_field(vectors, result->tracked_cnt, error_threshold, n_iterations_RANSAC, n_samples_RANSAC, img->w, img->h, &slope_x, &slope_y, &surface_roughness, &focus_of_expansion_x, &focus_of_expansion_y, &relative_velocity_x, &relative_velocity_y, &relative_velocity_z, &time_to_contact, &divergence, &fit_error, &n_inliers_u, &n_inliers_v);
 
+  result->divergence = divergence;
+  result->surface_roughness = surface_roughness;
+
   // Get the median flow
   qsort(vectors, result->tracked_cnt, sizeof(struct flow_t), cmp_flow);
   if (result->tracked_cnt == 0) {

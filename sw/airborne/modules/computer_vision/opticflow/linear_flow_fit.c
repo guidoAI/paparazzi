@@ -91,6 +91,9 @@ int analyze_linear_flow_field(struct flow_t* vectors, int count, float error_thr
 
 	// surface roughness is equal to fit error:
 	(*surface_roughness) = (*fit_error);
+	(*divergence) = (*relative_velocity_z);
+	float div = (abs(*divergence) < 1E-5) ? 1E-5 : (*divergence);
+	(*time_to_contact) = 1.0f / div;
 
 	// return successful fit:
 	return FIT;
@@ -124,6 +127,8 @@ void fit_linear_flow_field(struct flow_t* vectors, int count, float error_thresh
 
 	// ensure that n_samples is high enough to ensure a result for a single fit:
 	n_samples = (n_samples < MIN_SAMPLES_FIT) ? MIN_SAMPLES_FIT : n_samples;
+	// n_samples should not be higher than count:
+	n_samples = (n_samples < count) ? n_samples : count;
 
 	// initialize matrices and vectors for the full point set problem:
 	// this is used for determining inliers
@@ -141,7 +146,6 @@ void fit_linear_flow_field(struct flow_t* vectors, int count, float error_thresh
 		bu_all[sam][0] = (float) vectors[sam].flow_x;
 		bv_all[sam][0] = (float) vectors[sam].flow_y;
 	}
-
 
 	// later used to determine the error of a set of parameters on the whole set:
 	float _bb[count][1];
@@ -363,6 +367,7 @@ void extract_information_from_parameters(float* parameters_u, float* parameters_
 	// flow in the center of the image:
 	*relative_velocity_x = -(parameters_u[2] + (im_width/2.0f) * parameters_u[0] + (im_height/2.0f) * parameters_u[1]);
 	*relative_velocity_y = -(parameters_v[2] + (im_width/2.0f) * parameters_v[0] + (im_height/2.0f) * parameters_v[1]);
+
 	float arv_x = abs(*relative_velocity_x);
 	float arv_y = abs(*relative_velocity_y);
 
