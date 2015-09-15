@@ -25,6 +25,7 @@
 
 
 #define RES 100
+#define N_WINDOW_SIZES 1
 
 #include "cv.h"
 #include "detect_window.h"
@@ -59,16 +60,16 @@ uint16_t detect_window_sizes(uint8_t *in, uint32_t image_width, uint32_t image_h
   uint8_t calculate_integral_image = 1;
   // whether the algorithm will determine the size of the window on the basis of the average distance to objects in view
   uint8_t determine_size = 0;
-  uint16_t sizes[4];
-  uint16_t best_response[4];
+  uint16_t sizes[N_WINDOW_SIZES];
+  uint16_t best_response[N_WINDOW_SIZES];
   uint8_t best_index = 0;
   uint8_t best_xc = 0;
   uint8_t best_yc = 0;
   uint8_t s = 0;
-  sizes[0] = 30; sizes[1] = 40; sizes[2] = 50; sizes[3] = 60;
+  sizes[0] = 30; //sizes[1] = 40; sizes[2] = 50; sizes[3] = 60;
 
 
-  for (s = 0; s < 4; s++) {
+  for (s = 0; s < N_WINDOW_SIZES; s++) {
 
     // coordinate will contain the coordinate, best_response will be the best match * 100
     calculate_integral_image = (s == 0); // only calculate the integal image for the first window size
