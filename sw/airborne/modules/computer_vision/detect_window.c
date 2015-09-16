@@ -53,6 +53,7 @@ extern bool_t detect_window(struct image_t *img){
 	return 1;
 }
 
+
 uint16_t detect_window_sizes(uint8_t *in, uint32_t image_width, uint32_t image_height, uint16_t *coordinate,
                              uint32_t *integral_image, uint8_t MODE)
 {
@@ -62,12 +63,11 @@ uint16_t detect_window_sizes(uint8_t *in, uint32_t image_width, uint32_t image_h
   uint8_t determine_size = 0;
   uint16_t sizes[N_WINDOW_SIZES];
   uint16_t best_response[N_WINDOW_SIZES];
-  uint8_t best_index = 0;
-  uint8_t best_xc = 0;
-  uint8_t best_yc = 0;
-  uint8_t s = 0;
-  sizes[0] = 30; //sizes[1] = 40; sizes[2] = 50; sizes[3] = 60;
-
+  uint16_t best_index = 0;
+  uint16_t best_xc = 0;
+  uint16_t best_yc = 0;
+  uint16_t s = 0;
+  sizes[0] = 100; //sizes[1] = 40; sizes[2] = 50; sizes[3] = 60;
 
   for (s = 0; s < N_WINDOW_SIZES; s++) {
 
@@ -75,24 +75,11 @@ uint16_t detect_window_sizes(uint8_t *in, uint32_t image_width, uint32_t image_h
     calculate_integral_image = (s == 0); // only calculate the integal image for the first window size
     best_response[s] = detect_window_one_size(in, image_width, image_height, coordinate, determine_size, &sizes[s],
                                     calculate_integral_image, integral_image, MODE);
-    if(MODE == MODE_DARK)
-    {
-    	if (s == 0 || best_response[s] < best_response[best_index]) {
-    		best_index = s;
-    		best_xc = coordinate[0];
-    		best_yc = coordinate[1];
-    	}
-    }
-
-    if(MODE == MODE_BRIGHT)
-    {
-      	if (s == 0 || best_response[s] > best_response[best_index]) {
-       		best_index = s;
-       		best_xc = coordinate[0];
-       		best_yc = coordinate[1];
-       	}
-    }
-
+   	if (s == 0 || best_response[s] < best_response[best_index]) {
+   		best_index = s;
+   		best_xc = coordinate[0];
+   		best_yc = coordinate[1];
+   	}
   }
 
   coordinate[0] = best_xc;
@@ -113,7 +100,6 @@ uint16_t detect_window_one_size(uint8_t *in, uint32_t image_width, uint32_t imag
 
   // output of the function:
   uint16_t min_response = RES;
-  uint16_t max_response = 0;
 
   // parameters:
   uint16_t image_border = 10;
@@ -129,27 +115,9 @@ uint16_t detect_window_one_size(uint8_t *in, uint32_t image_width, uint32_t imag
   if (calculate_integral_image) {
     get_integral_image(in, image_width, image_height, integral_image);
   }
-  // (2) get average disparity to determine probable size (can also be given from the outside)
-  if (MODE == MODE_DARK && determine_size) {
-    // get average disparity:
-    uint32_t avg = get_avg_disparity(image_border, image_border, image_width - image_border, image_height - image_border,
-                                     integral_image, image_width, image_height);
-
-    //    disp: window size
-    //    4.0: 30 x 30
-    //    4.5: 40 x 40
-    //    5.0: 50 x 50
-    if (avg / 10 < 42) {
-      *size = 30;
-    } else if (avg / 10 < 48) {
-      *size = 40;
-    } else {
-      *size = 50;
-    }
-  }
 
   // window size is without border, feature size is with border:
-  window_size = *size;
+  window_size = (*size);
   border_size = (relative_border * window_size) / 100; // percentage
   feature_size = window_size + 2 * border_size;
   px_inner = feature_size - 2 * border_size;
@@ -163,30 +131,19 @@ uint16_t detect_window_one_size(uint8_t *in, uint32_t image_width, uint32_t imag
   // (3) determine a response map for that size
   for (x = 0; x < image_width - feature_size; x++) {
     for (y = 0; y < image_height - feature_size; y++) {
-      response = get_window_response(x, y, feature_size, border_size, integral_image, image_width, image_height, px_inner, px_border);
+      response = get_window_response(x, y, feature_size, border_size, integral_image, image_width, image_height, px_inner, px_border, MODE);
 
-      if ((MODE == MODE_DARK && response < RES ) || (MODE == MODE_BRIGHT && response > RES)) {
-        // the inside is further away than the outside, perform the border test:
-        response = get_border_response(x, y, feature_size, window_size, border_size, integral_image, image_width, image_height,
-                                       px_inner, px_outer);
+      if (response < RES) {
+		  if(MODE == MODE_DARK){
+			// the inside is further away than the outside, perform the border test:
+			response = get_border_response(x, y, feature_size, window_size, border_size, integral_image, image_width, image_height, px_inner, px_outer);
+		  }
 
         if (response < min_response) {
-        	if(MODE == MODE_DARK){
-        		coordinate[0] = x;
-        		coordinate[1] = y;
-        	}
-          min_response = response;
+      		coordinate[0] = x;
+       		coordinate[1] = y;
+			min_response = response;
         }
-
-        if (response > max_response) {
-        	if(MODE == MODE_BRIGHT){
-        		coordinate[0] = x;
-        		coordinate[1] = y;
-        	}
-          max_response = response;
-        }
-
-
       } else {
         //in[x+y*image_width] = 255;
 
@@ -201,16 +158,14 @@ uint16_t detect_window_one_size(uint8_t *in, uint32_t image_width, uint32_t imag
   coordinate[0] += feature_size / 2;
   coordinate[1] += feature_size / 2;
 
-  if(MODE == MODE_DARK) return min_response;
-  if(MODE == MODE_BRIGHT) return max_response;
-  return 0;
+  return min_response;
 }
 
 // this function can help if the window is not visible anymore:
 uint16_t detect_escape(uint8_t *in, uint32_t image_width, uint32_t image_height, uint16_t *escape_coordinate,
                        uint32_t *integral_image, uint8_t n_cells)
 {
-  uint8_t c, r, min_c, min_r;
+  uint16_t c, r, min_c, min_r;
   uint16_t cell_width, cell_height;
   uint32_t min_avg = 10000;
   uint32_t avg;
@@ -291,7 +246,7 @@ uint32_t get_avg_disparity(uint16_t min_x, uint16_t min_y, uint16_t max_x, uint1
 
 
 uint16_t get_window_response(uint16_t x, uint16_t y, uint16_t feature_size, uint16_t border, uint32_t *integral_image,
-                             uint16_t image_width, uint16_t image_height, uint16_t px_inner, uint16_t px_border)
+                             uint16_t image_width, uint16_t image_height, uint16_t px_inner, uint16_t px_border, uint8_t MODE)
 {
   uint32_t whole_area, inner_area, resp;
 
@@ -300,14 +255,30 @@ uint16_t get_window_response(uint16_t x, uint16_t y, uint16_t feature_size, uint
   inner_area = get_sum_disparities(x + border, y + border, x + feature_size - border, y + feature_size - border,
                                    integral_image, image_width, image_height);
 
-  if(whole_area-inner_area > 0)
+  if(MODE == MODE_DARK)
   {
-	  resp = (inner_area * RES * px_border) / ((whole_area - inner_area) * px_inner);
+	  if(whole_area-inner_area > 0)
+	  {
+		  resp = (inner_area * RES * px_border) / ((whole_area - inner_area) * px_inner);
+	  }
+	  else
+	  {
+		  resp = RES;
+	  }
   }
-  else
+  else if(MODE == MODE_BRIGHT)
   {
-	  resp = RES;
+	  if(inner_area > 0)
+	  {
+		  resp = (RES*(whole_area - inner_area)/px_border) / (inner_area/px_inner);
+		  //printf("%u: %u %u %u %u\n",resp,(RES*RES*(whole_area - inner_area)/px_border), (inner_area/px_inner), px_inner, px_border);
+	  }
+	  else
+	  {
+		  resp = RES;
+	  }
   }
+
 
    return resp;
 }

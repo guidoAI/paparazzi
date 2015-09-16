@@ -49,7 +49,7 @@ uint32_t get_sum_disparities(uint16_t min_x, uint16_t min_y, uint16_t max_x, uin
 uint32_t get_avg_disparity(uint16_t min_x, uint16_t min_y, uint16_t max_x, uint16_t max_y, uint32_t *integral_image,
                            uint32_t image_width, uint32_t image_height);
 uint16_t get_window_response(uint16_t x, uint16_t y, uint16_t feature_size, uint16_t border, uint32_t *integral_image,
-                             uint16_t image_width, uint16_t image_height, uint16_t px_inner, uint16_t px_border);
+                             uint16_t image_width, uint16_t image_height, uint16_t px_inner, uint16_t px_border, uint8_t MODE);
 uint16_t get_border_response(uint16_t x, uint16_t y, uint16_t feature_size, uint16_t window_size, uint16_t border_size,
                              uint32_t *integral_image, uint16_t image_width, uint16_t image_height, uint16_t px_inner, uint16_t px_outer);
 void filter_bad_pixels(uint8_t *in, uint32_t image_width, uint32_t image_height);
