@@ -24,10 +24,18 @@
     <subsystem name="stabilization" type="indi"/>
     <subsystem name="ahrs" type="int_cmpl_quat"/>
     <subsystem name="ins" type="extended"/>
+    <!-- <subsystem name="guidance" type="indi"/> -->
   </firmware>
 
   <modules main_freq="512">
     <load name="bat_voltage_ardrone2.xml"/>
+    <load name="cv_opticflow.xml"/>
+    <load name="vertical_ctrl_module_demo.xml"/>
+    <!--
+    <load name="video_thread.xml">
+        <define name="VIDEO_THREAD_CAMERA" value="front_camera"/>
+    </load>
+    -->
   </modules>
 
   <commands>
@@ -215,19 +223,22 @@
 
   <section name="AUTOPILOT">
     <define name="MODE_STARTUP" value="AP_MODE_NAV"/>
-    <define name="MODE_MANUAL" value="AP_MODE_ATTITUDE_DIRECT"/>
-    <define name="MODE_AUTO1" value="AP_MODE_HOVER_Z_HOLD"/>
-    <define name="MODE_AUTO2" value="AP_MODE_NAV"/>
+    <define name="MODE_MANUAL" value="AP_MODE_MODULE"/>
+    <!-- <define name="MODE_MANUAL" value="AP_MODE_ATTITUDE_DIRECT"/> -->
+    <define name="MODE_AUTO1" value="AP_MODE_MODULE"/>
+    <!-- <define name="MODE_AUTO2" value="AP_MODE_MODULE"/> -->
+    <!-- Indoor: -->
+    <define name="MODE_AUTO2" value="AP_MODE_NAV"/> 
     <define name="ARRIVED_AT_WAYPOINT" value="0.15"/>
     <define name="AUTOPILOT_IN_FLIGHT_MIN_THRUST" value="1500"/>
-    <!--   <define name="NO_RC_THRUST_LIMIT" value="TRUE"/> -->
+    <define name="NO_RC_THRUST_LIMIT" value="TRUE"/>
   </section>
 
   <section name="BAT">
     <define name="MILLIAMP_AT_FULL_THROTTLE" value="8700"/>
     <define name="CATASTROPHIC_BAT_LEVEL" value="9.3" unit="V"/>
     <define name="CRITIC_BAT_LEVEL" value="9.9" unit="V"/>
-    <define name="LOW_BAT_LEVEL" value="10.1" unit="V"/>
+    <define name="LOW_BAT_LEVEL" value="10.5" unit="V"/>
     <define name="MAX_BAT_LEVEL" value="12.4" unit="V"/>
   </section>
 </airframe>

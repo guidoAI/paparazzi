@@ -95,10 +95,13 @@ void guidance_indi_run(bool_t in_flight, int32_t heading) {
   float speed_sp_x = pos_x_err*guidance_indi_pos_gain;
   float speed_sp_y = pos_y_err*guidance_indi_pos_gain;
 
-  sp_accel.x = (speed_sp_x - stateGetSpeedNed_f()->x)*guidance_indi_speed_gain;
-  sp_accel.y = (speed_sp_y - stateGetSpeedNed_f()->y)*guidance_indi_speed_gain;
-//   sp_accel.x = (radio_control.values[RADIO_PITCH]/9600.0)*8.0;
-//   sp_accel.y = -(radio_control.values[RADIO_ROLL]/9600.0)*8.0;
+//  sp_accel.x = (speed_sp_x - stateGetSpeedNed_f()->x)*guidance_indi_speed_gain;
+//  sp_accel.y = (speed_sp_y - stateGetSpeedNed_f()->y)*guidance_indi_speed_gain;
+float psi = stateGetNedToBodyEulers_f()->psi;
+   float pitchcmd = -(radio_control.values[RADIO_PITCH]/9600.0)*8.0;
+   float rollcmd = (radio_control.values[RADIO_ROLL]/9600.0)*8.0;
+   sp_accel.x = cosf(psi)*pitchcmd - sinf(psi)*rollcmd;
+   sp_accel.y = sinf(psi)*pitchcmd + cosf(psi)*rollcmd;
 
   //   struct FloatMat33 Ga;
   guidance_indi_calcG(&Ga);

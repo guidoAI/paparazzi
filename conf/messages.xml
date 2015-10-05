@@ -2151,7 +2151,15 @@
       <field name="yaw_c"  type="float"/>
   </message>
 
-  <!-- 251 is free -->
+  <message name="FAKE_DIVERGENCE" id="251">
+    <field name="divergence"                type="float"/>
+    <field name="divergence_vision"         type="float"/>
+    <field name="normalized_thrust"         type="float"/>
+    <field name="cov_div"		    type="float"/>
+    <field name="pstate" 		    type="float"/>
+    <field name="pused" 		    type="float"/>
+    <field name="sonar" 		    type="float"/>
+  </message>
   <!-- 252 is free -->
 
   <message name="I2C_ERRORS" id="253">

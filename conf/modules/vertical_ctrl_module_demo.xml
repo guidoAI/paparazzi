@@ -9,16 +9,32 @@
     </description>
     <define name="VERTICAL_CTRL_MODULE_AGL_ID" value="ABI_BROADCAST" description="Sender id of the AGL (sonar) ABI message"/>
     <section name="VERTICAL_CTRL_MODULE" prefix="VERTICAL_CTRL_MODULE_">
-      <define name="PGAIN" value="1.0" description="P gain on height error"/>
-      <define name="IGAIN" value="0.01" description="I gain on summed height error"/>
+      <define name="PGAIN" value="0.40" description="P gain on height error"/>
+      <define name="IGAIN" value="0.00" description="I gain on summed height error"/>
+      <define name="DGAIN" value="0.00" description="D gain on summed height error"/>
+      <define name="VISION_METHOD" value="1" description="0 = fake vision, 1 = real vision"/>
+      <define name="CONTROL_METHOD" value="0" description="0 = fixed gain control, 1 = adaptive gain control"/>
+      <define name="COV_METHOD" value="0" description="0 = cov(uz, div), 1 = cov(div_past, div)"/>
     </section>
   </doc>
   <settings>
     <dl_settings>
       <dl_settings NAME="VertCtrlModDemo">
-        <dl_setting var="v_ctrl.setpoint" min="0" step="0.01" max="10" module="ctrl/vertical_ctrl_module_demo" shortname="height sp"/>
-        <dl_setting var="v_ctrl.pgain" min="0" step="0.01" max="1" module="ctrl/vertical_ctrl_module_demo" shortname="pgain" param="VERTICAL_CTRL_MODULE_PGAIN"/>
-        <dl_setting var="v_ctrl.igain" min="0" step="0.01" max="1" module="ctrl/vertical_ctrl_module_demo" shortname="igain" param="VERTICAL_CTRL_MODULE_IGAIN"/>
+	<dl_setting var="v_ctrl.nominal_thrust" min="0" step="0.001" max="1" module="ctrl/vertical_ctrl_module_demo" shortname="nominal_thrust"/>
+      	<dl_setting var="v_ctrl.lp_factor" min="0" step="0.01" max="1" module="ctrl/vertical_ctrl_module_demo" shortname="lp_factor"/>
+        <dl_setting var="v_ctrl.setpoint" min="-1" step="0.01" max="1" module="ctrl/vertical_ctrl_module_demo" shortname="div sp"/>
+        <dl_setting var="v_ctrl.cov_set_point" min="-0.50" step="0.0001" max="0.50" module="ctrl/vertical_ctrl_module_demo" shortname="cov_set_point"/>
+        <dl_setting var="v_ctrl.cov_limit" min="0" step="0.0001" max="3" module="ctrl/vertical_ctrl_module_demo" shortname="cov_limit"/>
+        <dl_setting var="v_ctrl.pgain" min="0" step="0.001" max="6" module="ctrl/vertical_ctrl_module_demo" shortname="pgain" param="VERTICAL_CTRL_MODULE_PGAIN"/>
+        <dl_setting var="v_ctrl.igain" min="0" step="0.001" max="1" module="ctrl/vertical_ctrl_module_demo" shortname="igain" param="VERTICAL_CTRL_MODULE_IGAIN"/>
+        <dl_setting var="v_ctrl.dgain" min="0" step="0.001" max="1" module="ctrl/vertical_ctrl_module_demo" shortname="dgain" param="VERTICAL_CTRL_MODULE_DGAIN"/>
+	<dl_setting var="v_ctrl.VISION_METHOD" min="0" step="1" max="1" module="ctrl/vertical_ctrl_module_demo" shortname="VISION_METHOD" param="VERTICAL_CTRL_MODULE_VISION_METHOD"/>
+	<dl_setting var="v_ctrl.CONTROL_METHOD" min="0" step="1" max="1" module="ctrl/vertical_ctrl_module_demo" shortname="CONTROL_METHOD" param="VERTICAL_CTRL_MODULE_CONTROL_METHOD"/>
+	<dl_setting var="v_ctrl.COV_METHOD" min="0" step="1" max="1" module="ctrl/vertical_ctrl_module_demo" shortname="COV_METHOD" param="VERTICAL_CTRL_MODULE_COV_METHOD"/>
+	<dl_setting var="v_ctrl.delay_steps" min="0" step="1" max="60" module="ctrl/vertical_ctrl_module_demo" shortname="delay_steps"/>
+        <dl_setting var="v_ctrl.pgain_adaptive" min="0" step="0.1" max="20.0" module="ctrl/vertical_ctrl_module_demo" shortname="pgain_adaptive"/> 
+        <dl_setting var="v_ctrl.igain_adaptive" min="0" step="0.01" max="1.0" module="ctrl/vertical_ctrl_module_demo" shortname="igain_adaptive"/>
+        <dl_setting var="v_ctrl.dgain_adaptive" min="0" step="0.01" max="5.0" module="ctrl/vertical_ctrl_module_demo" shortname="dgain_adaptive"/>
       </dl_settings>
     </dl_settings>
   </settings>

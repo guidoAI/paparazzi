@@ -99,6 +99,24 @@
         <arg flag="-speech" />
       </program>
     </session>
+    <session name="Guido">
+      <program name="Data Link">
+        <arg flag="-udp"/>
+      </program>
+      <program name="Server"/>
+      <program name="GCS">
+        <arg flag="-speech"/>
+      </program>
+      <program name="Joystick">
+        <arg flag="-ac" constant="ARDrone2_optitrack"/>
+        <arg flag="hobbyking.xml"/>
+        <arg flag="-d" constant="1"/>
+      </program>
+      <program name="NatNet">
+        <arg flag="-ac" constant="2"/>
+        <arg flag="11"/>
+      </program>
+    </session>
     <session name="Flight ACM0 @57600">
       <program name="Data Link">
         <arg flag="-d" constant="/dev/ttyACM0"/>
