@@ -30,6 +30,13 @@
   <modules main_freq="512">
     <load name="bat_voltage_ardrone2.xml"/>
     <load name="stereocam_droplet.xml" />
+    <load name="video_rtp_stream.xml">
+      <define name="VIEWVIDEO_QUALITY_FACTOR" value="75"/>
+      <define name="VIEWVIDEO_FPS" value="4"/>
+    </load>
+    <load name="video_usb_logger.xml">
+      <define name="VIDEO_USB_LOGGER_PATH" value="/data/usb0/"/>
+    </load>
     <load name="cv_opticflow.xml"/>
     <load name="optical_flow_landing.xml"/>
   </modules>
