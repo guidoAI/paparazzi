@@ -35,11 +35,12 @@
 
 #include <stdint.h>
 
-
+// outputs
 extern float *texton_distribution; // main outcome of the image processing: the distribution of textons in the image
+
+// settings
 extern uint8_t load_dictionary;
-extern uint8_t load_model;
-extern float alpha;
+extern uint8_t alpha_uint;
 extern uint8_t n_textons;
 extern uint8_t patch_size; // TODO: Why was there the comment "use even number for YUV image" in the original code? Should it be even?
 extern uint32_t n_learning_samples;
@@ -47,11 +48,23 @@ extern uint32_t n_samples_image;
 extern uint8_t FULL_SAMPLING;
 extern uint32_t border_width;
 extern uint32_t border_height;
-extern uint8_t dictionary_ready;
 extern uint8_t dictionary_number;
+
+// status variables
+extern uint8_t dictionary_ready;
+extern float alpha;
+extern float ****dictionary;
+extern uint32_t learned_samples;
+extern uint8_t dictionary_initialized;
+
+// functions:
+void DictionaryTrainingYUV(uint8_t *frame, uint16_t width, uint16_t height);
+void DistributionExtraction(uint8_t *frame, uint16_t width, uint16_t height);
+void save_texton_dictionary(void);
+void load_texton_dictionary(void);
 
 // Module functions
 extern void textons_init(void);
-
+extern void textons_stop(void);
 
 #endif /* TEXTONS_H */

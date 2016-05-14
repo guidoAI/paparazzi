@@ -29,18 +29,37 @@
  * augmenting the corresponding bin in the texton histogram.
  */
 
-// Own header
+#include <stdlib.h>
+#include <stdio.h>
 #include "modules/computer_vision/cv.h"
 #include "modules/computer_vision/textons.h"
 
-#include <stdio.h>
-
 float ****dictionary;
-uint32_t learned_samples;
-uint8_t dictionary_initialized;
+uint32_t learned_samples = 0;
+uint8_t dictionary_initialized = 0;
+
+// initial settings:
+float *texton_distribution;
+uint8_t load_dictionary = 1;
+uint8_t alpha_uint = 10;
+uint8_t n_textons = 30;
+uint8_t patch_size = 5; 
+uint32_t n_learning_samples = 100000;
+uint32_t n_samples_image = 100;
+uint8_t FULL_SAMPLING = 0;
+uint32_t border_width = 0;
+uint32_t border_height = 0;
+uint8_t dictionary_number = 0;
+
+// status variables
+uint8_t dictionary_ready = 0;
+float alpha = 0.0;
 
 // File pointer for saving the dictionary
 static FILE *dictionary_logger = NULL;
+#ifndef DICTIONARY_PATH
+#define DICTIONARY_PATH /data/video/
+#endif
 
 /**
  * Main texton processing function that first either loads or learns a dictionary and then extracts the texton histogram.
@@ -59,13 +78,13 @@ struct image_t* texton_func(struct image_t* img)
         if(load_dictionary == 0)
         {
             // Train the dictionary:
-    		DictionaryTrainingYUV(dictionary, input->w, input->h);
+    		DictionaryTrainingYUV(frame, img->w, img->h);
 
             // After a number of samples, stop learning:
             if(learned_samples >= n_learning_samples)
 		    {
                 // Save the dictionary:
-                save_dictionary();
+                save_texton_dictionary();
                 // stop learning:
 			    dictionary_ready = 1;      
 			    // lower learning rate
@@ -75,13 +94,13 @@ struct image_t* texton_func(struct image_t* img)
         else
         {
             // Load the dictionary:
-            load_dictionary();
+            load_texton_dictionary();
         }
     }
     else
     {
         // Extract distributions
-		DistributionExtraction(dictionary, input->w, input->h);
+		DistributionExtraction(frame, img->w, img->h);
     }
 
   return img; // Colorfilter did not make a new image
@@ -135,13 +154,15 @@ void DictionaryTrainingYUV(uint8_t *frame, uint16_t width, uint16_t height)
 				}
 			}
 		}
-		dictionary_intialized = 1;
+		dictionary_initialized = 1;
 	}
 	else
 	{
 		// ********
 		// LEARNING
 		// ********
+
+    alpha = ((float) alpha_uint) / 255.0;
 
 		float *texton_distances, ***patch;
 		texton_distances = (float *)calloc(n_textons,sizeof(float));
@@ -401,7 +422,7 @@ void DistributionExtraction(uint8_t *frame, uint16_t width, uint16_t height)
 /**
  * Save the texton dictionary.
  */
-void save_dictionary()
+void save_texton_dictionary(void)
 {
 	//save a dictionary
 	char filename[512];
@@ -437,7 +458,7 @@ void save_dictionary()
 /**
  * Load a texton dictionary.
  */
-void load_dictionary()
+void load_texton_dictionary(void)
 {
     char filename[512];
 	sprintf(filename, "%s/Dictionary_%05d.dat", STRINGIFY(DICTIONARY_PATH), dictionary_number);
@@ -475,9 +496,14 @@ void load_dictionary()
  */
 void textons_init(void)
 {
+    texton_distribution = (float *)calloc(n_textons,sizeof(float));
     dictionary_initialized = 0;
     learned_samples = 0;
     dictionary_ready = 0;
     cv_add(texton_func);
+}
+
+void textons_stop(void) {
+  free(texton_distribution);
 }
 
