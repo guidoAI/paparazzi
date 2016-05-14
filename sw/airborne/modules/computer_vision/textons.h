@@ -26,7 +26,7 @@
  * A texton is a cluster centroid in a space populated by image patches. First, this code
  * learns or loads a texton dictionary. Then, for each incoming image, patches are sampled from
  * the image, compared to textons in the dictionary, and the closest texton is identified,
- * augmenting the corresponding bin in the histogram.
+ * augmenting the corresponding bin in the texton histogram.
  *
  */
 
@@ -36,18 +36,19 @@
 #include <stdint.h>
 
 
-extern float *word_distribution;
-extern uint8_t dictionary_ready;
+extern float *texton_distribution; // main outcome of the image processing: the distribution of textons in the image
 extern uint8_t load_dictionary;
 extern uint8_t load_model;
 extern float alpha;
-extern uint8_t n_words;
-extern uint8_t patch_size;
+extern uint8_t n_textons;
+extern uint8_t patch_size; // TODO: Why was there the comment "use even number for YUV image" in the original code? Should it be even?
 extern uint32_t n_learning_samples;
 extern uint32_t n_samples_image;
 extern uint8_t RANDOM_SAMPLES;
 extern uint32_t border_width;
 extern uint32_t border_height;
+extern uint8_t dictionary_ready;
+extern uint8_t dictionary_number;
 
 // Module functions
 extern void textons_init(void);
