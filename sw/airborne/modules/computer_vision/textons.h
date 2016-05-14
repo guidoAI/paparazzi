@@ -44,7 +44,7 @@ extern uint8_t n_textons;
 extern uint8_t patch_size; // TODO: Why was there the comment "use even number for YUV image" in the original code? Should it be even?
 extern uint32_t n_learning_samples;
 extern uint32_t n_samples_image;
-extern uint8_t RANDOM_SAMPLES;
+extern uint8_t FULL_SAMPLING;
 extern uint32_t border_width;
 extern uint32_t border_height;
 extern uint8_t dictionary_ready;

@@ -59,8 +59,7 @@ struct image_t* texton_func(struct image_t* img)
         if(load_dictionary == 0)
         {
             // Train the dictionary:
-    		DictionaryTrainingYUV(dictionary, frame, n_textons, patch_size, learned_samples, n_samples_image, alpha,
-				input->w, input->h, dictionary_initialized);
+    		DictionaryTrainingYUV(dictionary, input->w, input->h);
 
             // After a number of samples, stop learning:
             if(learned_samples >= n_learning_samples)
@@ -82,8 +81,7 @@ struct image_t* texton_func(struct image_t* img)
     else
     {
         // Extract distributions
-		DistributionExtraction(dictionary, frame, texton_distribution, n_textons, patch_size, n_samples_image, RANDOM_SAMPLES,
-				input->w, input->h, border_width, border_height);
+		DistributionExtraction(dictionary, input->w, input->h);
     }
 
   return img; // Colorfilter did not make a new image
@@ -250,6 +248,155 @@ void DictionaryTrainingYUV(uint8_t *frame, uint16_t width, uint16_t height)
 	buf = NULL;
 	free(buf);
 }
+
+/**
+ * Function that extracts a texton histogram from an image.
+ * @param[in] frame* The YUV image data
+ * @param[in] width The width of the image
+ * @param[in] height The height of the image
+ */
+void DistributionExtraction(uint8_t *frame, uint16_t width, uint16_t height)
+{
+	int i, j, texton, c; // iterators
+	int x, y; // coordinates
+	int n_extracted_textons = 0;
+
+	uint8_t *buf;
+
+	// ************************
+	//       EXECUTION
+	// ************************
+
+    // Allocate memory for texton distances and image patch:
+	float *texton_distances, ***patch;
+	texton_distances = (float *)calloc(n_textons,sizeof(float));
+	patch = (float ***)calloc(patch_size,sizeof(float**));
+	for(i = 0; i < patch_size; i++)
+	{
+		patch[i] = (float **)calloc(patch_size,sizeof(float*));
+		for(j = 0; j < patch_size;j++)
+		{
+			patch[i][j] = (float *)calloc(2,sizeof(float));
+		}
+	}
+
+	int finished = 0;
+	x = 0;
+	y = 0;
+	while(!finished)
+	{
+		if(!FULL_SAMPLING)
+		{
+			x = border_width + rand() % (width - patch_size - 2*border_width);
+			y = border_height + rand() % (height - patch_size - 2*border_height);
+		}
+
+		// reset texton_distances
+		for(texton = 0; texton < n_textons; texton++)
+		{
+			texton_distances[texton] = 0;
+		}
+
+		// extract sample
+		for(i = 0; i < patch_size; i++)
+		{
+			buf = frame + (width * 2 * (i+y)) + 2*x;
+			for(j = 0; j < patch_size; j++)
+			{
+				// U/V component
+	        	patch[i][j][0] = (float) *buf;
+				buf += 1;
+				// Y1/Y2 component
+				patch[i][j][1] = (float) *buf;
+				buf += 1;
+			}
+		}
+
+		// determine distances:
+		for(i = 0; i < patch_size; i++)
+		{
+			for(j = 0; j < patch_size; j++)
+			{
+				for(c = 0; c < 2; c++)
+				{
+					// determine the distance to words
+					for(texton = 0; texton < n_textons; texton++)
+					{
+						texton_distances[texton] += (patch[i][j][c] - dictionary[texton][i][j][c])
+												* (patch[i][j][c] - dictionary[texton][i][j][c]);
+					}
+				}
+			}
+		}
+
+		// determine the nearest neighbour
+		// search the closest centroid
+		int assignment = 0;
+		float min_dist = texton_distances[0];
+		for(texton = 1; texton < n_textons; texton++)
+		{
+			if(texton_distances[texton] < min_dist)
+			{
+				min_dist = texton_distances[texton];
+				assignment = texton;
+			}
+		}
+
+		// put the assignment in the histogram
+		texton_distribution[assignment]++;
+		n_extracted_textons++;
+
+		if(!FULL_SAMPLING && n_extracted_textons == n_samples_image)
+		{
+			finished = 1;
+		}
+		else
+		{
+            // FULL_SAMPLING is actually a sampling that covers the image:
+			y += patch_size;
+            // True full sampling would require:
+			// y++;
+
+			if(y > height - patch_size)
+			{
+				if(!FULL_SAMPLING)
+					x += patch_size;
+				else
+					x++;
+				y = 0;
+			}
+			if(x > width - patch_size)
+			{
+				finished = 1;
+			}
+		}
+	}
+
+	// Normalize distribution:
+	for(i = 0; i < n_textons; i++)
+	{
+		texton_distribution[i] = texton_distribution[i] / (float) n_extracted_textons;
+	}
+
+
+    // free memory:
+	for(i = 0; i < patch_size; i++)
+	{
+		for(j = 0; j < patch_size; j++)
+		{
+			   free(patch[i][j]);
+		}
+		free(patch[i]);
+	}
+	free(patch);
+    free(texton_distances);
+
+	buf = NULL;
+	free(buf);
+
+} // EXECUTION
+
+
 
 /**
  * Save the texton dictionary.
