@@ -69,6 +69,8 @@ static FILE *dictionary_logger = NULL;
 struct image_t* texton_func(struct image_t* img);
 struct image_t* texton_func(struct image_t* img)
 {
+
+    printf("B\n");
     // extract frame from img struct:
     uint8_t *frame = (uint8_t *)img->buf;
 
@@ -496,6 +498,7 @@ void load_texton_dictionary(void)
  */
 void textons_init(void)
 {
+    printf("A\n");
     texton_distribution = (float *)calloc(n_textons,sizeof(float));
     dictionary_initialized = 0;
     learned_samples = 0;
