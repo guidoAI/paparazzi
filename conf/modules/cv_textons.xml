@@ -21,7 +21,7 @@
     </dl_settings>
   </settings>
 
-  <depends>video_thread</depends>
+  <!-- <depends>video_thread</depends> -->
 
   <header>
     <file name="textons.h"/>
