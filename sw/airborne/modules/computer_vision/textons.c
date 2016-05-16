@@ -74,6 +74,9 @@ struct image_t* texton_func(struct image_t* img)
     // extract frame from img struct:
     uint8_t *frame = (uint8_t *)img->buf;
 
+  // if patch size odd, correct:
+  if(patch_size % 2 == 1) patch_size++;
+
     // if dictionary not initialized:
 	if(dictionary_ready == 0)
 	{
@@ -133,6 +136,8 @@ void DictionaryTrainingYUV(uint8_t *frame, uint16_t width, uint16_t height)
 		// INITIALISATION
 		// **************
 
+    printf("Intiailizing dictionary!\n");
+
 		// in the first image, we initialize the textons to random patches in the image
 		for(w = 0; w < n_textons; w++)
 		{
@@ -163,7 +168,7 @@ void DictionaryTrainingYUV(uint8_t *frame, uint16_t width, uint16_t height)
 		// ********
 		// LEARNING
 		// ********
-
+    printf("Learning!");
     alpha = ((float) alpha_uint) / 255.0;
 
 		float *texton_distances, ***patch;
@@ -498,7 +503,7 @@ void load_texton_dictionary(void)
  */
 void textons_init(void)
 {
-    printf("A\n");
+    printf("Textons init\n");
     texton_distribution = (float *)calloc(n_textons,sizeof(float));
     dictionary_initialized = 0;
     learned_samples = 0;
