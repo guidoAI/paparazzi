@@ -43,7 +43,7 @@ float *texton_distribution;
 uint8_t load_dictionary = 1;
 uint8_t alpha_uint = 10;
 uint8_t n_textons = 30;
-uint8_t patch_size = 5; 
+uint8_t patch_size = 6; 
 uint32_t n_learning_samples = 100000;
 uint32_t n_samples_image = 100;
 uint8_t FULL_SAMPLING = 0;
@@ -70,7 +70,8 @@ struct image_t* texton_func(struct image_t* img);
 struct image_t* texton_func(struct image_t* img)
 {
 
-    printf("B\n");
+    if(img->buf_size == 0) return img;
+
     // extract frame from img struct:
     uint8_t *frame = (uint8_t *)img->buf;
 
@@ -136,7 +137,7 @@ void DictionaryTrainingYUV(uint8_t *frame, uint16_t width, uint16_t height)
 		// INITIALISATION
 		// **************
 
-    printf("Intiailizing dictionary!\n");
+    printf("Intializing dictionary!\n");
 
 		// in the first image, we initialize the textons to random patches in the image
 		for(w = 0; w < n_textons; w++)
@@ -145,6 +146,7 @@ void DictionaryTrainingYUV(uint8_t *frame, uint16_t width, uint16_t height)
 			x = rand() % (width - patch_size);
 			y = rand() % (height - patch_size);
 
+      //printf("(x,y) = (%d,%d), (w,h) = (%d,%d), ps = %d\n", x, y, width, height, patch_size);
 			// take the sample
 			for(i = 0; i < patch_size; i++)
 			{
@@ -152,12 +154,15 @@ void DictionaryTrainingYUV(uint8_t *frame, uint16_t width, uint16_t height)
 				for(j = 0; j < patch_size; j++)
 				{
 					// put it in a texton
+          printf("Setting dictionary:\n");
 					// U/V component
+
 					dictionary[w][i][j][0] = (float) *buf;
 					buf += 1;
 					// Y1/Y2 component
 					dictionary[w][i][j][1] = (float) *buf;
 					buf += 1;
+          printf("Done!\n");
 				}
 			}
 		}
@@ -203,7 +208,6 @@ void DictionaryTrainingYUV(uint8_t *frame, uint16_t width, uint16_t height)
 				buf = frame + (width * 2 * (i+y)) + 2*x;
 				for(j = 0; j < patch_size; j++)
 				{
-                    // TODO: I think this is incorrect, and it should be YUYV:
 					// U/V component
 		        	patch[i][j][0] = (float) *buf;
 					buf += 1;
@@ -294,6 +298,8 @@ void DistributionExtraction(uint8_t *frame, uint16_t width, uint16_t height)
 	// ************************
 	//       EXECUTION
 	// ************************
+
+  printf("Execute!\n");
 
     // Allocate memory for texton distances and image patch:
 	float *texton_distances, ***patch;
@@ -404,7 +410,9 @@ void DistributionExtraction(uint8_t *frame, uint16_t width, uint16_t height)
 	for(i = 0; i < n_textons; i++)
 	{
 		texton_distribution[i] = texton_distribution[i] / (float) n_extracted_textons;
+    printf("textons[%d] = %f\n", i, texton_distribution[i]);
 	}
+  printf("\n");
 
 
     // free memory:
@@ -508,10 +516,25 @@ void textons_init(void)
     dictionary_initialized = 0;
     learned_samples = 0;
     dictionary_ready = 0;
+    dictionary = (float ****)calloc(n_textons,sizeof(float ***));
+    for(int w = 0; w < n_textons; w++)
+    {
+      dictionary[w] = (float***) calloc(patch_size,sizeof(float **));
+      for(int i = 0; i < patch_size; i++)
+      {
+        dictionary[w][i] = (float**) calloc(patch_size,sizeof(float *));
+        for(int j = 0; j < patch_size; j++)
+        {
+          dictionary[w][i][j] = (float*) calloc(2,sizeof(float));
+        }
+      }
+    }
+
     cv_add(texton_func);
 }
 
 void textons_stop(void) {
   free(texton_distribution);
+  free(dictionary);
 }
 
