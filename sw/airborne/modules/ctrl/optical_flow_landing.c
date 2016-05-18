@@ -73,12 +73,16 @@ static void send_divergence(void)
 #include "subsystems/abi.h"
 #include "firmwares/rotorcraft/stabilization.h"
 
+// ************************
 // include textons for SSL:
+// ************************
 #include <stdio.h>
 #include "textons.h"
 float* last_texton_distribution; // used to check if a new texton distribution has been received
 #define TEXTON_DISTRIBUTION_PATH /data/video/
 static FILE *distribution_logger = NULL;
+#define MAX_SAMPLES_LEARNING 2500
+unsigned int n_read_samples;
 
 /* Default sonar/agl to use */
 #ifndef OPTICAL_FLOW_LANDING_AGL_ID
@@ -599,5 +603,49 @@ void save_texton_distribution(void)
     }
     fprintf(distribution_logger, "%f\n", texton_distribution[n_textons-1]);
     fclose(distribution_logger);
+  }
+}
+
+void load_texton_distribution(void)
+{
+  int i, j, read_result;
+  char filename[512];
+  float sonar[MAX_SAMPLES_LEARNING];
+  float gains[MAX_SAMPLES_LEARNING];
+  float* text_dists[MAX_SAMPLES_LEARNING];
+	sprintf(filename, "%s/Training_set_%05d.dat", STRINGIFY(TEXTON_DISTRIBUTION_PATH), 0);
+    
+	if((distribution_logger = fopen(filename, "r")))
+	{
+    // Load the dictionary:
+    n_read_samples = 0;
+    // For now we read the samples sequentially:
+    for(i = 0; i < MAX_SAMPLES_LEARNING; i++)
+    {
+      read_result = fscanf(distribution_logger, "%f ", &sonar[n_read_samples]);
+			if(read_result == EOF) break;
+      read_result = fscanf(distribution_logger, "%f ", &gains[n_read_samples]);
+			if(read_result == EOF) break;
+
+      text_dists[n_read_samples] = (float*) calloc(n_textons,sizeof(float));
+
+      for(j = 0; j < n_textons-1; j++)
+      {
+        read_result = fscanf(distribution_logger, "%f ", &text_dists[n_read_samples][j]);
+  			if(read_result == EOF) break;
+      }
+      read_result = fscanf(distribution_logger, "%f\n", &text_dists[n_read_samples][n_textons-1]);
+			if(read_result == EOF) break;
+      n_read_samples++;
+    }
+		fclose(distribution_logger);
+
+    // learn the weights based on the variables:
+
+    // free the variables:
+    for(i = 0; i < n_read_samples; i++)
+    {
+      free(text_dists[i]);
+    }
   }
 }
