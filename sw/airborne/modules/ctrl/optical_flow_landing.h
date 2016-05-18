@@ -88,4 +88,7 @@ extern void guidance_v_module_init(void);
 extern void guidance_v_module_enter(void);
 extern void guidance_v_module_run(bool in_flight);
 
+// SSL functions:
+void save_texton_distribution(void);
+
 #endif /* OPTICAL_FLOW_LANDING_H_ */

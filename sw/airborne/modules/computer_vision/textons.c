@@ -410,9 +410,9 @@ void DistributionExtraction(uint8_t *frame, uint16_t width, uint16_t height)
 	for(i = 0; i < n_textons; i++)
 	{
 		texton_distribution[i] = texton_distribution[i] / (float) n_extracted_textons;
-    printf("textons[%d] = %f\n", i, texton_distribution[i]);
+    // printf("textons[%d] = %f\n", i, texton_distribution[i]);
 	}
-  printf("\n");
+  // printf("\n");
 
 
     // free memory:

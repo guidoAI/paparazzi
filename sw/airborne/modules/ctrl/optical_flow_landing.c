@@ -73,6 +73,13 @@ static void send_divergence(void)
 #include "subsystems/abi.h"
 #include "firmwares/rotorcraft/stabilization.h"
 
+// include textons for SSL:
+#include <stdio.h>
+#include "textons.h"
+float* last_texton_distribution; // used to check if a new texton distribution has been received
+#define TEXTON_DISTRIBUTION_PATH /data/video/
+static FILE *distribution_logger = NULL;
+
 /* Default sonar/agl to use */
 #ifndef OPTICAL_FLOW_LANDING_AGL_ID
 #define OPTICAL_FLOW_LANDING_AGL_ID ABI_BROADCAST
@@ -178,6 +185,14 @@ void vertical_ctrl_module_init(void)
   of_landing_ctrl.agl_lp = 0.0f;
   landing = 0;
 
+  // SSL:
+  // TODO: not freed!
+  last_texton_distribution = (float *)calloc(n_textons,sizeof(float));
+  for(i = 0; i < n_textons; i++)
+  {
+    last_texton_distribution[i] = 0.0f;
+  }
+
   // Subscribe to the altitude above ground level ABI messages
   AbiBindMsgAGL(OPTICAL_FLOW_LANDING_AGL_ID, &agl_ev, vertical_ctrl_agl_cb);
   // Subscribe to the optical flow estimator:
@@ -213,6 +228,13 @@ void reset_all_vars()
     divergence_history[i] = 0;
   }
   landing = 0;
+
+  // SSL:
+  for(i = 0; i < n_textons; i++)
+  {
+    last_texton_distribution[i] = 0.0f;
+  }
+
 }
 
 /**
@@ -242,9 +264,16 @@ void vertical_ctrl_module_run(bool in_flight)
 
   if (!in_flight) {
 
+    // TODO: remove, just for testing:
+    of_landing_ctrl.agl = (float) gps.lla_pos.alt / 1000.0f;
+    printf("Sonar height = %f\n", of_landing_ctrl.agl);
+    save_texton_distribution();
+
     // When not flying and in mode module:
     // Reset integrators
-    reset_all_vars();
+    // reset_all_vars(); // TODO: uncomment
+
+    
 
   } else {
 
@@ -333,7 +362,7 @@ void vertical_ctrl_module_run(bool in_flight)
     if (!landing) {
 
       if (of_landing_ctrl.CONTROL_METHOD == 0) {
-        // fixed gain control, cov_limit for landing:
+        // FIXED GAIN CONTROL, cov_limit for landing:
 
         // use the divergence for control:
         float err = of_landing_ctrl.divergence_setpoint - divergence;
@@ -523,4 +552,52 @@ void guidance_v_module_enter(void)
 void guidance_v_module_run(bool in_flight)
 {
   vertical_ctrl_module_run(in_flight);
+}
+
+void save_texton_distribution(void)
+{
+  // Since the control module runs faster than the texton vision process, we need to check that we are storing a recent vision result:
+  int i, same;
+  same = 1;
+  for(i = 0; i < n_textons; i++)
+  { 
+    // check if the texton distribution is the same as the previous one:
+    if(texton_distribution[i] != last_texton_distribution[i]) 
+    {
+      same = 0;
+    }
+    // update the last texton distribution:
+    last_texton_distribution[i] = texton_distribution[i];
+  }
+ 
+  // don't save the texton distribution if it is the same as previous time step:
+  if(same)
+  {
+    printf("Same\n");
+    return;
+  }
+
+  // If not the same, append the target values (heights, gains) and texton values to a .dat file:
+  char filename[512];
+	sprintf(filename, "%s/Training_set_%05d.dat", STRINGIFY(TEXTON_DISTRIBUTION_PATH), 0);
+  distribution_logger = fopen(filename, "a");
+	if(distribution_logger == NULL)
+	{
+    perror(filename);
+		//perror("Error while opening the file.\n");
+	}
+	else
+	{
+    printf("Logging at height %f, gain %f\n", of_landing_ctrl.agl, pstate);
+
+    // save the information in a single row:
+    fprintf(distribution_logger, "%f ", of_landing_ctrl.agl); // sonar measurement
+    fprintf(distribution_logger, "%f ", pstate); // gain measurement
+    for(i = 0; i < n_textons-1; i++)
+    {
+      fprintf(distribution_logger, "%f ", texton_distribution[i]);
+    }
+    fprintf(distribution_logger, "%f\n", texton_distribution[n_textons-1]);
+    fclose(distribution_logger);
+  }
 }
