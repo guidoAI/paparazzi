@@ -51,6 +51,17 @@ float previous_cov_err;
 #include "subsystems/datalink/telemetry.h"
 #include <time.h>
 
+// ************************
+// include textons for SSL:
+// ************************
+#include <stdio.h>
+#include "textons.h"
+float* last_texton_distribution; // used to check if a new texton distribution has been received
+#define TEXTON_DISTRIBUTION_PATH /data/video/
+static FILE *distribution_logger = NULL;
+#define MAX_SAMPLES_LEARNING 2500
+unsigned int n_read_samples;
+
 long previous_time;
 
  static void send_divergence(void) {
@@ -166,6 +177,14 @@ void vertical_ctrl_module_init(void)
 
   landing = 0;
 
+  // SSL:
+  // TODO: not freed!
+  last_texton_distribution = (float *)calloc(n_textons,sizeof(float));
+  for(i = 0; i < n_textons; i++)
+  {
+    last_texton_distribution[i] = 0.0f;
+  }
+
   // Subscribe to the altitude above ground level ABI messages
   AbiBindMsgAGL(VERTICAL_CTRL_MODULE_AGL_ID, &agl_ev, vertical_ctrl_agl_cb);
   // Subscribe to the optical flow estimator:
@@ -197,6 +216,12 @@ void reset_all_vars()
 		divergence_history[i] = 0;
 	}
 	landing = 0;
+
+  // SSL:
+  for(i = 0; i < n_textons; i++)
+  {
+    last_texton_distribution[i] = 0.0f;
+  }
 }
 
 void vertical_ctrl_module_run(bool_t in_flight)
@@ -364,6 +389,14 @@ void vertical_ctrl_module_run(bool_t in_flight)
 
 				// adapt the gains according to the error in covariance:
 				float error_cov = v_ctrl.cov_set_point - cov_div;
+
+        // SSL:
+        if(fabs(error_cov) < 0.01)
+        {
+          of_landing_ctrl.agl = (float) gps.lla_pos.alt / 1000.0f;
+          save_texton_distribution();
+        }
+
 				// limit the error_cov, which could else become very large:
 				if(error_cov > fabs(v_ctrl.cov_set_point)) error_cov = fabs(v_ctrl.cov_set_point);
 				pstate -= (v_ctrl.igain_adaptive * pstate) * error_cov; //v_ctrl.igain_adaptive * error_cov;//
@@ -510,4 +543,97 @@ void guidance_v_module_enter(void)
 void guidance_v_module_run(bool_t in_flight)
 {
   vertical_ctrl_module_run(in_flight);
+}
+
+void save_texton_distribution(void)
+{
+  // Since the control module runs faster than the texton vision process, we need to check that we are storing a recent vision result:
+  int i, same;
+  same = 1;
+  for(i = 0; i < n_textons; i++)
+  { 
+    // check if the texton distribution is the same as the previous one:
+    if(texton_distribution[i] != last_texton_distribution[i]) 
+    {
+      same = 0;
+    }
+    // update the last texton distribution:
+    last_texton_distribution[i] = texton_distribution[i];
+  }
+ 
+  // don't save the texton distribution if it is the same as previous time step:
+  if(same)
+  {
+    printf("Same\n");
+    return;
+  }
+
+  // If not the same, append the target values (heights, gains) and texton values to a .dat file:
+  char filename[512];
+	sprintf(filename, "%s/hght_gain_cov_textons_%05d.dat", STRINGIFY(TEXTON_DISTRIBUTION_PATH), 0);
+  distribution_logger = fopen(filename, "a");
+	if(distribution_logger == NULL)
+	{
+    perror(filename);
+		//perror("Error while opening the file.\n");
+	}
+	else
+	{
+    printf("Logging at height %f, gain %f, cov %f\n", of_landing_ctrl.agl, pstate, cov_div);
+
+    // save the information in a single row:
+    fprintf(distribution_logger, "%f ", of_landing_ctrl.agl); // sonar measurement
+    fprintf(distribution_logger, "%f ", pstate); // gain measurement
+    fprintf(distribution_logger, "%f ", cov_div); // measure of instability
+    for(i = 0; i < n_textons-1; i++)
+    {
+      fprintf(distribution_logger, "%f ", texton_distribution[i]);
+    }
+    fprintf(distribution_logger, "%f\n", texton_distribution[n_textons-1]);
+    fclose(distribution_logger);
+  }
+}
+
+void load_texton_distribution(void)
+{
+  int i, j, read_result;
+  char filename[512];
+  float sonar[MAX_SAMPLES_LEARNING];
+  float gains[MAX_SAMPLES_LEARNING];
+  float* text_dists[MAX_SAMPLES_LEARNING];
+	sprintf(filename, "%s/Training_set_%05d.dat", STRINGIFY(TEXTON_DISTRIBUTION_PATH), 0);
+    
+	if((distribution_logger = fopen(filename, "r")))
+	{
+    // Load the dictionary:
+    n_read_samples = 0;
+    // For now we read the samples sequentially:
+    for(i = 0; i < MAX_SAMPLES_LEARNING; i++)
+    {
+      read_result = fscanf(distribution_logger, "%f ", &sonar[n_read_samples]);
+			if(read_result == EOF) break;
+      read_result = fscanf(distribution_logger, "%f ", &gains[n_read_samples]);
+			if(read_result == EOF) break;
+
+      text_dists[n_read_samples] = (float*) calloc(n_textons,sizeof(float));
+
+      for(j = 0; j < n_textons-1; j++)
+      {
+        read_result = fscanf(distribution_logger, "%f ", &text_dists[n_read_samples][j]);
+  			if(read_result == EOF) break;
+      }
+      read_result = fscanf(distribution_logger, "%f\n", &text_dists[n_read_samples][n_textons-1]);
+			if(read_result == EOF) break;
+      n_read_samples++;
+    }
+		fclose(distribution_logger);
+
+    // learn the weights based on the variables:
+
+    // free the variables:
+    for(i = 0; i < n_read_samples; i++)
+    {
+      free(text_dists[i]);
+    }
+  }
 }

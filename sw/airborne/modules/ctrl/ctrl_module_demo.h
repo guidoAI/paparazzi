@@ -54,4 +54,8 @@ extern void guidance_v_module_init(void);
 extern void guidance_v_module_enter(void);
 extern void guidance_v_module_run(bool_t in_flight);
 
+// SSL functions:
+void save_texton_distribution(void);
+void load_texton_distribution(void);
+
 #endif /* CTRL_MODULE_DEMO_H_ */
