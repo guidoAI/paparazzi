@@ -29,6 +29,7 @@
 
   <modules main_freq="512">
     <load name="bat_voltage_ardrone2.xml"/>
+    <load name="cv_textons.xml"/>
     <load name="cv_opticflow.xml"/>
     <load name="vertical_ctrl_module_demo.xml"/>
     <!--

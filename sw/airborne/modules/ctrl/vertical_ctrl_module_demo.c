@@ -55,7 +55,7 @@ float previous_cov_err;
 // include textons for SSL:
 // ************************
 #include <stdio.h>
-#include "textons.h"
+#include "modules/computer_vision/textons.h"
 float* last_texton_distribution; // used to check if a new texton distribution has been received
 #define TEXTON_DISTRIBUTION_PATH /data/video/
 static FILE *distribution_logger = NULL;
@@ -393,7 +393,7 @@ void vertical_ctrl_module_run(bool_t in_flight)
         // SSL:
         if(fabs(error_cov) < 0.01)
         {
-          of_landing_ctrl.agl = (float) gps.lla_pos.alt / 1000.0f;
+          v_ctrl.agl = (float) gps.lla_pos.alt / 1000.0f;
           save_texton_distribution();
         }
 
@@ -579,10 +579,10 @@ void save_texton_distribution(void)
 	}
 	else
 	{
-    printf("Logging at height %f, gain %f, cov %f\n", of_landing_ctrl.agl, pstate, cov_div);
+    printf("Logging at height %f, gain %f, cov %f\n", v_ctrl.agl, pstate, cov_div);
 
     // save the information in a single row:
-    fprintf(distribution_logger, "%f ", of_landing_ctrl.agl); // sonar measurement
+    fprintf(distribution_logger, "%f ", v_ctrl.agl); // sonar measurement
     fprintf(distribution_logger, "%f ", pstate); // gain measurement
     fprintf(distribution_logger, "%f ", cov_div); // measure of instability
     for(i = 0; i < n_textons-1; i++)
