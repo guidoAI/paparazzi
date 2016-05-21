@@ -173,6 +173,8 @@ void opticflow_calc_frame(struct opticflow_t *opticflow, struct opticflow_state_
     opticflow->got_first_img = TRUE;
   }
 
+  // printf("W = %d, H = %d, type = %d\n", img->w, img->h, img->type);
+
   // *************************************************************************************
   // Corner detection
   // *************************************************************************************
