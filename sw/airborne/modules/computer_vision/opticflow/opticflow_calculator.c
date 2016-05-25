@@ -215,6 +215,8 @@ void opticflow_calc_frame(struct opticflow_t *opticflow, struct opticflow_state_
                                        opticflow->window_size / 2, opticflow->subpixel_factor, opticflow->max_iterations,
                                        opticflow->threshold_vec, opticflow->max_track_corners);
 
+  printf("Corners = %d, tracked = %d\n", result->corner_cnt, result->tracked_cnt);
+
 #if OPTICFLOW_DEBUG && OPTICFLOW_SHOW_FLOW
   image_show_flow(img, vectors, result->tracked_cnt, opticflow->subpixel_factor);
 #endif
