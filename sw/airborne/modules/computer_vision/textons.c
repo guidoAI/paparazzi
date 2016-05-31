@@ -313,18 +313,21 @@ void DictionaryTrainingYUV(uint8_t *frame, uint16_t width, uint16_t height)
 void DistributionExtraction(uint8_t *frame, uint16_t width, uint16_t height)
 {
   int i, j, texton, c; // iterators
-  int x, y; // coordinates
+  int x, y, max_addition_x, max_addition_y, stride; // coordinates
   int n_extracted_textons = 0;
-
   uint8_t *buf;
+  float pixel_diff;
+
+  max_addition_x = width - patch_size - 2 * border_width;
+  max_addition_y = height - patch_size - 2 * border_height;
+  stride = 2 * width;
 
   // ************************
   //       EXECUTION
   // ************************
 
-  printf("Execute!\n");
-
   // Allocate memory for texton distances and image patch:
+  // TODO: do this globally once?
   float *texton_distances, * **patch;
   texton_distances = (float *)calloc(n_textons, sizeof(float));
   patch = (float ** *)calloc(patch_size, sizeof(float **));
@@ -339,19 +342,17 @@ void DistributionExtraction(uint8_t *frame, uint16_t width, uint16_t height)
   x = 0;
   y = 0;
   while (!finished) {
-    if (!FULL_SAMPLING) {
-      x = border_width + rand() % (width - patch_size - 2 * border_width);
-      y = border_height + rand() % (height - patch_size - 2 * border_height);
-    }
 
-    // reset texton_distances
-    for (texton = 0; texton < n_textons; texton++) {
-      texton_distances[texton] = 0;
+    // if sub-sampling, take a random coordinate:
+    // TODO: also allow for a grid:
+    if (!FULL_SAMPLING) {
+      x = border_width + rand() % max_addition_x;
+      y = border_height + rand() % max_addition_y;
     }
 
     // extract sample
     for (i = 0; i < patch_size; i++) {
-      buf = frame + (width * 2 * (i + y)) + 2 * x;
+      buf = frame + (stride * (i + y)) + 2 * x;
       for (j = 0; j < patch_size; j++) {
         // U/V component
         patch[i][j][0] = (float) * buf;
@@ -368,8 +369,8 @@ void DistributionExtraction(uint8_t *frame, uint16_t width, uint16_t height)
         for (c = 0; c < 2; c++) {
           // determine the distance to words
           for (texton = 0; texton < n_textons; texton++) {
-            texton_distances[texton] += (patch[i][j][c] - dictionary[texton][i][j][c])
-                                        * (patch[i][j][c] - dictionary[texton][i][j][c]);
+            pixel_diff = patch[i][j][c] - dictionary[texton][i][j][c];
+            texton_distances[texton] += pixel_diff * pixel_diff;
           }
         }
       }
@@ -399,12 +400,10 @@ void DistributionExtraction(uint8_t *frame, uint16_t width, uint16_t height)
       // y++;
 
       if (y > height - patch_size) {
-        if (!FULL_SAMPLING) {
           x += patch_size;
-        } else {
-          x++;
-        }
-        y = 0;
+          // True full sampling would require:
+          // x++;
+          y = 0;
       }
       if (x > width - patch_size) {
         finished = 1;
@@ -415,10 +414,7 @@ void DistributionExtraction(uint8_t *frame, uint16_t width, uint16_t height)
   // Normalize distribution:
   for (i = 0; i < n_textons; i++) {
     texton_distribution[i] = texton_distribution[i] / (float) n_extracted_textons;
-    // printf("textons[%d] = %f\n", i, texton_distribution[i]);
   }
-  // printf("\n");
-
 
   // free memory:
   for (i = 0; i < patch_size; i++) {
