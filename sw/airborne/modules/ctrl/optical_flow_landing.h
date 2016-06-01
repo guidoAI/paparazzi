@@ -63,6 +63,7 @@ struct OpticalFlowLanding {
   int delay_steps;              ///< number of delay steps for div past
 };
 
+
 extern struct OpticalFlowLanding of_landing_ctrl;
 
 // arrays containing histories for determining covariance
@@ -91,5 +92,7 @@ extern void guidance_v_module_run(bool in_flight);
 // SSL functions:
 void save_texton_distribution(void);
 void load_texton_distribution(void);
+void fit_linear_model(float* targets, float** samples, uint8_t D, uint16_t count, float* parameters, float* fit_error);
+
 
 #endif /* OPTICAL_FLOW_LANDING_H_ */
