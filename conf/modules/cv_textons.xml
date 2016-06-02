@@ -28,7 +28,7 @@
         <dl_setting var="dictionary_number"  min="0" step="1" max="20" shortname="dict_num" param="TEXTONS_DICTIONARY_NUMBER" />
         <dl_setting var="n_samples_image"  min="0" step="10" max="1000" shortname="n_samples" param="TEXTONS_ALPHA" />
         <dl_setting var="n_learning_samples"  min="1" step="100" max="250000" shortname="n_l_samples" param="TEXTONS_N_LEARNING_SAMPLES" />
-        <dl_setting var="alpha" min="0" step="1" max="255" shortname="alpha" param="TEXTONS_ALPHA"/>
+        <dl_setting var="alpha_uint" min="0" step="1" max="255" shortname="alpha" param="TEXTONS_ALPHA"/>
         <dl_setting var="border_width"  min="0" step="1" max="200" shortname="b_w" param="TEXTONS_BORDER_WIDTH"/>
         <dl_setting var="border_height"  min="0" step="1" max="200" shortname="b_h" param="TEXTONS_BORDER_HEIGHT"/>
       </dl_settings>

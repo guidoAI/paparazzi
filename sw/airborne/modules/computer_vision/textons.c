@@ -47,7 +47,7 @@ float *texton_distribution;
 PRINT_CONFIG_VAR(TEXTONS_LOAD_DICTIONARY)
 
 #ifndef TEXTONS_ALPHA
-#define TEXTONS_ALPHA 10
+#define TEXTONS_ALPHA 0
 #endif
 PRINT_CONFIG_VAR(TEXTONS_ALPHA)
 
@@ -67,7 +67,7 @@ PRINT_CONFIG_VAR(TEXTONS_N_SAMPLES)
 PRINT_CONFIG_VAR(TEXTONS_PATCH_SIZE)
 
 #ifndef TEXTONS_N_LEARNING_SAMPLES
-#define TEXTONS_N_LEARNING_SAMPLES 10000
+#define TEXTONS_N_LEARNING_SAMPLES 100000
 #endif
 PRINT_CONFIG_VAR(TEXTONS_N_LEARNING_SAMPLES)
 
@@ -123,6 +123,8 @@ struct image_t *texton_func(struct image_t *img);
 struct image_t *texton_func(struct image_t *img)
 {
 
+  int i;
+
   if (img->buf_size == 0) { return img; }
 
   // extract frame from img struct:
@@ -134,6 +136,9 @@ struct image_t *texton_func(struct image_t *img)
   // if dictionary not initialized:
   if (dictionary_ready == 0) {
     if (load_dictionary == 0) {
+
+      printf("Learned samples: %d / %d\n", learned_samples, n_learning_samples);
+
       // Train the dictionary:
       DictionaryTrainingYUV(frame, img->w, img->h);
 
@@ -145,14 +150,39 @@ struct image_t *texton_func(struct image_t *img)
         dictionary_ready = 1;
         // lower learning rate
         alpha = 0.0;
+        // set learned samples back to 0
+        learned_samples = 0;
       }
     } else {
       // Load the dictionary:
       load_texton_dictionary();
     }
   } else {
-    // Extract distributions
-    DistributionExtraction(frame, img->w, img->h);
+
+    printf("alpha_uint = %d\n", alpha_uint);
+
+    if(alpha_uint > 0){
+
+      DictionaryTrainingYUV(frame, img->w, img->h);
+      
+      if (learned_samples >= n_learning_samples) {
+        // Save the dictionary:
+        save_texton_dictionary();
+        // reset learned_samples:
+        learned_samples++;
+      }
+    }
+    else {    
+      // Extract distributions
+      DistributionExtraction(frame, img->w, img->h);
+    }
+
+    printf("Distribution = [");
+    for (i = 0; i < n_textons-1; i++) {
+      printf("%f, ", texton_distribution[i]);
+    }
+    printf("%f]\n", texton_distribution[n_textons-1]);
+
   }
 
   return img; // Colorfilter did not make a new image
@@ -284,10 +314,18 @@ void DictionaryTrainingYUV(uint8_t *frame, uint16_t width, uint16_t height)
         }
       }
 
+      // put the assignment in the histogram
+      texton_distribution[assignment]++;
+
       // Augment the number of learned samples:
       learned_samples++;
     }
 
+    // Normalize distribution:
+    for (i = 0; i < n_textons; i++) {
+      texton_distribution[i] = texton_distribution[i] / (float) n_samples_image;
+    }
+    
     // Free the allocated memory:
     for (i = 0; i < patch_size; i++) {
       for (j = 0; j < patch_size; j++) {

@@ -167,7 +167,7 @@ static void *video_thread_function(void *data)
   }
 
   // be nice to the more important stuff
-  // set_nice_level(10);
+  set_nice_level(5);
 
   // Initialize timing
   struct timespec time_now;

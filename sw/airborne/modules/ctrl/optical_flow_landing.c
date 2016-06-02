@@ -274,13 +274,13 @@ void vertical_ctrl_module_run(bool in_flight)
   if (!in_flight) {
 
     // TODO: remove, just for testing:
-    of_landing_ctrl.agl = (float) gps.lla_pos.alt / 1000.0f;
-    printf("Sonar height = %f\n", of_landing_ctrl.agl);
-    save_texton_distribution();
+    // of_landing_ctrl.agl = (float) gps.lla_pos.alt / 1000.0f;
+    // printf("Sonar height = %f\n", of_landing_ctrl.agl);
+    // save_texton_distribution();
 
     // When not flying and in mode module:
     // Reset integrators
-    // reset_all_vars(); // TODO: uncomment
+    reset_all_vars(); // TODO: uncomment
 
     
 
@@ -414,6 +414,11 @@ void vertical_ctrl_module_run(bool in_flight)
 
         // limit the error_cov, which could else become very large:
         if (error_cov > fabs(of_landing_ctrl.cov_set_point)) { error_cov = fabs(of_landing_ctrl.cov_set_point); }
+
+        // if close enough, store inputs:
+        if(fabs(error_cov) < 0.005) save_texton_distribution();
+
+        // adapt the gain:
         pstate -= (of_landing_ctrl.igain_adaptive * pstate) * error_cov;
         if (pstate < MINIMUM_GAIN) { pstate = MINIMUM_GAIN; }
 
@@ -598,11 +603,12 @@ void save_texton_distribution(void)
 	}
 	else
 	{
-    printf("Logging at height %f, gain %f\n", of_landing_ctrl.agl, pstate);
+    printf("Logging at height %f, gain %f, cov_div %f\n", of_landing_ctrl.agl, pstate, cov_div);
 
     // save the information in a single row:
     fprintf(distribution_logger, "%f ", of_landing_ctrl.agl); // sonar measurement
     fprintf(distribution_logger, "%f ", pstate); // gain measurement
+    fprintf(distribution_logger, "%f ", cov_div); // cov div measurement
     for(i = 0; i < n_textons-1; i++)
     {
       fprintf(distribution_logger, "%f ", texton_distribution[i]);
