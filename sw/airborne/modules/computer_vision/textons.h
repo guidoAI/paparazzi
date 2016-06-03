@@ -37,6 +37,9 @@
 
 // outputs
 extern float *texton_distribution; // main outcome of the image processing: the distribution of textons in the image
+float *TD_0; // temporary array meant for internal use
+float *TD_1; // temporary array meant for internal use
+uint8_t TD_ID; // indicates which array to take 
 
 // settings
 extern uint8_t load_dictionary;

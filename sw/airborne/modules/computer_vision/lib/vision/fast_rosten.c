@@ -54,12 +54,17 @@ struct point_t *fast9_detect(struct image_t *img, uint8_t threshold, uint16_t mi
   uint32_t corner_cnt = 0;
   uint16_t rsize = 512;
   int pixel[16];
-  int16_t i;
-  uint16_t x, y, x_min, x_max, y_min, y_max;
+  uint16_t x, y;
   struct point_t *ret_corners = malloc(sizeof(struct point_t) * rsize);
-  uint8_t need_skip; 
   // Set the pixel size
   uint8_t pixel_size = 1;
+
+#if MIN_DIST
+  uint16_t x_min, x_max, y_min, y_max;
+  uint8_t need_skip; 
+  int16_t i;
+#endif
+
   if (img->type == IMAGE_YUV422) {
     pixel_size = 2;
   }

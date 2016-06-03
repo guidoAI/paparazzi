@@ -34,6 +34,9 @@
 #include "modules/computer_vision/cv.h"
 #include "modules/computer_vision/textons.h"
 
+// thread safety:
+//#include <pthread.h>
+//static pthread_mutex_t textons_mutex;
 
 float ** **dictionary;
 uint32_t learned_samples = 0;
@@ -177,11 +180,19 @@ struct image_t *texton_func(struct image_t *img)
       DistributionExtraction(frame, img->w, img->h);
     }
 
-    printf("Distribution = [");
+    /*printf("Distribution = [");
     for (i = 0; i < n_textons-1; i++) {
       printf("%f, ", texton_distribution[i]);
     }
-    printf("%f]\n", texton_distribution[n_textons-1]);
+    printf("%f]\n", texton_distribution[n_textons-1]);*/
+
+    /*
+    float sum = 0;    
+    for (i = 0; i < n_textons; i++) {
+      sum += texton_distribution[i];
+    }
+    printf("sum = %f\n", sum);
+    */
 
   }
 
@@ -200,7 +211,7 @@ void DictionaryTrainingYUV(uint8_t *frame, uint16_t width, uint16_t height)
   int i, j, w, s, texton, c; // iterators
   int x, y; // image coordinates
   float error_texton; // distance between an image patch and a texton
-
+  float *TD;
   uint8_t *buf;
 
   // ***********************
@@ -255,6 +266,27 @@ void DictionaryTrainingYUV(uint8_t *frame, uint16_t width, uint16_t height)
       for (j = 0; j < patch_size; j++) {
         patch[i][j] = (float *)calloc(2, sizeof(float));
       }
+    }
+
+    // make sure that texton_distribution is protected while we are changing it:
+    // pthread_mutex_lock(&textons_mutex);
+
+    if(TD_ID == 0) {
+      // we are going to fill TD_0:
+      TD = TD_0;
+      texton_distribution = TD_1;
+    }
+    else
+    {
+      // we are going to fill TD_1:
+      TD = TD_1;
+      texton_distribution = TD_0;
+    }
+    TD_ID = (TD_ID+1) % 2;
+
+
+    for(i = 0; i < n_textons; i++) {
+      TD[i] = 0.0f;
     }
 
     // Extract and learn from n_samples_image per image
@@ -315,7 +347,7 @@ void DictionaryTrainingYUV(uint8_t *frame, uint16_t width, uint16_t height)
       }
 
       // put the assignment in the histogram
-      texton_distribution[assignment]++;
+      TD[assignment]++;
 
       // Augment the number of learned samples:
       learned_samples++;
@@ -323,9 +355,12 @@ void DictionaryTrainingYUV(uint8_t *frame, uint16_t width, uint16_t height)
 
     // Normalize distribution:
     for (i = 0; i < n_textons; i++) {
-      texton_distribution[i] = texton_distribution[i] / (float) n_samples_image;
+      TD[i] = TD[i] / (float) n_samples_image;
     }
     
+    // re-allow access to texton_distribution:
+    // pthread_mutex_unlock(&textons_mutex);
+
     // Free the allocated memory:
     for (i = 0; i < patch_size; i++) {
       for (j = 0; j < patch_size; j++) {
@@ -353,6 +388,7 @@ void DistributionExtraction(uint8_t *frame, uint16_t width, uint16_t height)
   int i, j, texton, c; // iterators
   int x, y, max_addition_x, max_addition_y, stride; // coordinates
   int n_extracted_textons = 0;
+  float *TD;
   uint8_t *buf;
   float pixel_diff;
 
@@ -374,6 +410,26 @@ void DistributionExtraction(uint8_t *frame, uint16_t width, uint16_t height)
     for (j = 0; j < patch_size; j++) {
       patch[i][j] = (float *)calloc(2, sizeof(float));
     }
+  }
+
+  // lock access to the thread, because texton_distribution will be changed
+  // pthread_mutex_lock(&textons_mutex);
+
+  if(TD_ID == 0) {
+    // we are going to fill TD_0:
+    TD = TD_0;
+    texton_distribution = TD_1;
+  }
+  else
+  {
+    // we are going to fill TD_1:
+    TD = TD_1;
+    texton_distribution = TD_0;
+  }
+  TD_ID = (TD_ID+1) % 2;
+
+  for(i = 0; i < n_textons; i++) {
+    TD[i] = 0.0f;
   }
 
   int finished = 0;
@@ -426,7 +482,7 @@ void DistributionExtraction(uint8_t *frame, uint16_t width, uint16_t height)
     }
 
     // put the assignment in the histogram
-    texton_distribution[assignment]++;
+    TD[assignment]++;
     n_extracted_textons++;
 
     if (!FULL_SAMPLING && n_extracted_textons == n_samples_image) {
@@ -451,8 +507,11 @@ void DistributionExtraction(uint8_t *frame, uint16_t width, uint16_t height)
 
   // Normalize distribution:
   for (i = 0; i < n_textons; i++) {
-    texton_distribution[i] = texton_distribution[i] / (float) n_extracted_textons;
+    TD[i] = TD[i] / (float) n_extracted_textons;
   }
+
+  // unlock the thread to re-allow access to texton_distribution:
+  // pthread_mutex_lock(&textons_mutex);
 
   // free memory:
   for (i = 0; i < patch_size; i++) {
@@ -536,7 +595,13 @@ void load_texton_dictionary(void)
 void textons_init(void)
 {
   printf("Textons init\n");
-  texton_distribution = (float *)calloc(n_textons, sizeof(float));
+  TD_ID = 0;
+  TD_0 = (float *)calloc(n_textons, sizeof(float));
+  TD_1 = (float *)calloc(n_textons, sizeof(float));
+  for(int i = 0; i < n_textons; i++) {
+    TD_0[i] = 0.0f;
+    TD_1[i] = 0.0f;
+  }
   dictionary_initialized = 0;
   learned_samples = 0;
   dictionary_ready = 0;
@@ -556,7 +621,8 @@ void textons_init(void)
 
 void textons_stop(void)
 {
-  free(texton_distribution);
+  free(TD_0);
+  free(TD_1);
   free(dictionary);
 }
 
