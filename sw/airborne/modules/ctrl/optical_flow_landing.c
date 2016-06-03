@@ -274,7 +274,7 @@ void vertical_ctrl_module_run(bool in_flight)
   if (!in_flight) {
 
     // TODO: remove, just for testing:
-    of_landing_ctrl.agl = (float) gps.lla_pos.alt / 1000.0f;
+    // of_landing_ctrl.agl = (float) gps.lla_pos.alt / 1000.0f;
     // printf("Sonar height = %f\n", of_landing_ctrl.agl);
     save_texton_distribution();
 
@@ -516,9 +516,10 @@ float get_cov(float *a, float *b, int n_elements)
 
 
 
-// Reading from "sensors":
+// Reading from sonar:
 static void vertical_ctrl_agl_cb(uint8_t sender_id, float distance)
 {
+  // value from the sonar - normally, this is replaced by the optitrack value in the main loop.
   of_landing_ctrl.agl = distance;
 }
 static void vertical_ctrl_optical_flow_cb(uint8_t sender_id, uint32_t stamp, int16_t flow_x, int16_t flow_y, int16_t flow_der_x, int16_t flow_der_y, uint8_t quality, float size_divergence, float dist)
@@ -604,12 +605,6 @@ void save_texton_distribution(void)
 	else
 	{
     printf("Logging at height %f, gain %f, cov_div %f\n", of_landing_ctrl.agl, pstate, cov_div);
-
-    float sum = 0;    
-    for (i = 0; i < n_textons; i++) {
-      sum += texton_distribution[i];
-    }
-    printf("sum = %f\n", sum);
 
     // save the information in a single row:
     fprintf(distribution_logger, "%f ", of_landing_ctrl.agl); // sonar measurement

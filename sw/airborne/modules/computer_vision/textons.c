@@ -162,8 +162,6 @@ struct image_t *texton_func(struct image_t *img)
     }
   } else {
 
-    printf("alpha_uint = %d\n", alpha_uint);
-
     if(alpha_uint > 0){
 
       DictionaryTrainingYUV(frame, img->w, img->h);
