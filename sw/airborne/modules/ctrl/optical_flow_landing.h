@@ -38,6 +38,9 @@
 // number of time steps used for calculating the covariance (oscillations)
 #define COV_WINDOW_SIZE 60
 
+// maximum number of samples to learn from for SSL:
+#define MAX_SAMPLES_LEARNING 2500
+
 #include "std.h"
 
 
@@ -71,6 +74,11 @@ float thrust_history[COV_WINDOW_SIZE];
 float divergence_history[COV_WINDOW_SIZE];
 float past_divergence_history[COV_WINDOW_SIZE];
 unsigned long ind_hist;
+// SSL:
+float *text_dists[MAX_SAMPLES_LEARNING];
+float sonar[MAX_SAMPLES_LEARNING];
+float gains[MAX_SAMPLES_LEARNING];
+float *weights;
 
 // Without optitrack set to: GUIDANCE_H_MODE_ATTITUDE
 // With optitrack set to: GUIDANCE_H_MODE_HOVER
@@ -93,6 +101,8 @@ extern void guidance_v_module_run(bool in_flight);
 void save_texton_distribution(void);
 void load_texton_distribution(void);
 void fit_linear_model(float* targets, float** samples, uint8_t D, uint16_t count, float* parameters, float* fit_error);
+void learn_from_file(void);
+float predict_gain(float* distribution);
 
 
 #endif /* OPTICAL_FLOW_LANDING_H_ */

@@ -83,7 +83,6 @@ static void send_divergence(struct transport_tx *trans, struct link_device *dev)
 float* last_texton_distribution; // used to check if a new texton distribution has been received
 #define TEXTON_DISTRIBUTION_PATH /data/video/
 static FILE *distribution_logger = NULL;
-#define MAX_SAMPLES_LEARNING 2500
 unsigned int n_read_samples;
 #include "math/pprz_algebra_float.h"
 #include "math/pprz_matrix_decomp_float.h"
@@ -201,6 +200,7 @@ void vertical_ctrl_module_init(void)
   {
     last_texton_distribution[i] = 0.0f;
   }
+  weights = (float *)calloc(n_textons,sizeof(float));
 
   // Subscribe to the altitude above ground level ABI messages
   AbiBindMsgAGL(OPTICAL_FLOW_LANDING_AGL_ID, &agl_ev, vertical_ctrl_agl_cb);
@@ -623,9 +623,6 @@ void load_texton_distribution(void)
 {
   int i, j, read_result;
   char filename[512];
-  float sonar[MAX_SAMPLES_LEARNING];
-  float gains[MAX_SAMPLES_LEARNING];
-  float* text_dists[MAX_SAMPLES_LEARNING];
 	sprintf(filename, "%s/Training_set_%05d.dat", STRINGIFY(TEXTON_DISTRIBUTION_PATH), 0);
     
 	if((distribution_logger = fopen(filename, "r")))
@@ -653,17 +650,33 @@ void load_texton_distribution(void)
     }
 		fclose(distribution_logger);
 
-    // learn the weights based on the variables:
-
+    /*
     // free the variables:
     for(i = 0; i < n_read_samples; i++)
     {
       free(text_dists[i]);
-    }
+    }*/
   }
 }
 
+void learn_from_file(void)
+{
+  int i;
+  float fit_error;
 
+  // first load the texton distributions:
+  load_texton_distribution();
+
+  // then learn from it:
+  fit_linear_model(gains, text_dists, n_textons, n_read_samples, weights, &fit_error);
+  printf("Learned! Fit error = %f\n", fit_error);
+
+  // free learning distributions:
+  for(i = 0; i < MAX_SAMPLES_LEARNING; i++)
+  {
+    free(text_dists[i]);
+  }
+}
 
 /**
  * Fit a linear model from samples to target values.
@@ -693,9 +706,9 @@ void fit_linear_model(float* targets, float** samples, uint8_t D, uint16_t count
 
   // initialize matrices and vectors for the full point set problem:
   // this is used for determining inliers
-  float _AA[count][D];
+  float _AA[count][D_1];
   MAKE_MATRIX_PTR(AA, _AA, count);
-  float _targets_all[count][D];
+  float _targets_all[count][1];
   MAKE_MATRIX_PTR(targets_all, _targets_all, count);
 
   for (sam = 0; sam < count; sam++) {
@@ -715,7 +728,7 @@ void fit_linear_model(float* targets, float** samples, uint8_t D, uint16_t count
   MAKE_MATRIX_PTR(v, _v, D_1);
 
   pprz_svd_float(AA, w, v, count, D_1);
-  pprz_svd_solve_float(parameters, AA, w, v, targets_all, count, D, 1);
+  pprz_svd_solve_float(parameters, AA, w, v, targets_all, count, D_1, 1);
 
   // used to determine the error of a set of parameters on the whole set:
   float _bb[count][1];
@@ -740,3 +753,43 @@ void fit_linear_model(float* targets, float** samples, uint8_t D, uint16_t count
   
 }
 
+// General TODO: what happens if n_textons changes?
+
+float predict_gain(float* distribution)
+{
+  int i;
+  float sum;
+
+  /*
+  // TODO: is this not slower than what our own implementation would do?
+
+  uint8_t D_1 = n_textons+1;
+  float _distr[D_1];
+  float _pred[1][1];
+
+  // make feature vector:
+  MAKE_MATRIX_PTR(distr, _distr, D_1);
+  for(i = 0; i < n_textons; i++) {
+    distr[i] = distribution[i];
+  }
+  distr[n_textons] = 1.0f; // bias
+
+  // make weight vector:
+  MAKE_MATRIX_PTR(w, weights, D_1);
+  // make resulting prediction:
+  MAKE_MATRIX_PTR(pred, _pred, count);
+  
+  // multiply the vectors:
+  MAT_MUL(1, D_1, 1, pred, distr, w);
+  
+  return pred[0][0];
+  */
+
+  sum = 0.0f;
+  for(i = 0; i < n_textons; i++)
+  {
+    sum += weights[i] * distribution[i];
+  }   
+  sum += weights[n_textons];
+  return sum;
+}
