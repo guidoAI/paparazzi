@@ -64,6 +64,7 @@ struct OpticalFlowLanding {
   float dgain_adaptive;         ///< D-gain for adaptive gain control
   int COV_METHOD;               ///< method to calculate the covariance: between thrust and div (0) or div and div past (1)
   int delay_steps;              ///< number of delay steps for div past
+  volatile bool learn_gains;    ///< set to true if the robot needs to learn a mapping from texton distributions to the p-gain
 };
 
 

@@ -169,6 +169,7 @@ void vertical_ctrl_module_init(void)
   of_landing_ctrl.pgain_adaptive = 10.0;
   of_landing_ctrl.igain_adaptive = 0.25;
   of_landing_ctrl.dgain_adaptive = 0.00;
+  of_landing_ctrl.learn_gains = false;
 
   struct timespec spec;
   clock_gettime(CLOCK_REALTIME, &spec);
@@ -278,6 +279,13 @@ void vertical_ctrl_module_run(bool in_flight)
 
   if (!in_flight) {
 
+    if(of_landing_ctrl.learn_gains) {
+      // learn the weights from the file filled with training examples:
+      learn_from_file();
+      // reset the learn_gains variable to false:
+      of_landing_ctrl.learn_gains = false;
+    }
+
     // TODO: remove, just for testing:
     // of_landing_ctrl.agl = (float) gps.lla_pos.alt / 1000.0f;
     // printf("Sonar height = %f\n", of_landing_ctrl.agl);
@@ -286,8 +294,6 @@ void vertical_ctrl_module_run(bool in_flight)
     // When not flying and in mode module:
     // Reset integrators
     reset_all_vars(); // TODO: uncomment
-
-    
 
   } else {
 
