@@ -52,6 +52,11 @@ float previous_cov_err;
 // adaptive control will not be able to go lower
 #define MINIMUM_GAIN 0.1
 
+// SSL: we will learn unstable gains, but need stable gains for landing
+// this factor represents the trade-off between stability and performance
+// 1.0 = unstable, 0.0 = no performance
+#define STABLE_GAIN_FACTOR 0.7
+
 // used for automated landing:
 #include "firmwares/rotorcraft/autopilot.h"
 #include "subsystems/navigation/common_flight_plan.h"
@@ -406,7 +411,7 @@ void vertical_ctrl_module_run(bool in_flight)
         }
         stabilization_cmd[COMMAND_THRUST] = thrust;
         of_landing_ctrl.sum_err += err;
-      } else {
+      } else if(of_landing_ctrl.CONTROL_METHOD == 1) {
         // ADAPTIVE GAIN CONTROL:
 
         // adapt the gains according to the error in covariance:
@@ -462,6 +467,51 @@ void vertical_ctrl_module_run(bool in_flight)
         Bound(thrust, 0.8 * nominal_throttle, 0.75 * MAX_PPRZ); // was 0.6 0.9
         stabilization_cmd[COMMAND_THRUST] = thrust;
         of_landing_ctrl.sum_err += err;
+      }
+      else {
+  
+        // SSL LANDING: use learned weights for setting the gain on the way down:
+        
+        // adapt the p-gain with a low-pass filter to the gain predicted by image appearance:
+        // TODO: lp_factor is now the same as used for the divergence. This may not be appropriate
+        of_landing_ctrl.pgain = of_landing_ctrl.lp_factor * of_landing_ctrl.pgain + (1.0f - of_landing_ctrl.lp_factor) * STABLE_GAIN_FACTOR * predict_gain(texton_distribution);
+
+        // use the divergence for control:
+        float err = of_landing_ctrl.divergence_setpoint - divergence;
+        int32_t thrust = nominal_throttle + of_landing_ctrl.pgain * err * MAX_PPRZ + of_landing_ctrl.igain * of_landing_ctrl.sum_err * MAX_PPRZ;
+        // make sure the p gain is logged:
+        pstate = of_landing_ctrl.pgain;
+        pused = pstate;
+        // bound thrust:
+        Bound(thrust, 0.8 * nominal_throttle, 0.75 * MAX_PPRZ);
+
+        // histories and cov detection:
+        normalized_thrust = (float)(thrust / (MAX_PPRZ / 100));
+        thrust_history[ind_hist % COV_WINDOW_SIZE] = normalized_thrust;
+        divergence_history[ind_hist % COV_WINDOW_SIZE] = divergence;
+        int ind_past = (ind_hist % COV_WINDOW_SIZE) - of_landing_ctrl.delay_steps;
+        while (ind_past < 0) { ind_past += COV_WINDOW_SIZE; }
+        float past_divergence = divergence_history[ind_past];
+        past_divergence_history[ind_hist % COV_WINDOW_SIZE] = past_divergence;
+        ind_hist++;
+        // determine the covariance for landing detection:
+        if (of_landing_ctrl.COV_METHOD == 0) {
+          cov_div = get_cov(thrust_history, divergence_history, COV_WINDOW_SIZE);
+        } else {
+          cov_div = get_cov(past_divergence_history, divergence_history, COV_WINDOW_SIZE);
+        }
+
+        // For now no landing procedure. We could do this based on the gain estimate (when it is too low):
+        /*
+        if (ind_hist >= COV_WINDOW_SIZE && fabs(cov_div) > of_landing_ctrl.cov_limit) {
+          // land by setting 90% nominal thrust:
+          landing = 1;
+          thrust = 0.90 * nominal_throttle;
+        }
+        */
+        stabilization_cmd[COMMAND_THRUST] = thrust;
+        of_landing_ctrl.sum_err += err;
+
       }
     } else {
       // land with 90% nominal thrust:
