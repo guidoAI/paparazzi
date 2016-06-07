@@ -39,7 +39,7 @@
 #define COV_WINDOW_SIZE 60
 
 // maximum number of samples to learn from for SSL:
-#define MAX_SAMPLES_LEARNING 2500
+#define MAX_SAMPLES_LEARNING 25000
 
 #include "std.h"
 
@@ -64,7 +64,8 @@ struct OpticalFlowLanding {
   float dgain_adaptive;         ///< D-gain for adaptive gain control
   int COV_METHOD;               ///< method to calculate the covariance: between thrust and div (0) or div and div past (1)
   int delay_steps;              ///< number of delay steps for div past
-  volatile bool learn_gains;    ///< set to true if the robot needs to learn a mapping from texton distributions to the p-gain
+  // TODO: volatile bool?
+  volatile bool learn_gains;             ///< set to true if the robot needs to learn a mapping from texton distributions to the p-gain
 };
 
 
@@ -79,6 +80,7 @@ unsigned long ind_hist;
 float *text_dists[MAX_SAMPLES_LEARNING];
 float sonar[MAX_SAMPLES_LEARNING];
 float gains[MAX_SAMPLES_LEARNING];
+float cov_divs_log[MAX_SAMPLES_LEARNING];
 float *weights;
 
 // Without optitrack set to: GUIDANCE_H_MODE_ATTITUDE
@@ -104,6 +106,7 @@ void load_texton_distribution(void);
 void fit_linear_model(float* targets, float** samples, uint8_t D, uint16_t count, float* parameters, float* fit_error);
 void learn_from_file(void);
 float predict_gain(float* distribution);
+void save_weights(void);
 
 
 #endif /* OPTICAL_FLOW_LANDING_H_ */

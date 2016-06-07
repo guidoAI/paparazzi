@@ -88,6 +88,7 @@ static void send_divergence(struct transport_tx *trans, struct link_device *dev)
 float* last_texton_distribution; // used to check if a new texton distribution has been received
 #define TEXTON_DISTRIBUTION_PATH /data/video/
 static FILE *distribution_logger = NULL;
+static FILE *weights_file = NULL;
 unsigned int n_read_samples;
 #include "math/pprz_algebra_float.h"
 #include "math/pprz_matrix_decomp_float.h"
@@ -206,7 +207,12 @@ void vertical_ctrl_module_init(void)
   {
     last_texton_distribution[i] = 0.0f;
   }
-  weights = (float *)calloc(n_textons,sizeof(float));
+  weights = (float *)calloc(n_textons+1,sizeof(float));
+  for(i = 0; i <= n_textons; i++)
+  {
+    weights[i] = 0.0f;
+  }
+  
 
   // Subscribe to the altitude above ground level ABI messages
   AbiBindMsgAGL(OPTICAL_FLOW_LANDING_AGL_ID, &agl_ev, vertical_ctrl_agl_cb);
@@ -279,6 +285,7 @@ void vertical_ctrl_module_run(bool in_flight)
 
   if (!in_flight) {
 
+    // only learn if not flying - due to use of resources:
     if(of_landing_ctrl.learn_gains) {
       // learn the weights from the file filled with training examples:
       learn_from_file();
@@ -289,7 +296,13 @@ void vertical_ctrl_module_run(bool in_flight)
     // TODO: remove, just for testing:
     // of_landing_ctrl.agl = (float) gps.lla_pos.alt / 1000.0f;
     // printf("Sonar height = %f\n", of_landing_ctrl.agl);
-    save_texton_distribution();
+    if(weights[n_textons] == 0.0f) {
+      save_texton_distribution();
+    }
+    else
+    {
+      printf("Predicted gain = %f\n", predict_gain(texton_distribution));
+    }
 
     // When not flying and in mode module:
     // Reset integrators
@@ -690,7 +703,10 @@ void load_texton_distribution(void)
     {
       read_result = fscanf(distribution_logger, "%f ", &sonar[n_read_samples]);
 			if(read_result == EOF) break;
+      if(i % 100) printf("SONAR: %f\n", sonar[n_read_samples]);
       read_result = fscanf(distribution_logger, "%f ", &gains[n_read_samples]);
+			if(read_result == EOF) break;
+      read_result = fscanf(distribution_logger, "%f ", &cov_divs_log[n_read_samples]);
 			if(read_result == EOF) break;
 
       text_dists[n_read_samples] = (float*) calloc(n_textons,sizeof(float));
@@ -706,12 +722,7 @@ void load_texton_distribution(void)
     }
 		fclose(distribution_logger);
 
-    /*
-    // free the variables:
-    for(i = 0; i < n_read_samples; i++)
-    {
-      free(text_dists[i]);
-    }*/
+    printf("Learned samples = %d\n", n_read_samples);
   }
 }
 
@@ -724,7 +735,13 @@ void learn_from_file(void)
   load_texton_distribution();
 
   // then learn from it:
-  fit_linear_model(gains, text_dists, n_textons, n_read_samples, weights, &fit_error);
+  // TODO: uncomment & comment to learn gains instead of sonar:
+  // fit_linear_model(gains, text_dists, n_textons, n_read_samples, weights, &fit_error);
+  fit_linear_model(sonar, text_dists, n_textons, n_read_samples, weights, &fit_error);
+
+  // save the weights to a file:
+  save_weights();
+
   printf("Learned! Fit error = %f\n", fit_error);
 
   // free learning distributions:
@@ -849,3 +866,27 @@ float predict_gain(float* distribution)
   sum += weights[n_textons];
   return sum;
 }
+
+void save_weights(void) {
+
+  // save the weights to a file:
+  int i;
+  char filename[512];
+	sprintf(filename, "%s/Weights_%05d.dat", STRINGIFY(TEXTON_DISTRIBUTION_PATH), 0);
+  weights_file = fopen(filename, "w");
+	if(weights_file == NULL)
+	{
+    perror(filename);
+	}
+	else
+	{
+    // save the information in a single row:
+    for(i = 0; i <= n_textons; i++)
+    {
+      fprintf(weights_file, "%f ", weights[i]);
+    }
+    fclose(weights_file);
+  }
+}
+
+

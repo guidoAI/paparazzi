@@ -217,7 +217,7 @@ void calc_fast9_lukas_kanade(struct opticflow_t *opticflow, struct opticflow_sta
   // Update FPS for information
   result->fps = 1 / (timeval_diff(&opticflow->prev_timestamp, &img->ts) / 1000.);
   memcpy(&opticflow->prev_timestamp, &img->ts, sizeof(struct timeval));
-  printf("FPS = %f\n", result->fps);
+  // printf("FPS = %f\n", result->fps);
 
   // Convert image to grayscale
   image_to_grayscale(img, &opticflow->img_gray);
