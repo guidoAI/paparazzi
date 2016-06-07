@@ -38,7 +38,7 @@
         <dl_setting var="of_landing_ctrl.igain_adaptive" min="0" step="0.01" max="1.0" module="ctrl/optical_flow_landing" shortname="igain_adaptive"/>
         <dl_setting var="of_landing_ctrl.dgain_adaptive" min="0" step="0.01" max="5.0" module="ctrl/optical_flow_landing" shortname="dgain_adaptive"/>
         <dl_setting var="of_landing_ctrl.learn_gains" min="0" step="1" max="1" shortname="learn_gains" module="ctrl/optical_flow_landing"> <!-- TODO: handler actually used? handler="learn_gains" -->
-          <strip_button name="Learn gains from file" icon="digital-camera.png" value="1"/> <!-- group="cv" -->
+          <strip_button name="Learn gains from file" icon="learn.png" value="1"/> <!-- group="cv" -->
         </dl_setting>
       </dl_settings>
     </dl_settings>
