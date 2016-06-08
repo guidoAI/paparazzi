@@ -178,11 +178,11 @@ struct image_t *texton_func(struct image_t *img)
       DistributionExtraction(frame, img->w, img->h);
     }
 
-    /*printf("Distribution = [");
+    printf("Distribution = [");
     for (i = 0; i < n_textons-1; i++) {
       printf("%f, ", texton_distribution[i]);
     }
-    printf("%f]\n", texton_distribution[n_textons-1]);*/
+    printf("%f]\n", texton_distribution[n_textons-1]);
 
     /*
     float sum = 0;    

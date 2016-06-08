@@ -285,14 +285,17 @@ void vertical_ctrl_module_run(bool in_flight)
 
   if (!in_flight) {
 
-    // only learn if not flying - due to use of resources:
+    
+    // SSL: only learn if not flying - due to use of resources:
     if(of_landing_ctrl.learn_gains) {
+      printf("STARTING LEARNING!\n");
       // learn the weights from the file filled with training examples:
       learn_from_file();
       // reset the learn_gains variable to false:
       of_landing_ctrl.learn_gains = false;
     }
 
+    /*
     // TODO: remove, just for testing:
     // of_landing_ctrl.agl = (float) gps.lla_pos.alt / 1000.0f;
     // printf("Sonar height = %f\n", of_landing_ctrl.agl);
@@ -303,6 +306,7 @@ void vertical_ctrl_module_run(bool in_flight)
     {
       printf("Predicted gain = %f\n", predict_gain(texton_distribution));
     }
+    */
 
     // When not flying and in mode module:
     // Reset integrators
@@ -493,14 +497,18 @@ void vertical_ctrl_module_run(bool in_flight)
         
         // adapt the p-gain with a low-pass filter to the gain predicted by image appearance:
         // TODO: lp_factor is now the same as used for the divergence. This may not be appropriate
-        of_landing_ctrl.pgain = of_landing_ctrl.lp_factor * of_landing_ctrl.pgain + (1.0f - of_landing_ctrl.lp_factor) * STABLE_GAIN_FACTOR * predict_gain(texton_distribution);
+        pstate = predict_gain(texton_distribution);
+        of_landing_ctrl.pgain = of_landing_ctrl.lp_factor * of_landing_ctrl.pgain + (1.0f - of_landing_ctrl.lp_factor) * STABLE_GAIN_FACTOR * pstate;
+        pused = of_landing_ctrl.pgain;
+
+        // make sure pused does not become too small, nor grows too fast:
+        if (of_landing_ctrl.pgain < MINIMUM_GAIN) { of_landing_ctrl.pgain = MINIMUM_GAIN; }
+        
+        printf("of_landing_ctrl.pgain = %f\n", of_landing_ctrl.pgain);
 
         // use the divergence for control:
         float err = of_landing_ctrl.divergence_setpoint - divergence;
         int32_t thrust = nominal_throttle + of_landing_ctrl.pgain * err * MAX_PPRZ + of_landing_ctrl.igain * of_landing_ctrl.sum_err * MAX_PPRZ;
-        // make sure the p gain is logged:
-        pstate = of_landing_ctrl.pgain;
-        pused = pstate;
         // bound thrust:
         Bound(thrust, 0.8 * nominal_throttle, 0.75 * MAX_PPRZ);
 
@@ -731,14 +739,17 @@ void learn_from_file(void)
   int i;
   float fit_error;
 
+  printf("LOAD FILE\n");
   // first load the texton distributions:
   load_texton_distribution();
 
   // then learn from it:
   // TODO: uncomment & comment to learn gains instead of sonar:
-  // fit_linear_model(gains, text_dists, n_textons, n_read_samples, weights, &fit_error);
-  fit_linear_model(sonar, text_dists, n_textons, n_read_samples, weights, &fit_error);
+  printf("FIT MODEL\n");
+  fit_linear_model(gains, text_dists, n_textons, n_read_samples, weights, &fit_error);
+  // fit_linear_model(sonar, text_dists, n_textons, n_read_samples, weights, &fit_error);
 
+  printf("SAVE WEIGHTS\n");
   // save the weights to a file:
   save_weights();
 
