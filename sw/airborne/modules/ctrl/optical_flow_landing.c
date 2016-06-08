@@ -435,7 +435,10 @@ void vertical_ctrl_module_run(bool in_flight)
         stabilization_cmd[COMMAND_THRUST] = thrust;
         of_landing_ctrl.sum_err += err;
       } else if(of_landing_ctrl.CONTROL_METHOD == 1) {
+
+        // **********************
         // ADAPTIVE GAIN CONTROL:
+        // **********************
 
         // adapt the gains according to the error in covariance:
         float error_cov = of_landing_ctrl.cov_set_point - cov_div;
@@ -443,8 +446,8 @@ void vertical_ctrl_module_run(bool in_flight)
         // limit the error_cov, which could else become very large:
         if (error_cov > fabs(of_landing_ctrl.cov_set_point)) { error_cov = fabs(of_landing_ctrl.cov_set_point); }
 
-        // if close enough, store inputs: (this works well!)
-        if(fabs(error_cov) < 0.005) save_texton_distribution();
+        // if close enough, store inputs:
+        if(ind_hist >= COV_WINDOW_SIZE && fabs(error_cov) < 0.005) save_texton_distribution();
 
         // adapt the gain:
         pstate -= (of_landing_ctrl.igain_adaptive * pstate) * error_cov;

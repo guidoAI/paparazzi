@@ -1,0 +1,54 @@
+MAX_SAMPLES = 25000;
+start_sample = 1;
+
+weights = true;
+if(weights)
+    w = load('Weights_00000.dat');
+end
+A = load('Training_set_00000.dat');
+
+% inds = find(A(:,3) ~= -0.025);
+% A = A(inds, :);
+
+A = A(start_sample:min([MAX_SAMPLES, size(A,1)]), :);
+b = A(:,2);
+f = A(:,4:end);
+AA = [f, ones(size(A,1),1)];
+x = AA \ b;
+y = AA * x;
+if(weights)
+    Z = AA * w';
+end
+figure(); plot(y); hold on; plot(b);
+if(weights)
+    plot(Z);
+end
+title('Height')
+legend({'height estimate', 'height sonar', 'onboard height estimate'});
+
+figure(); plot(smooth(y, 20)); hold on; plot(b);
+if(weights)
+    plot(smooth(Z, 20));
+end
+title('Smoothed Height')
+legend({'height estimate', 'height sonar', 'onboard height estimate'});
+
+figure();
+bar(x, 'FaceColor', [1 0 0]); hold on; bar(w);
+
+figure();
+plot(A(:,1)); hold on; plot(A(:,2));
+legend({'Height', 'Gain'});
+
+b = A(:,1);
+f = A(:,4:end);
+AA = [f, ones(size(A,1),1)];
+x = AA \ b;
+y = AA * x;
+figure(); plot(smooth(y, 20)); hold on; plot(b);
+title('Sonar height')
+legend({'estimate', 'sonar'});
+
+figure();
+plot(A(:, 3));
+title('Cov div');
