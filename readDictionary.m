@@ -4,6 +4,7 @@
 % load Dictionary
 % YUV_Dict = load('GoodDictionaryCyberZooPinkMat.dat');
 YUV_Dict = load('Dictionary_00000.dat');
+% YUV_Dict = load('Dictionary_big_flowers.dat');
 
 % params
 n_textons = 20; % number of visual words

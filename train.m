@@ -1,3 +1,5 @@
+function train()
+
 MAX_SAMPLES = 25000;
 start_sample = 1;
 
@@ -52,3 +54,26 @@ legend({'estimate', 'sonar'});
 figure();
 plot(A(:, 3));
 title('Cov div');
+
+entr = getEntropies(f);
+p_peak = zeros(1, size(f,2));
+p_peak(1) = 1;
+min_entr = getEntropy(p_peak);
+p_uniform = ones(1, size(f,2)) ./ size(f,2);
+max_entr = getEntropy(p_uniform);
+figure();
+histogram(entr, 30);
+title(['Entropies: min = ' num2str(min_entr) ', max = ' num2str(max_entr)]);
+
+function entropies = getEntropies(f)
+n_el = size(f,1);
+entropies = zeros(n_el,1);
+for el = 1:n_el
+   entropies(el) = getEntropy(f(el, :));
+end
+
+
+
+
+
+

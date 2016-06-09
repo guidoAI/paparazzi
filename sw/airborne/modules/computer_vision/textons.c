@@ -49,6 +49,11 @@ float *texton_distribution;
 #endif
 PRINT_CONFIG_VAR(TEXTONS_LOAD_DICTIONARY)
 
+#ifndef TEXTONS_REINITIALIZE_DICTIONARY
+#define TEXTONS_REINITIALIZE_DICTIONARY 0
+#endif
+PRINT_CONFIG_VAR(TEXTONS_REINITIALIZE_DICTIONARY)
+
 #ifndef TEXTONS_ALPHA
 #define TEXTONS_ALPHA 0
 #endif
@@ -96,6 +101,7 @@ PRINT_CONFIG_VAR(TEXTONS_DICTIONARY_NUMBER)
 
 
 uint8_t load_dictionary = TEXTONS_LOAD_DICTIONARY;
+uint8_t reinitialize_dictionary = TEXTONS_REINITIALIZE_DICTIONARY;
 uint8_t alpha_uint = TEXTONS_ALPHA;
 uint8_t n_textons = TEXTONS_N_TEXTONS;
 uint8_t patch_size = TEXTONS_PATCH_SIZE;
@@ -136,6 +142,18 @@ struct image_t *texton_func(struct image_t *img)
   // if patch size odd, correct:
   if (patch_size % 2 == 1) { patch_size++; }
 
+  // check whether we have to reinitialize the dictionary:
+  if(reinitialize_dictionary) {
+    // set all vars to trigger a reinitialization and learning phase of the dictionary:
+    dictionary_ready = 0;
+    dictionary_initialized = 0;
+    load_dictionary = 0;  
+    learned_samples = 0;
+    alpha_uint = 10;
+    // reset reinitialize_dictionary
+    reinitialize_dictionary = 0;
+  }
+
   // if dictionary not initialized:
   if (dictionary_ready == 0) {
     if (load_dictionary == 0) {
@@ -164,19 +182,23 @@ struct image_t *texton_func(struct image_t *img)
 
     if(alpha_uint > 0){
 
+      // printf("Learning, frame time = %d\n", img->ts.tv_sec * 1000 + img->ts.tv_usec / 1000);
+
       DictionaryTrainingYUV(frame, img->w, img->h);
       
       if (learned_samples >= n_learning_samples) {
         // Save the dictionary:
         save_texton_dictionary();
         // reset learned_samples:
-        learned_samples++;
+        learned_samples = 0;
       }
     }
     else {    
       // Extract distributions
       DistributionExtraction(frame, img->w, img->h);
     }
+
+    printf("Entropy texton distribution = %f\n", get_entropy(texton_distribution, n_textons));
 
     /*printf("Distribution = [");
     for (i = 0; i < n_textons-1; i++) {
@@ -252,7 +274,7 @@ void DictionaryTrainingYUV(uint8_t *frame, uint16_t width, uint16_t height)
     // ********
     // LEARNING
     // ********
-    printf("Learning!");
+    printf("Learning!\n");
     alpha = ((float) alpha_uint) / 255.0;
 
     float *texton_distances, * **patch;
@@ -266,9 +288,8 @@ void DictionaryTrainingYUV(uint8_t *frame, uint16_t width, uint16_t height)
       }
     }
 
-    // make sure that texton_distribution is protected while we are changing it:
-    // pthread_mutex_lock(&textons_mutex);
-
+    // make sure that the other threads have access to the normalized distribution
+    // and not the one we are going to fill / change.
     if(TD_ID == 0) {
       // we are going to fill TD_0:
       TD = TD_0;
@@ -355,9 +376,6 @@ void DictionaryTrainingYUV(uint8_t *frame, uint16_t width, uint16_t height)
     for (i = 0; i < n_textons; i++) {
       TD[i] = TD[i] / (float) n_samples_image;
     }
-    
-    // re-allow access to texton_distribution:
-    // pthread_mutex_unlock(&textons_mutex);
 
     // Free the allocated memory:
     for (i = 0; i < patch_size; i++) {
@@ -409,9 +427,6 @@ void DistributionExtraction(uint8_t *frame, uint16_t width, uint16_t height)
       patch[i][j] = (float *)calloc(2, sizeof(float));
     }
   }
-
-  // lock access to the thread, because texton_distribution will be changed
-  // pthread_mutex_lock(&textons_mutex);
 
   if(TD_ID == 0) {
     // we are going to fill TD_0:
@@ -507,9 +522,6 @@ void DistributionExtraction(uint8_t *frame, uint16_t width, uint16_t height)
   for (i = 0; i < n_textons; i++) {
     TD[i] = TD[i] / (float) n_extracted_textons;
   }
-
-  // unlock the thread to re-allow access to texton_distribution:
-  // pthread_mutex_lock(&textons_mutex);
 
   // free memory:
   for (i = 0; i < patch_size; i++) {
@@ -624,3 +636,19 @@ void textons_stop(void)
   free(dictionary);
 }
 
+/**
+ * Function that calculates a base-2 Shannon entropy for a probability distribution.
+ * @param[in] p_dist The probability distribution array
+ * @param[in] D Size of the array
+ */
+float get_entropy(float* p_dist, int D) {
+  float entropy = 0.0f;
+  int i;
+  for(i = 0; i < D; i++) {
+    if(p_dist[i] > 0) {
+      entropy -= p_dist[i] * log2(p_dist[i]);
+    }
+  }
+
+  return entropy;
+}

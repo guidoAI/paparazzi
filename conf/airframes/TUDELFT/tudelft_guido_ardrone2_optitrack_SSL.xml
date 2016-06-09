@@ -36,6 +36,10 @@
     </load>
     <load name="cv_opticflow.xml"/>
     <load name="cv_textons.xml"/>
+    <!-- <module name="video_rtp_stream">
+      <define name="VIEWVIDEO_QUALITY_FACTOR" value="80"/>
+      <define name="VIEWVIDEO_DOWNSIZE_FACTOR" value="1"/>
+    </module> -->
     <load name="optical_flow_landing.xml"/>
   </modules>
 

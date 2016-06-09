@@ -5,6 +5,7 @@
     <description>Represent the appearance (texture, color) of an image by means of a texton histogram.</description>
     <section name="TEXTONS" prefix="TEXTONS_">
       <define name="LOAD_DICTIONARY" value="YES" description="Whether a dictionary is loaded (YES) or learned (NO)."/>
+      <define name="REINITIALIZE_DICTIONARY" value="NO" description="If set to YES, the dictionary will be reinitialized with the current image."/>
       <define name="N_TEXTONS" value="20" description="The number of textons (words) in the dictionary."/>
       <define name="PATCH_SIZE" value="6" description="Size of the image patches extracted from the image - even numbers."/>
       <define name="FULL_SAMPLING" value="NO" description="If YES, the entire image is covered with samples, if NO sub-sampling is used (faster)."/>
@@ -22,6 +23,7 @@
     <dl_settings>
       <dl_settings NAME="Textons">
         <dl_setting var="load_dictionary" min="0" step="1" max="1" module="computer_vision/textons" shortname="load dict." values="NO|YES" param="TEXTONS_LOAD_DICTIONARY"/>
+        <dl_setting var="reinitialize_dictionary" min="0" step="1" max="1" module="computer_vision/textons" shortname="reinit dict." values="NO|YES" param="TEXTONS_REINITIALIZE_DICTIONARY"/>
         <dl_setting var="n_textons" min="1" step="1" max="255" shortname="n_textons" param="TEXTONS_N_TEXTONS"/>
         <dl_setting var="patch_size" min="2" step="2" max="40" shortname="p_size" param="TEXTONS_PATCH_SIZE" />
         <dl_setting var="FULL_SAMPLING"  min="0" step="1" max="1" shortname="full_sam" values="NO|YES" param="TEXTONS_FULL_SAMPLING" />
