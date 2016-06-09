@@ -124,7 +124,7 @@ PRINT_CONFIG_VAR(OPTICAL_FLOW_LANDING_OPTICAL_FLOW_ID)
 #endif
 
 #ifndef OPTICAL_FLOW_LANDING_CONTROL_METHOD
-#define OPTICAL_FLOW_LANDING_CONTROL_METHOD 0
+#define OPTICAL_FLOW_LANDING_CONTROL_METHOD 1
 #endif
 
 #ifndef OPTICAL_FLOW_LANDING_COV_METHOD
@@ -156,13 +156,13 @@ void vertical_ctrl_module_init(void)
   of_landing_ctrl.vel = 0.0f;
   of_landing_ctrl.divergence_setpoint = 0.0f;
   of_landing_ctrl.cov_set_point = -0.025f;
-  of_landing_ctrl.cov_limit = 0.0010f; //1.0f; // for cov(uz,div)
+  of_landing_ctrl.cov_limit = 1.0f; // 0.0010f; // for cov(uz,div)
   of_landing_ctrl.lp_factor = 0.95f;
   of_landing_ctrl.pgain = OPTICAL_FLOW_LANDING_PGAIN;
   of_landing_ctrl.igain = OPTICAL_FLOW_LANDING_IGAIN;
   of_landing_ctrl.dgain = OPTICAL_FLOW_LANDING_DGAIN;
   of_landing_ctrl.sum_err = 0.0f;
-  of_landing_ctrl.nominal_thrust = 0.710f; //0.666f; // 0.640 with small battery
+  of_landing_ctrl.nominal_thrust = 0.666f; // 0.710 with large battery // 0.640 with small battery
   of_landing_ctrl.VISION_METHOD = OPTICAL_FLOW_LANDING_VISION_METHOD;
   of_landing_ctrl.CONTROL_METHOD = OPTICAL_FLOW_LANDING_CONTROL_METHOD;
   of_landing_ctrl.COV_METHOD = OPTICAL_FLOW_LANDING_COV_METHOD;

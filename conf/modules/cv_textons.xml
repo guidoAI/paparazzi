@@ -12,7 +12,7 @@
       <define name="DICTIONARY_NUMBER" value="0" description="Number of the dictionary (so that different environments can each have their specific dictionary)."/>
       <define name="ALPHA" value="10" description="Learning rate when creating the dictionary: 0 = no learning, 255 = the texton becomes equal to the new patch."/>
       <define name="N_SAMPLES_IMAGE" value="50" description="Number of samples extracted form the image when not doing full sampling."/>
-      <define name="N_LEARNING_SAMPLES" value="10000" description="Number of samples used for learning the dictionary."/>
+      <define name="N_LEARNING_SAMPLES" value="5000" description="Number of samples used for learning the dictionary."/>
       <define name="BORDER_WIDTH" value="0" description="Width of the image border from which no samples are taken."/>
       <define name="BORDER_HEIGHT" value="0" description="Height of the border from which no samples are taken."/>
     </section>
