@@ -457,6 +457,11 @@ void DistributionExtraction(uint8_t *frame, uint16_t width, uint16_t height)
       y = border_height + rand() % max_addition_y;
     }
 
+    // reset texton_distances
+    for (texton = 0; texton < n_textons; texton++) {
+      texton_distances[texton] = 0;
+    }
+
     // extract sample
     for (i = 0; i < patch_size; i++) {
       buf = frame + (stride * (i + y)) + 2 * x;
