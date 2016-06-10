@@ -55,7 +55,7 @@ float previous_cov_err;
 // SSL: we will learn unstable gains, but need stable gains for landing
 // this factor represents the trade-off between stability and performance
 // 1.0 = unstable, 0.0 = no performance
-#define STABLE_GAIN_FACTOR 0.7
+#define STABLE_GAIN_FACTOR 0.5
 
 // used for automated landing:
 #include "firmwares/rotorcraft/autopilot.h"
@@ -171,6 +171,7 @@ void vertical_ctrl_module_init(void)
   of_landing_ctrl.igain_adaptive = 0.25;
   of_landing_ctrl.dgain_adaptive = 0.00;
   of_landing_ctrl.learn_gains = false;
+  of_landing_ctrl.stable_gain_factor = STABLE_GAIN_FACTOR;
 
   struct timespec spec;
   clock_gettime(CLOCK_REALTIME, &spec);
@@ -501,7 +502,7 @@ void vertical_ctrl_module_run(bool in_flight)
         // adapt the p-gain with a low-pass filter to the gain predicted by image appearance:
         // TODO: lp_factor is now the same as used for the divergence. This may not be appropriate
         pstate = predict_gain(texton_distribution);
-        of_landing_ctrl.pgain = of_landing_ctrl.lp_factor * of_landing_ctrl.pgain + (1.0f - of_landing_ctrl.lp_factor) * STABLE_GAIN_FACTOR * pstate;
+        of_landing_ctrl.pgain = of_landing_ctrl.lp_factor * of_landing_ctrl.pgain + (1.0f - of_landing_ctrl.lp_factor) * of_landing_ctrl.stable_gain_factor * pstate;
         pused = of_landing_ctrl.pgain;
 
         // make sure pused does not become too small, nor grows too fast:

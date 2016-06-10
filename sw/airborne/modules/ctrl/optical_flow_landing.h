@@ -65,7 +65,8 @@ struct OpticalFlowLanding {
   int COV_METHOD;               ///< method to calculate the covariance: between thrust and div (0) or div and div past (1)
   int delay_steps;              ///< number of delay steps for div past
   // TODO: volatile bool?
-  volatile bool learn_gains;             ///< set to true if the robot needs to learn a mapping from texton distributions to the p-gain
+  volatile bool learn_gains;    ///< set to true if the robot needs to learn a mapping from texton distributions to the p-gain
+  float stable_gain_factor;     ///< this factor is multiplied with the gain estimate from SSL, in interval [0,1]. If 1, the system will be unstable, if 0, there is no control (performance).
 };
 
 
@@ -85,7 +86,7 @@ float *weights;
 
 // Without optitrack set to: GUIDANCE_H_MODE_ATTITUDE
 // With optitrack set to: GUIDANCE_H_MODE_HOVER
-#define GUIDANCE_H_MODE_MODULE_SETTING GUIDANCE_H_MODE_HOVER
+#define GUIDANCE_H_MODE_MODULE_SETTING GUIDANCE_H_MODE_NAV
 
 // Own guidance_v
 #define GUIDANCE_V_MODE_MODULE_SETTING GUIDANCE_V_MODE_MODULE
