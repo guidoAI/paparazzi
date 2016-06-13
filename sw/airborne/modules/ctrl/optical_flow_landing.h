@@ -67,6 +67,7 @@ struct OpticalFlowLanding {
   // TODO: volatile bool?
   volatile bool learn_gains;    ///< set to true if the robot needs to learn a mapping from texton distributions to the p-gain
   float stable_gain_factor;     ///< this factor is multiplied with the gain estimate from SSL, in interval [0,1]. If 1, the system will be unstable, if 0, there is no control (performance).
+  bool load_weights;
 };
 
 
@@ -108,6 +109,7 @@ void fit_linear_model(float* targets, float** samples, uint8_t D, uint16_t count
 void learn_from_file(void);
 float predict_gain(float* distribution);
 void save_weights(void);
+void load_weights(void);
 
 
 #endif /* OPTICAL_FLOW_LANDING_H_ */

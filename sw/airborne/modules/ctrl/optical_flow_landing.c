@@ -172,7 +172,8 @@ void vertical_ctrl_module_init(void)
   of_landing_ctrl.dgain_adaptive = 0.00;
   of_landing_ctrl.learn_gains = false;
   of_landing_ctrl.stable_gain_factor = STABLE_GAIN_FACTOR;
-
+  of_landing_ctrl.load_weights = true;
+  
   struct timespec spec;
   clock_gettime(CLOCK_REALTIME, &spec);
   previous_time = spec.tv_nsec / 1.0E6;
@@ -256,7 +257,6 @@ void reset_all_vars()
   {
     last_texton_distribution[i] = 0.0f;
   }
-
 }
 
 /**
@@ -294,6 +294,10 @@ void vertical_ctrl_module_run(bool in_flight)
       learn_from_file();
       // reset the learn_gains variable to false:
       of_landing_ctrl.learn_gains = false;
+    }
+    if(of_landing_ctrl.load_weights) {
+      load_weights();
+      of_landing_ctrl.load_weights = false;
     }
 
     /*
@@ -883,7 +887,6 @@ float predict_gain(float* distribution)
 }
 
 void save_weights(void) {
-
   // save the weights to a file:
   int i;
   char filename[512];
@@ -904,4 +907,23 @@ void save_weights(void) {
   }
 }
 
-
+void load_weights(void) {
+  int i, read_result;
+  char filename[512];
+  sprintf(filename, "%s/Weights_%05d.dat", STRINGIFY(TEXTON_DISTRIBUTION_PATH), 0);
+  weights_file = fopen(filename, "w");
+	if(weights_file == NULL)
+	{
+    perror(filename);
+	}
+	else
+	{
+    // load the weights, stored in a single row:
+    for(i = 0; i <= n_textons; i++)
+    {
+      read_result = fscanf(distribution_logger, "%f ", &weights[i]);
+			if(read_result == EOF) break;
+    }
+    fclose(weights_file); 
+  }
+}

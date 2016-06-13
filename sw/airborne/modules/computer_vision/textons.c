@@ -132,7 +132,7 @@ struct image_t *texton_func(struct image_t *img);
 struct image_t *texton_func(struct image_t *img)
 {
 
-  int i;
+  // int i;
 
   if (img->buf_size == 0) { return img; }
 
