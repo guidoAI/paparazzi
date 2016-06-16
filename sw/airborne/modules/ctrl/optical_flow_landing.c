@@ -173,6 +173,8 @@ void vertical_ctrl_module_init(void)
   of_landing_ctrl.learn_gains = false;
   of_landing_ctrl.stable_gain_factor = STABLE_GAIN_FACTOR;
   of_landing_ctrl.load_weights = true;
+  of_landing_ctrl.close_to_edge = 0.005;
+  of_landing_ctrl.use_bias = false;
   
   struct timespec spec;
   clock_gettime(CLOCK_REALTIME, &spec);
@@ -452,7 +454,7 @@ void vertical_ctrl_module_run(bool in_flight)
         if (error_cov > fabs(of_landing_ctrl.cov_set_point)) { error_cov = fabs(of_landing_ctrl.cov_set_point); }
 
         // if close enough, store inputs:
-        if(ind_hist >= COV_WINDOW_SIZE && fabs(error_cov) < 0.005) save_texton_distribution();
+        if(ind_hist >= COV_WINDOW_SIZE && fabs(error_cov) < of_landing_ctrl.close_to_edge) save_texton_distribution();
 
         // adapt the gain:
         pstate -= (of_landing_ctrl.igain_adaptive * pstate) * error_cov;
@@ -807,7 +809,12 @@ void fit_linear_model(float* targets, float** samples, uint8_t D, uint16_t count
      for(d = 0; d < D; d++) {
       AA[sam][d] = samples[sam][d];
     }
-    AA[sam][D] = 1.0f;
+    if(of_landing_ctrl.use_bias) {
+      AA[sam][D] = 1.0f;
+    }
+    else {
+      AA[sam][D] = 0.0f;      
+    }
     targets_all[sam][0] = targets[sam];
   }
 
@@ -882,7 +889,9 @@ float predict_gain(float* distribution)
   {
     sum += weights[i] * distribution[i];
   }   
-  sum += weights[n_textons];
+  if(of_landing_ctrl.use_bias) {
+    sum += weights[n_textons];
+  }
   return sum;
 }
 

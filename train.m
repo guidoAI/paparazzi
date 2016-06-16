@@ -3,6 +3,7 @@ function train()
 MAX_SAMPLES = 25000;
 start_sample = 1;
 
+BIAS = true;
 weights = true;
 if(weights)
     w = load('Weights_00000.dat');
@@ -15,9 +16,14 @@ A = load('Training_set_00000.dat');
 A = A(start_sample:min([MAX_SAMPLES, size(A,1)]), :);
 b = A(:,2);
 f = A(:,4:end);
-AA = [f, ones(size(A,1),1)];
+if(BIAS)
+    AA = [f, ones(size(A,1),1)];
+else
+    AA = f;
+end
 x = AA \ b;
 y = AA * x;
+fprintf('Abs error = %f\n', mean(abs(y-b)));
 if(weights)
     Z = AA * w';
 end
@@ -36,7 +42,7 @@ title('Smoothed Height')
 legend({'height estimate', 'height sonar', 'onboard height estimate'});
 
 figure();
-bar(x, 'FaceColor', [1 0 0]); hold on; bar(w);
+bar(x, 'FaceColor', [1 0 0]); % hold on; bar(w);
 
 figure();
 plot(A(:,1)); hold on; plot(A(:,2));
@@ -44,7 +50,11 @@ legend({'Height', 'Gain'});
 
 b = A(:,1);
 f = A(:,4:end);
-AA = [f, ones(size(A,1),1)];
+if(BIAS)
+    AA = [f, ones(size(A,1),1)];
+else
+    AA = f;
+end
 x = AA \ b;
 y = AA * x;
 figure(); plot(smooth(y, 20)); hold on; plot(b);
