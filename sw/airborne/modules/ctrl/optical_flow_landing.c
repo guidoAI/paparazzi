@@ -175,6 +175,7 @@ void vertical_ctrl_module_init(void)
   of_landing_ctrl.load_weights = false;
   of_landing_ctrl.close_to_edge = 0.005;
   of_landing_ctrl.use_bias = false;
+  of_landing_ctrl.snapshot = false;
   
   struct timespec spec;
   clock_gettime(CLOCK_REALTIME, &spec);
@@ -455,7 +456,13 @@ void vertical_ctrl_module_run(bool in_flight)
         if (error_cov > fabs(of_landing_ctrl.cov_set_point)) { error_cov = fabs(of_landing_ctrl.cov_set_point); }
 
         // if close enough, store inputs:
-        if(ind_hist >= COV_WINDOW_SIZE && fabs(error_cov) < of_landing_ctrl.close_to_edge) save_texton_distribution();
+        if(ind_hist >= COV_WINDOW_SIZE && fabs(error_cov) < of_landing_ctrl.close_to_edge) {
+          if(of_landing_ctrl.snapshot) {
+            // TODO: watch out, if the texton distribution is the same as the previous one, it will not be saved - and indices of images and the training set will not coincide...
+            video_thread_take_shot(true);
+          }
+          save_texton_distribution();
+        }
 
         // adapt the gain:
         pstate -= (of_landing_ctrl.igain_adaptive * pstate) * error_cov;
@@ -675,11 +682,11 @@ void save_texton_distribution(void)
   }
  
   // don't save the texton distribution if it is the same as previous time step:
-  if(same)
+  /*if(same)
   {
     printf("Same\n");
     return;
-  }
+  }*/
 
   // If not the same, append the target values (heights, gains) and texton values to a .dat file:
   char filename[512];

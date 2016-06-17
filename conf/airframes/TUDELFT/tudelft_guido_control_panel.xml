@@ -93,7 +93,7 @@
         <arg flag="-d" constant="1"/>
       </program>
       <program name="NatNet">
-        <arg flag="-ac" constant="4"/>
+        <arg flag="-ac" constant="6"/>
         <arg flag="29"/>
       </program>
       <program name="Messages"/>

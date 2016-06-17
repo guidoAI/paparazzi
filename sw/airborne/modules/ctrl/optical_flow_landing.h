@@ -70,6 +70,7 @@ struct OpticalFlowLanding {
   bool load_weights;            ///< load the weights that were learned before
   float close_to_edge;          ///< if abs(cov_div - reference cov_div) < close_to_edge, then texton distributions and gains are stored for learning
   bool use_bias;                ///< if true, a bias 1.0f will be added to the feature vector (texton distribution) - this typically leads to very large weights
+  bool snapshot;                ///< if true, besides storing a texton distribution, an image will also be stored (when unstable)
 };
 
 
