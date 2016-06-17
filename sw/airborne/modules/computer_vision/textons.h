@@ -53,6 +53,7 @@ extern uint8_t FULL_SAMPLING;
 extern uint32_t border_width;
 extern uint32_t border_height;
 extern uint8_t dictionary_number;
+extern uint8_t execution_period;
 
 // status variables
 extern uint8_t dictionary_ready;

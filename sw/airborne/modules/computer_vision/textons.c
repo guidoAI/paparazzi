@@ -65,7 +65,7 @@ PRINT_CONFIG_VAR(TEXTONS_ALPHA)
 PRINT_CONFIG_VAR(TEXTONS_N_TEXTONS)
 
 #ifndef TEXTONS_N_SAMPLES
-#define TEXTONS_N_SAMPLES 100
+#define TEXTONS_N_SAMPLES 50
 #endif
 PRINT_CONFIG_VAR(TEXTONS_N_SAMPLES)
 
@@ -99,6 +99,11 @@ PRINT_CONFIG_VAR(TEXTONS_BORDER_HEIGHT)
 #endif
 PRINT_CONFIG_VAR(TEXTONS_DICTIONARY_NUMBER)
 
+#ifndef TEXTONS_EXECUTION_PERIOD
+#define TEXTONS_EXECUTION_PERIOD 5
+#endif
+PRINT_CONFIG_VAR(TEXTONS_EXECUTION_PERIOD)
+
 
 uint8_t load_dictionary = TEXTONS_LOAD_DICTIONARY;
 uint8_t reinitialize_dictionary = TEXTONS_REINITIALIZE_DICTIONARY;
@@ -111,10 +116,12 @@ uint8_t FULL_SAMPLING = TEXTONS_FULL_SAMPLING;
 uint32_t border_width = TEXTONS_BORDER_WIDTH;
 uint32_t border_height = TEXTONS_BORDER_HEIGHT;
 uint8_t dictionary_number = TEXTONS_DICTIONARY_NUMBER;
+uint8_t execution_period = TEXTONS_EXECUTION_PERIOD;
 
 // status variables
 uint8_t dictionary_ready = 0;
 float alpha = 0.0;
+uint8_t cycle = 0;
 
 // File pointer for saving the dictionary
 static FILE *dictionary_logger = NULL;
@@ -131,6 +138,9 @@ static FILE *dictionary_logger = NULL;
 struct image_t *texton_func(struct image_t *img);
 struct image_t *texton_func(struct image_t *img)
 {
+  // only execute the texton function once every execution_period times:
+  cycle = (cycle+1) % execution_period;
+  if(cycle > 0) return img;
 
   // int i;
 

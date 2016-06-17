@@ -15,6 +15,7 @@
       <define name="N_LEARNING_SAMPLES" value="5000" description="Number of samples used for learning the dictionary."/>
       <define name="BORDER_WIDTH" value="0" description="Width of the image border from which no samples are taken."/>
       <define name="BORDER_HEIGHT" value="0" description="Height of the border from which no samples are taken."/>
+      <define name="EXECUTION_PERIOD" value="5" description="Only once every execution period times when the texton function is called, it is actually executed."/>
     </section>
 
   </doc>
@@ -33,6 +34,7 @@
         <dl_setting var="alpha_uint" min="0" step="1" max="255" shortname="alpha" param="TEXTONS_ALPHA"/>
         <dl_setting var="border_width"  min="0" step="1" max="200" shortname="b_w" param="TEXTONS_BORDER_WIDTH"/>
         <dl_setting var="border_height"  min="0" step="1" max="200" shortname="b_h" param="TEXTONS_BORDER_HEIGHT"/>
+        <dl_setting var="execution_period"  min="1" step="1" max="100" shortname="period" param="TEXTONS_EXECUTION_PERIOD"/>
       </dl_settings>
     </dl_settings>
   </settings>
@@ -41,6 +43,7 @@
     <file name="textons.h"/>
   </header>
   <init fun="textons_init()"/>
+  <!--<periodic fun="texton_func()" freq="0.1"/> --> <!--  autorun="TRUE" -->
 
   <makefile>
     <file name="textons.c"/>

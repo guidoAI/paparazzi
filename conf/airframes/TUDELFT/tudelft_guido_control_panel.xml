@@ -88,12 +88,12 @@
         <arg flag="-speech"/>
       </program>
       <program name="Joystick">
-        <arg flag="-ac" constant="ARDrone2_Guido_optitrack"/>
+        <arg flag="-ac" constant="ARDrone2_Guido_optitrack_SSL"/>
         <arg flag="hobbyking.xml"/>
         <arg flag="-d" constant="1"/>
       </program>
       <program name="NatNet">
-        <arg flag="-ac" constant="11"/>
+        <arg flag="-ac" constant="4"/>
         <arg flag="29"/>
       </program>
       <program name="Messages"/>

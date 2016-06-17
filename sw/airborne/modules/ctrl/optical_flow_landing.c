@@ -172,7 +172,7 @@ void vertical_ctrl_module_init(void)
   of_landing_ctrl.dgain_adaptive = 0.00;
   of_landing_ctrl.learn_gains = false;
   of_landing_ctrl.stable_gain_factor = STABLE_GAIN_FACTOR;
-  of_landing_ctrl.load_weights = true;
+  of_landing_ctrl.load_weights = false;
   of_landing_ctrl.close_to_edge = 0.005;
   of_landing_ctrl.use_bias = false;
   
@@ -298,7 +298,8 @@ void vertical_ctrl_module_run(bool in_flight)
       of_landing_ctrl.learn_gains = false;
     }
     if(of_landing_ctrl.load_weights) {
-      load_weights();
+      // TODO: uncomment:
+      // load_weights();
       of_landing_ctrl.load_weights = false;
     }
 
@@ -917,12 +918,14 @@ void save_weights(void) {
 }
 
 void load_weights(void) {
+  printf("A\n");
   int i, read_result;
   char filename[512];
   sprintf(filename, "%s/Weights_%05d.dat", STRINGIFY(TEXTON_DISTRIBUTION_PATH), 0);
-  weights_file = fopen(filename, "w");
+  weights_file = fopen(filename, "r");
 	if(weights_file == NULL)
 	{
+    printf("No weights file!\n");
     perror(filename);
 	}
 	else
@@ -935,4 +938,5 @@ void load_weights(void) {
     }
     fclose(weights_file); 
   }
+  printf("B\n");
 }

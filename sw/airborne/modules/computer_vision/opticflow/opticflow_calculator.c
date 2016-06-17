@@ -204,6 +204,7 @@ void opticflow_calc_init(struct opticflow_t *opticflow, uint16_t w, uint16_t h)
 void calc_fast9_lukas_kanade(struct opticflow_t *opticflow, struct opticflow_state_t *state, struct image_t *img,
                              struct opticflow_result_t *result)
 {
+
   if (opticflow->just_switched_method) {
     opticflow_calc_init(opticflow, img->w, img->h);
   }
