@@ -32,8 +32,8 @@
 
     <module name="video_thread"/>
 
-    <module name="cv_colorfilter">
-      <define name="COLORFILTER_CAMERA" value="bottom_camera"/>
+    <module name="cv_snake_gate_detection">
+      <define name="SGD_CAMERA" value="bottom_camera"/>
     </module>
 
     <module name="video_rtp_stream">

@@ -54,7 +54,8 @@ int n_gates = 0;
 // 1 means that it passes the filter
 int check_color(struct image_t *im, int x, int y)
 {
-  uint8_t *buf = im->buf + y * im->w * 4 + x * 4;;
+  uint8_t *buf = im->buf; 
+  buf += y * (im->w) * 4 + x * 4;
 
   if (
       (buf[1] >= color_lum_min)
@@ -99,7 +100,7 @@ struct image_t *snake_gate_detection_func(struct image_t *img)
     if(check_color(img, x, y))
     {
       // snake up and down:
-      snake_up_and_down(img, x, y, &y_low, &y_high)  
+      snake_up_and_down(img, x, y, &y_low, &y_high);
       sz = y_high - y_low;
       y = (y_high + y_low) / 2;      
       
@@ -107,8 +108,8 @@ struct image_t *snake_gate_detection_func(struct image_t *img)
       if(sz > min_pixel_size)
       {
         // snake left and right:
-        snake_left_and_right(img, x, (*y_low), &x_low1, &x_high1);
-        snake_left_and_right(img, x, (*y_high), &x_low2, &x_high2); 
+        snake_left_and_right(img, x, y_low, &x_low1, &x_high1);
+        snake_left_and_right(img, x, y_high, &x_low2, &x_high2); 
 
         // sizes of the left-right stretches:
         szx1 = x_high1-x_low1;
@@ -118,15 +119,19 @@ struct image_t *snake_gate_detection_func(struct image_t *img)
         if(szx1 > min_pixel_size)
         {
           x = (x_high1 + x_low1) / 2;
-          sz = (sz > szx1) ? sz : szx1; //max([sz, szx1]);
-          gates[n_gates] = {x, y, sz/2};
+          sz = (sz > szx1) ? sz : szx1; 
+          gates[n_gates].x = x;
+          gates[n_gates].y = y;
+          gates[n_gates].sz = sz/2;
           n_gates++;
         }
         else if(szx2 > min_pixel_size)
         {
           x = (x_high2 + x_low2) / 2;
-          sz = (sz > szx2) ? sz : szx2; // max([szx2, sz]);
-          gates[n_gates] = {x, y, sz/2};          
+          sz = (sz > szx2) ? sz : szx2;
+          gates[n_gates].x = x;
+          gates[n_gates].y = y;
+          gates[n_gates].sz = sz/2;
           n_gates++;
         }
         if(n_gates >= MAX_GATES)
@@ -144,17 +149,25 @@ void draw_gate(struct image_t *im, struct gate_img gate)
 {
   // draw four lines on the image:
   struct point_t from, to;
-  from = {gate.x - gate.sz, gate.y - gate.sz};
-  to = {gate.x - gate.sz, gate.y + gate.sz};
+  from.x = gate.x - gate.sz;
+  from.y = gate.y - gate.sz;
+  to.x = gate.x - gate.sz;
+  to.y = gate.y + gate.sz;
   image_draw_line(im, &from, &to);
-  from = {gate.x - gate.sz, gate.y + gate.sz};
-  to = {gate.x + gate.sz, gate.y + gate.sz};
+  from.x = gate.x - gate.sz;
+  from.y = gate.y + gate.sz;
+  to.x = gate.x + gate.sz;
+  to.y = gate.y + gate.sz;
   image_draw_line(im, &from, &to);
-  from = {gate.x + gate.sz, gate.y + gate.sz};
-  to = {gate.x + gate.sz, gate.y - gate.sz};
+  from.x = gate.x + gate.sz;
+  from.y = gate.y + gate.sz;
+  to.x = gate.x + gate.sz;
+  to.y = gate.y - gate.sz;
   image_draw_line(im, &from, &to);
-  from = {gate.x + gate.sz, gate.y - gate.sz};
-  to = {gate.x - gate.sz, gate.y - gate.sz};
+  from.x = gate.x + gate.sz;
+  from.y = gate.y - gate.sz;
+  to.x = gate.x - gate.sz;
+  to.y = gate.y - gate.sz;
   image_draw_line(im, &from, &to);
 }
 
