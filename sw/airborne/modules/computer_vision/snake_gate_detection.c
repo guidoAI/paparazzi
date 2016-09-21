@@ -133,6 +133,7 @@ struct image_t *snake_gate_detection_func(struct image_t *img)
           // else it will be overwritten by the next one
           if(quality > min_gate_quality)
           {
+            draw_gate(img, gates[n_gates]);
             n_gates++;
           }
         }
@@ -151,6 +152,7 @@ struct image_t *snake_gate_detection_func(struct image_t *img)
           // else it will be overwritten by the next one
           if(quality > min_gate_quality)
           {
+            draw_gate(img, gates[n_gates]);
             n_gates++;
           }
         }
