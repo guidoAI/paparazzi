@@ -43,6 +43,7 @@ uint8_t color_cr_max  = 255;
 // Gate detection settings:
 int n_samples = 500;
 int min_pixel_size = 100;
+float min_gate_quality = 0.5;
 
 // Result
 int color_count = 0;
@@ -87,6 +88,7 @@ struct image_t *snake_gate_detection_func(struct image_t *img)
 {
   uint16_t i;
   int x, y, y_low, y_high, x_low1, x_high1, x_low2, x_high2, sz, szx1, szx2;  
+  float quality;
 
   n_gates = 0;  
 
@@ -119,20 +121,38 @@ struct image_t *snake_gate_detection_func(struct image_t *img)
         if(szx1 > min_pixel_size)
         {
           x = (x_high1 + x_low1) / 2;
+          // set the size to the largest line found:
           sz = (sz > szx1) ? sz : szx1; 
+          // create the gate:
           gates[n_gates].x = x;
           gates[n_gates].y = y;
           gates[n_gates].sz = sz/2;
-          n_gates++;
+          // check the gate quality:
+          check_gate(img, gates[n_gates], &quality);
+          // only increment the number of gates if the quality is sufficient
+          // else it will be overwritten by the next one
+          if(quality > min_gate_quality)
+          {
+            n_gates++;
+          }
         }
         else if(szx2 > min_pixel_size)
         {
           x = (x_high2 + x_low2) / 2;
+          // set the size to the largest line found:
           sz = (sz > szx2) ? sz : szx2;
+          // create the gate:
           gates[n_gates].x = x;
           gates[n_gates].y = y;
           gates[n_gates].sz = sz/2;
-          n_gates++;
+          // check the gate quality:
+          check_gate(img, gates[n_gates], &quality);
+          // only increment the number of gates if the quality is sufficient
+          // else it will be overwritten by the next one
+          if(quality > min_gate_quality)
+          {
+            n_gates++;
+          }
         }
         if(n_gates >= MAX_GATES)
         {
@@ -169,6 +189,80 @@ void draw_gate(struct image_t *im, struct gate_img gate)
   to.x = gate.x - gate.sz;
   to.y = gate.y - gate.sz;
   image_draw_line(im, &from, &to);
+}
+
+extern void check_gate(struct image_t *im, struct gate_img gate, float* quality)
+{
+  int n_points, n_colored_points;
+  n_points = 0; 
+  n_colored_points = 0;
+  int np, nc;
+  
+  // check the four lines of which the gate consists:
+  struct point_t from, to;
+  from.x = gate.x - gate.sz;
+  from.y = gate.y - gate.sz;
+  to.x = gate.x - gate.sz;
+  to.y = gate.y + gate.sz;
+  check_line(im, from, to, &np, &nc);
+  n_points += np; 
+  n_colored_points += nc;
+
+  from.x = gate.x - gate.sz;
+  from.y = gate.y + gate.sz;
+  to.x = gate.x + gate.sz;
+  to.y = gate.y + gate.sz;
+  check_line(im, from, to, &np, &nc);
+  n_points += np; 
+  n_colored_points += nc;
+
+  from.x = gate.x + gate.sz;
+  from.y = gate.y + gate.sz;
+  to.x = gate.x + gate.sz;
+  to.y = gate.y - gate.sz;
+  check_line(im, from, to, &np, &nc);
+  n_points += np; 
+  n_colored_points += nc;
+
+  from.x = gate.x + gate.sz;
+  from.y = gate.y - gate.sz;
+  to.x = gate.x - gate.sz;
+  to.y = gate.y - gate.sz;
+  check_line(im, from, to, &np, &nc);
+  n_points += np; 
+  n_colored_points += nc;
+
+  // the quality is the ratio of colored points / number of points:
+  (*quality) = ((float) n_colored_points) / ((float) n_points);
+}
+
+void check_line(struct image_t *im, struct point_t Q1, struct point_t Q2, int* n_points, int* n_colored_points)
+{
+  (*n_points) = 0;
+  (*n_colored_points) = 0;
+
+  float t_step = 0.05; 
+	int x, y;
+  float t;
+  // go from Q1 to Q2 in 1/t_step steps:
+	for (t = 0.0f; t < 1.0f; t += t_step)
+	{
+    // determine integer coordinate on the line:
+		x = (int)(t * Q1.x + (1.0f - t) * Q2.x);
+		y = (int)(t * Q1.y + (1.0f - t) * Q2.y);
+
+		if (x >= 0 && x < im->w && y >= 0 && y < im->h)
+		{
+      // augment number of checked points:
+      (*n_points)++;
+
+      if(check_color(im, x, y))
+      {
+        // the point is of the right color:
+        (*n_colored_points)++;
+      }
+		}
+	}
 }
 
 void snake_up_and_down(struct image_t *im, int x, int y, int* y_low, int* y_high)

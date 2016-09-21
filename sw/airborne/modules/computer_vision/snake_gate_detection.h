@@ -42,6 +42,8 @@ extern int check_color(struct image_t *im, int x, int y);
 extern void snake_up_and_down(struct image_t *im, int x, int y, int* y_low, int* y_high);
 extern void snake_left_and_right(struct image_t *im, int x, int y, int* x_low, int* x_high);
 extern void draw_gate(struct image_t *im, struct gate_img gate);
+extern void check_gate(struct image_t *im, struct gate_img gate, float* quality);
+void check_line(struct image_t *im, struct point_t Q1, struct point_t Q2, int* n_points, int* n_colored_points);
 
 extern uint8_t color_lum_min;
 extern uint8_t color_lum_max;
