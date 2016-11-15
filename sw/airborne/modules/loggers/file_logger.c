@@ -33,6 +33,32 @@
 #include "firmwares/rotorcraft/stabilization.h"
 #include "state.h"
 
+// #include "subsystems/electrical.h"
+#include "modules/computer_vision/video_capture.h"
+
+// reading the pressuremeter:
+#include "subsystems/abi.h"
+#ifndef LOGGER_BARO_ID
+#define LOGGER_BARO_ID ABI_BROADCAST
+#endif
+PRINT_CONFIG_VAR(LOGGER_BARO_ID)
+float logger_pressure;
+static abi_event baro_ev; ///< The baro ABI event
+/// Callback function of the ground altitude
+static void logger_baro_cb(uint8_t sender_id __attribute__((unused)), float pressure);
+// Reading from "sensors":
+static void logger_baro_cb(uint8_t sender_id, float pressure)
+{
+  logger_pressure = pressure;
+}
+
+// timing the video snapshots:
+struct timeval stop, start;
+//float time_stamp = 0;
+float prev_ss_time = 0;
+int take_shot = 0;
+int shots = 0;
+
 /** Set the default File logger path to the USB drive */
 #ifndef FILE_LOGGER_PATH
 #define FILE_LOGGER_PATH /data/video/usb
@@ -46,6 +72,8 @@ void file_logger_start(void)
 {
   uint32_t counter = 0;
   char filename[512];
+  
+  shots = 0;
 
   // Check for available files
   sprintf(filename, "%s/%05d.csv", STRINGIFY(FILE_LOGGER_PATH), counter);
@@ -56,6 +84,9 @@ void file_logger_start(void)
     sprintf(filename, "%s/%05d.csv", STRINGIFY(FILE_LOGGER_PATH), counter);
   }
 
+  // start timer:
+  gettimeofday(&start, 0);
+
   file_logger = fopen(filename, "w");
 
   if (file_logger != NULL) {
@@ -63,7 +94,14 @@ void file_logger_start(void)
       file_logger,
       "counter,gyro_unscaled_p,gyro_unscaled_q,gyro_unscaled_r,accel_unscaled_x,accel_unscaled_y,accel_unscaled_z,mag_unscaled_x,mag_unscaled_y,mag_unscaled_z,COMMAND_THRUST,COMMAND_ROLL,COMMAND_PITCH,COMMAND_YAW,qi,qx,qy,qz\n"
     );
+
+    logger_pressure = 0.0f;
   }
+
+  // Subscribe to the altitude above ground level ABI messages
+  AbiBindMsgAGL(LOGGER_BARO_ID, &baro_ev, logger_baro_cb);
+  // AbiBindMsgAGL(OPTICAL_FLOW_LANDING_AGL_ID, &agl_ev, vertical_ctrl_agl_cb);
+
 }
 
 /** Stop the logger an nicely close the file */
@@ -81,10 +119,27 @@ void file_logger_periodic(void)
   if (file_logger == NULL) {
     return;
   }
+
+  //timing
+  gettimeofday(&stop, 0);
+  double curr_time = (double)(stop.tv_sec + stop.tv_usec / 1000000.0);
+  double time_stamp = curr_time - (double)(start.tv_sec + start.tv_usec / 1000000.0);
+  if((time_stamp - prev_ss_time) > 0.2) // for 5hz
+  {
+    video_capture_shoot();
+    prev_ss_time = time_stamp;
+    take_shot = shots;
+    shots +=1;
+  }
+  else
+  {
+    take_shot = -1;
+  }
+
   static uint32_t counter;
   struct Int32Quat *quat = stateGetNedToBodyQuat_i();
 
-  fprintf(file_logger, "%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d\n",
+  fprintf(file_logger, "%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%f\n",
           counter,
           imu.gyro_unscaled.p,
           imu.gyro_unscaled.q,
@@ -102,7 +157,9 @@ void file_logger_periodic(void)
           quat->qi,
           quat->qx,
           quat->qy,
-          quat->qz
+          quat->qz,
+          take_shot,
+          logger_pressure
          );
   counter++;
 }
