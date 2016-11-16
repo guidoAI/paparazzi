@@ -52,6 +52,23 @@ static void logger_baro_cb(uint8_t sender_id, float pressure)
   logger_pressure = pressure;
 }
 
+// reading the pressuremeter:
+//#include "subsystems/abi.h"
+#ifndef LOGGER_SONAR_ID
+#define LOGGER_SONAR_ID ABI_BROADCAST
+#endif
+PRINT_CONFIG_VAR(LOGGER_SONAR_ID)
+float logger_sonar;
+static abi_event sonar_ev; ///< The sonar ABI event
+/// Callback function of the ground altitude
+static void logger_sonar_cb(uint8_t sender_id __attribute__((unused)), float height);
+// Reading from "sensors":
+static void logger_sonar_cb(uint8_t sender_id, float height)
+{
+  logger_sonar = height;
+}
+
+
 // timing the video snapshots:
 struct timeval stop, start;
 //float time_stamp = 0;
@@ -92,15 +109,16 @@ void file_logger_start(void)
   if (file_logger != NULL) {
     fprintf(
       file_logger,
-      "counter,gyro_unscaled_p,gyro_unscaled_q,gyro_unscaled_r,accel_unscaled_x,accel_unscaled_y,accel_unscaled_z,mag_unscaled_x,mag_unscaled_y,mag_unscaled_z,COMMAND_THRUST,COMMAND_ROLL,COMMAND_PITCH,COMMAND_YAW,qi,qx,qy,qz\n"
+      "counter,gyro_unscaled_p,gyro_unscaled_q,gyro_unscaled_r,accel_unscaled_x,accel_unscaled_y,accel_unscaled_z,mag_unscaled_x,mag_unscaled_y,mag_unscaled_z,COMMAND_THRUST,COMMAND_ROLL,COMMAND_PITCH,COMMAND_YAW,qi,qx,qy,qz,shot,pressure,sonar,phi_f,theta_f,psi_f\n"
     );
 
     logger_pressure = 0.0f;
+    logger_sonar = 0.0f;
   }
 
   // Subscribe to the altitude above ground level ABI messages
-  AbiBindMsgAGL(LOGGER_BARO_ID, &baro_ev, logger_baro_cb);
-  // AbiBindMsgAGL(OPTICAL_FLOW_LANDING_AGL_ID, &agl_ev, vertical_ctrl_agl_cb);
+  AbiBindMsgBARO_ABS(LOGGER_BARO_ID, &baro_ev, logger_baro_cb);
+  AbiBindMsgAGL(LOGGER_SONAR_ID, &sonar_ev, logger_sonar_cb);
 
 }
 
@@ -138,8 +156,9 @@ void file_logger_periodic(void)
 
   static uint32_t counter;
   struct Int32Quat *quat = stateGetNedToBodyQuat_i();
+  struct FloatEulers *eulers = stateGetNedToBodyEulers_f();
 
-  fprintf(file_logger, "%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%f\n",
+  fprintf(file_logger, "%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%f,%f,%f,%f,%f\n",
           counter,
           imu.gyro_unscaled.p,
           imu.gyro_unscaled.q,
@@ -159,7 +178,11 @@ void file_logger_periodic(void)
           quat->qy,
           quat->qz,
           take_shot,
-          logger_pressure
+          logger_pressure,
+          logger_sonar,
+          eulers->phi,
+          eulers->theta,
+          eulers->psi
          );
   counter++;
 }
