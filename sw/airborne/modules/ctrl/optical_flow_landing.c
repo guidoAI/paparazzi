@@ -33,7 +33,13 @@
  *
  */
 
+
 float dt;
+float divergence;
+float divergence_vision;
+float divergence_vision_dt;
+float normalized_thrust;
+float cov_div;
 
 // minimum value of the P-gain for divergence control
 // adaptive control will not be able to go lower

@@ -89,11 +89,6 @@ extern void guidance_v_module_enter(void);
 extern void guidance_v_module_run(bool in_flight);
 
 // variables for in message:
-float divergence;
-float divergence_vision;
-float divergence_vision_dt;
-float normalized_thrust;
-float cov_div;
 float pstate;
 float pused;
 int vision_message_nr;
