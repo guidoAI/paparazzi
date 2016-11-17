@@ -33,20 +33,7 @@
  *
  */
 
-// variables for in message:
-float divergence;
-float divergence_vision;
-float divergence_vision_dt;
-float normalized_thrust;
-float cov_div;
-float pstate;
-float pused;
 float dt;
-int vision_message_nr;
-int previous_message_nr;
-int landing;
-float previous_err;
-float previous_cov_err;
 
 // minimum value of the P-gain for divergence control
 // adaptive control will not be able to go lower
