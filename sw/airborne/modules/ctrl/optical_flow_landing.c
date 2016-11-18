@@ -272,7 +272,7 @@ void vertical_ctrl_module_run(bool in_flight)
         // calculate the fake divergence:
         if (of_landing_ctrl.agl_lp > 0.0001f) {
           divergence = of_landing_ctrl.vel / of_landing_ctrl.agl_lp;
-          divergence_vision_dt = (divergence_vision / dt);
+          divergence_vision_dt = (divergence_vision / dt); // TODO: shouldn't this be divergence in this fake vision case?
           if (fabs(divergence_vision_dt) > 1E-5) {
             div_factor = divergence / divergence_vision_dt;
           }
@@ -289,8 +289,13 @@ void vertical_ctrl_module_run(bool in_flight)
 
       if (vision_message_nr != previous_message_nr && dt > 1E-5 && ind_hist > 1) {
         // TODO: this div_factor depends on the subpixel-factor (automatically adapt?)
+        // div_factor = (vz / z) - from optitrack or similar, divided by (divergence_vision / dt)
+        divergence_vision_dt = (divergence_vision / dt);
         div_factor = -1.28f; // magic number comprising field of view etc.
-        float new_divergence = (divergence_vision * div_factor) / dt;
+        float new_divergence = divergence_vision_dt * div_factor; // (divergence_vision * div_factor) / dt;
+
+        // TODO: remove the following:
+        divergence_vision_dt = of_landing_ctrl.vel / of_landing_ctrl.agl_lp;
 
         if (fabs(new_divergence - divergence) > 0.20) {
           if (new_divergence < divergence) { new_divergence = divergence - 0.10f; }
