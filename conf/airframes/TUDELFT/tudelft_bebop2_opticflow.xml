@@ -169,7 +169,7 @@
   <section name="STABILIZATION_ATTITUDE_INDI" prefix="STABILIZATION_INDI_">
     <!-- control effectiveness, can be obtained by switching on "adaptive" in the indi settings -->
     <define name="G1_P" value="0.100"/>
-    <define name="G1_Q" value="0.035"/>
+    <define name="G1_Q" value="0.050"/>
     <define name="G1_R" value="0.0010"/>
     <define name="G2_R" value="0.236"/>
 
@@ -218,10 +218,10 @@
 
   <section name="GUIDANCE_H" prefix="GUIDANCE_H_">
     <define name="REF_MAX_SPEED" value="2" unit="m/s"/>
-    <define name="MAX_BANK" value="32" unit="deg"/>
-    <define name="PGAIN" value="120"/>
-    <define name="DGAIN" value="100"/>
-    <define name="IGAIN" value="30"/>
+    <define name="MAX_BANK" value="35" unit="deg"/>
+    <define name="PGAIN" value="85"/> <!-- 120 -->
+    <define name="DGAIN" value="66"/> <!-- 80 -->
+    <define name="IGAIN" value="0"/> <!-- 30 -->
   </section>
 
   <section name="NAVIGATION" prefix="NAV_">
