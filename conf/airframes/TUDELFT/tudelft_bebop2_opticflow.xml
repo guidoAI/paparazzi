@@ -17,20 +17,24 @@
     <module name="motor_mixing"/>
     <module name="actuators" type="bebop"/>
     <module name="imu" type="bebop"/>
-    <module name="gps" type="ublox"/>
+    <module name="gps" type="datalink"/>
     <module name="stabilization" type="indi"/>
+    <!-- <module name="guidance" type="indi">
+      <define name="GUIDANCE_INDI_SPECIFIC_FORCE_GAIN" value="-500.0"/>
+    </module> -->
     <module name="ahrs" type="int_cmpl_quat">
-      <configure name="USE_MAGNETOMETER" value="TRUE"/>
-      <define name="AHRS_USE_GPS_HEADING" value="FALSE"/>
+      <configure name="USE_MAGNETOMETER" value="FALSE"/>
+      <define name="AHRS_USE_GPS_HEADING" value="TRUE"/>
+      <define name="AHRS_HEADING_UPDATE_GPS_MIN_SPEED" value="0"/>
     </module>
     <module name="ins" type="extended"/>
   </firmware>
 
   <modules main_freq="512">
-    <module name="geo_mag"/>
+    <!-- <module name="geo_mag"/>
+    <module name="send_imu_mag_current"/> -->
     <module name="air_data"/>
-    <module name="send_imu_mag_current"/>
-    <module name="gps" type="ubx_ucenter"/>
+    <!-- <module name="gps" type="ubx_ucenter"/> -->
     <module name="logger_file">
       <define name="FILE_LOGGER_PATH" value="/data/ftp/internal_000"/>
     </module>
@@ -97,7 +101,7 @@
   <section name="AIR_DATA" prefix="AIR_DATA_">
     <define name="CALC_AIRSPEED" value="FALSE"/>
     <define name="CALC_TAS_FACTOR" value="FALSE"/>
-    <define name="CALC_AMSL_BARO" value="TRUE"/>
+    <define name="CALC_AMSL_BARO" value="FALSE"/>
   </section>
 
   <!-- Magnetometer still needs to be calibrated -->
@@ -114,6 +118,8 @@
   <!-- http://wiki.paparazziuav.org/wiki/Subsystem/ahrs#Local_Magnetic_Field -->
   <section name="AHRS" prefix="AHRS_">
     <!-- values used if no GPS fix, on 3D fix is update by geo_mag module -->
+    <define name="HEADING_UPDATE_GPS_MIN_SPEED" value="0" />
+    <define name="GRAVITY_HEURISTIC_FACTOR" value="0" /> 
     <!-- Delft -->
     <define name="H_X" value="0.3892503"/>
     <define name="H_Y" value="0.0017972"/>
@@ -121,8 +127,14 @@
   </section>
 
   <section name="INS" prefix="INS_">
+    <define name="USE_GPS_ALT" value="1"/>
+    <!-- trust GPS a lot: -->
+    <define name="VFF_R_GPS" value="0.01"/> 
+    <define name="VFF_VZ_R_GPS" value="0.01"/>     
+    <define name="SONAR_MIN_RANGE" value="0.0"/>
     <define name="SONAR_MAX_RANGE" value="2.2"/>
-    <define name="SONAR_UPDATE_ON_AGL" value="TRUE"/>
+    <define name="SONAR_UPDATE_ON_AGL" value="FALSE"/>
+
   </section>
 
 
@@ -155,11 +167,11 @@
   </section>
 
   <section name="STABILIZATION_ATTITUDE_INDI" prefix="STABILIZATION_INDI_">
-    <!-- control effectiveness -->
-    <define name="G1_P" value="0.05"/>
-    <define name="G1_Q" value="0.04"/>
-    <define name="G1_R" value="0.0022"/>
-    <define name="G2_R" value="0.20"/>
+    <!-- control effectiveness, can be obtained by switching on "adaptive" in the indi settings -->
+    <define name="G1_P" value="0.100"/>
+    <define name="G1_Q" value="0.035"/>
+    <define name="G1_R" value="0.0010"/>
+    <define name="G2_R" value="0.236"/>
 
     <!-- Here it is assumed that your removed the damping from your bebop2!
          The dampers do not really damp, but cause oscillation. By removing/
@@ -196,8 +208,12 @@
     <define name="HOVER_KP" value="350"/>
     <define name="HOVER_KD" value="85"/>
     <define name="HOVER_KI" value="20"/>
-    <define name="NOMINAL_HOVER_THROTTLE" value="0.655"/>
+    <define name="NOMINAL_HOVER_THROTTLE" value="0.52"/>
     <define name="ADAPT_THROTTLE_ENABLED" value="TRUE"/>
+    <define name="ADAPT_INITIAL_HOVER_THROTTLE" value="0.55" /> 	<!-- Default = 0.3 // 0.52 almost perfect -->
+    <define name="ADAPT_MIN_HOVER_THROTTLE" value="0.48" /> 		<!-- Default = 0.2 // -->
+    <define name="ADAPT_MAX_HOVER_THROTTLE" value="0.62" /> 		<!-- Default = 0.2 // -->
+    <define name="ADAPT_NOISE_FACTOR" value="0.8" /> 			<!-- default = 1 -->
   </section>
 
   <section name="GUIDANCE_H" prefix="GUIDANCE_H_">
@@ -209,8 +225,8 @@
   </section>
 
   <section name="NAVIGATION" prefix="NAV_">
-    <define name="CLIMB_VSPEED" value="4.5"/>
-    <define name="DESCEND_VSPEED" value="-1.0"/>
+    <define name="CLIMB_VSPEED" value="1.0"/>
+    <define name="DESCEND_VSPEED" value="-0.75"/>
   </section>
 
   <section name="SIMULATOR" prefix="NPS_">
