@@ -67,6 +67,9 @@ static void send_divergence(struct transport_tx *trans, struct link_device *dev)
 #include "subsystems/abi.h"
 #include "firmwares/rotorcraft/stabilization.h"
 
+// horizontal control:
+#include "firmwares/rotorcraft/guidance/guidance_h.h"
+
 /* Default sonar/agl to use */
 #ifndef OPTICAL_FLOW_LANDING_AGL_ID
 #define OPTICAL_FLOW_LANDING_AGL_ID ABI_BROADCAST
@@ -329,6 +332,9 @@ void vertical_ctrl_module_run(bool in_flight)
     /***********
     * CONTROL
     ***********/
+
+    // hover laterally:
+    guidance_h_set_guided_body_vel(0.0f, 0.0f);
 
     int32_t nominal_throttle = of_landing_ctrl.nominal_thrust * MAX_PPRZ; \
 

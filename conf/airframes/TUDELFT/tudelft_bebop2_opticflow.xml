@@ -27,8 +27,9 @@
       <define name="AHRS_USE_GPS_HEADING" value="TRUE"/>
       <define name="AHRS_HEADING_UPDATE_GPS_MIN_SPEED" value="0"/>
     </module>
-    <module name="ins" type="extended"/>
-    <!-- <define name="INS_INT_GPS_ID" value="ABI_DISABLE">-->
+    <module name="ins" type="extended">
+        <define name="INS_INT_GPS_ID" value="ABI_DISABLE"/>
+    </module>
   </firmware>
 
   <modules main_freq="512">
@@ -119,8 +120,8 @@
   <!-- http://wiki.paparazziuav.org/wiki/Subsystem/ahrs#Local_Magnetic_Field -->
   <section name="AHRS" prefix="AHRS_">
     <!-- values used if no GPS fix, on 3D fix is update by geo_mag module -->
-    <define name="HEADING_UPDATE_GPS_MIN_SPEED" value="0" />
-    <define name="GRAVITY_HEURISTIC_FACTOR" value="0" /> 
+    <define name="HEADING_UPDATE_GPS_MIN_SPEED" value="0"/>
+    <define name="GRAVITY_HEURISTIC_FACTOR" value="0"/> 
     <!-- Delft -->
     <define name="H_X" value="0.3892503"/>
     <define name="H_Y" value="0.0017972"/>
@@ -211,17 +212,17 @@
     <define name="HOVER_KI" value="20"/>
     <define name="NOMINAL_HOVER_THROTTLE" value="0.52"/>
     <define name="ADAPT_THROTTLE_ENABLED" value="TRUE"/>
-    <define name="ADAPT_INITIAL_HOVER_THROTTLE" value="0.55" /> 	<!-- Default = 0.3 // 0.52 almost perfect -->
-    <define name="ADAPT_MIN_HOVER_THROTTLE" value="0.48" /> 		<!-- Default = 0.2 // -->
-    <define name="ADAPT_MAX_HOVER_THROTTLE" value="0.62" /> 		<!-- Default = 0.2 // -->
-    <define name="ADAPT_NOISE_FACTOR" value="0.8" /> 			<!-- default = 1 -->
+    <define name="ADAPT_INITIAL_HOVER_THROTTLE" value="0.55"/> 	<!-- Default = 0.3 // 0.52 almost perfect -->
+    <define name="ADAPT_MIN_HOVER_THROTTLE" value="0.48"/> 		<!-- Default = 0.2 // -->
+    <define name="ADAPT_MAX_HOVER_THROTTLE" value="0.62"/> 		<!-- Default = 0.2 // -->
+    <define name="ADAPT_NOISE_FACTOR" value="0.8"/> 			<!-- default = 1 -->
   </section>
 
   <section name="GUIDANCE_H" prefix="GUIDANCE_H_">
     <define name="REF_MAX_SPEED" value="2" unit="m/s"/>
     <define name="MAX_BANK" value="35" unit="deg"/>
-    <define name="PGAIN" value="85"/> <!-- 120 -->
-    <define name="DGAIN" value="66"/> <!-- 80 -->
+    <define name="PGAIN" value="0"/> <!-- 120 -->
+    <define name="DGAIN" value="302"/> <!-- 80 -->
     <define name="IGAIN" value="0"/> <!-- 30 -->
   </section>
 
@@ -237,11 +238,11 @@
   </section>
 
   <section name="AUTOPILOT">
-    <define name="MODE_STARTUP" value="AP_MODE_NAV"/>
+    <define name="MODE_STARTUP" value="AP_MODE_ATTITUDE_DIRECT"/>
     <!-- <define name="MODE_MANUAL" value="AP_MODE_ATTITUDE_DIRECT"/> -->
     <define name="MODE_MANUAL" value="AP_MODE_MODULE"/>
     <define name="MODE_AUTO1" value="AP_MODE_ATTITUDE_Z_HOLD"/>
-    <define name="MODE_AUTO2" value="AP_MODE_NAV"/>
+    <define name="MODE_AUTO2" value="AP_MODE_ATTITUDE_DIRECT"/>
 
     <define name="NO_RC_THRUST_LIMIT" value="TRUE"/>
   </section>
