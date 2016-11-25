@@ -28,6 +28,7 @@
       <define name="AHRS_HEADING_UPDATE_GPS_MIN_SPEED" value="0"/>
     </module>
     <module name="ins" type="extended"/>
+    <!-- <define name="INS_INT_GPS_ID" value="ABI_DISABLE">-->
   </firmware>
 
   <modules main_freq="512">

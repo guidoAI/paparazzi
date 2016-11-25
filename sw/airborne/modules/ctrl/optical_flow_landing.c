@@ -39,7 +39,6 @@ float divergence;
 float divergence_vision;
 float divergence_vision_dt;
 float normalized_thrust;
-float cov_div;
 
 // minimum value of the P-gain for divergence control
 // adaptive control will not be able to go lower
@@ -86,7 +85,7 @@ PRINT_CONFIG_VAR(OPTICAL_FLOW_LANDING_OPTICAL_FLOW_ID)
 #endif
 
 #ifndef OPTICAL_FLOW_LANDING_IGAIN
-#define OPTICAL_FLOW_LANDING_IGAIN 0.0
+#define OPTICAL_FLOW_LANDING_IGAIN 0.005
 #endif
 
 #ifndef OPTICAL_FLOW_LANDING_DGAIN
@@ -130,13 +129,13 @@ void vertical_ctrl_module_init(void)
   of_landing_ctrl.vel = 0.0f;
   of_landing_ctrl.divergence_setpoint = 0.0f;
   of_landing_ctrl.cov_set_point = -0.025f;
-  of_landing_ctrl.cov_limit = 0.0010f; //1.0f; // for cov(uz,div)
+  of_landing_ctrl.cov_limit = 2.0f; // 0.0010f; //1.0f; // for cov(uz,div)
   of_landing_ctrl.lp_factor = 0.95f;
   of_landing_ctrl.pgain = OPTICAL_FLOW_LANDING_PGAIN;
   of_landing_ctrl.igain = OPTICAL_FLOW_LANDING_IGAIN;
   of_landing_ctrl.dgain = OPTICAL_FLOW_LANDING_DGAIN;
   of_landing_ctrl.sum_err = 0.0f;
-  of_landing_ctrl.nominal_thrust = 0.710f; //0.666f; // 0.640 with small battery
+  of_landing_ctrl.nominal_thrust = 0.605f; //0.710f; //0.666f; // 0.640 with small battery
   of_landing_ctrl.VISION_METHOD = OPTICAL_FLOW_LANDING_VISION_METHOD;
   of_landing_ctrl.CONTROL_METHOD = OPTICAL_FLOW_LANDING_CONTROL_METHOD;
   of_landing_ctrl.COV_METHOD = OPTICAL_FLOW_LANDING_COV_METHOD;
@@ -291,21 +290,24 @@ void vertical_ctrl_module_run(bool in_flight)
         // TODO: this div_factor depends on the subpixel-factor (automatically adapt?)
         // div_factor = (vz / z) - from optitrack or similar, divided by (divergence_vision / dt)
         divergence_vision_dt = (divergence_vision / dt);
+        // for Bebop2: -1.77?
         div_factor = -1.28f; // magic number comprising field of view etc.
+
         float new_divergence = divergence_vision_dt * div_factor; // (divergence_vision * div_factor) / dt;
 
-        // TODO: remove the following:
-        divergence_vision_dt = of_landing_ctrl.vel / of_landing_ctrl.agl_lp;
-
+        // if very different from the previous divergence, this is likely an outlier: input a thresholded observation into the filter:
         if (fabs(new_divergence - divergence) > 0.20) {
           if (new_divergence < divergence) { new_divergence = divergence - 0.10f; }
           else { new_divergence = divergence + 0.10f; }
         }
+
         // low-pass filter the divergence:
         divergence = divergence * of_landing_ctrl.lp_factor + (new_divergence * (1.0f - of_landing_ctrl.lp_factor));
         previous_message_nr = vision_message_nr;
         dt = 0.0f;
+
       } else {
+
         // after re-entering the module, the divergence should be equal to the set point:
         if (ind_hist <= 1) {
           divergence = of_landing_ctrl.divergence_setpoint;

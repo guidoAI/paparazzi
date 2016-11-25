@@ -72,8 +72,8 @@ float past_divergence_history[COV_WINDOW_SIZE];
 unsigned long ind_hist;
 
 // Without optitrack set to: GUIDANCE_H_MODE_ATTITUDE
-// With optitrack set to: GUIDANCE_H_MODE_HOVER
-#define GUIDANCE_H_MODE_MODULE_SETTING GUIDANCE_H_MODE_HOVER
+// With optitrack set to: GUIDANCE_H_MODE_HOVER / GUIDANCE_H_MODE_NAV / GUIDANCE_H_MODE_GUIDED
+#define GUIDANCE_H_MODE_MODULE_SETTING GUIDANCE_H_MODE_NAV
 
 // Own guidance_v
 #define GUIDANCE_V_MODE_MODULE_SETTING GUIDANCE_V_MODE_MODULE
@@ -96,5 +96,7 @@ int previous_message_nr;
 int landing;
 float previous_err;
 float previous_cov_err;
+float cov_div;
+
 
 #endif /* OPTICAL_FLOW_LANDING_H_ */
