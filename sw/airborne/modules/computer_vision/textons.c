@@ -122,7 +122,7 @@ uint8_t cycle = 0;
 // File pointer for saving the dictionary
 static FILE *dictionary_logger = NULL;
 #ifndef DICTIONARY_PATH
-#define DICTIONARY_PATH /data/video/
+#define DICTIONARY_PATH /data/ftp/internal000
 #endif
 
 /**
@@ -136,8 +136,7 @@ struct image_t *texton_func(struct image_t *img)
 {
   // only execute the texton function once every execution_period times:
   cycle = (cycle+1) % execution_period;
-  if(cycle == 0) return img; // was > wrong no?
-
+  if(cycle > 0) return img; // was > wrong no?
   // int i;
 
   if (img->buf_size == 0) { return img; }
@@ -470,9 +469,9 @@ void DistributionExtraction(uint8_t *frame, uint16_t width, uint16_t height)
 
     // extract sample
     for (i = 0; i < patch_size; i++) {
-      // TODO: who changed this, is this correct?
-      // buf = frame + (width * 2 * (i + y)) + 2 * x;
-      buf = frame + (stride * (i + y)) + 2 * x;
+      buf = frame + (width * 2 * (i + y)) + 2 * x;
+      // old version:
+      // buf = frame + (stride * (i + y)) + 2 * x;
       for (j = 0; j < patch_size; j++) {
         // U/V component
         patch[i][j][0] = (float) * buf;

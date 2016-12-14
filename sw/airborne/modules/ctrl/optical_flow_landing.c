@@ -81,7 +81,7 @@ static void send_divergence(struct transport_tx *trans, struct link_device *dev)
 #include <stdio.h>
 #include "modules/computer_vision/textons.h"
 float* last_texton_distribution; // used to check if a new texton distribution has been received
-#define TEXTON_DISTRIBUTION_PATH /data/video/
+#define TEXTON_DISTRIBUTION_PATH /data/ftp/internal000
 static FILE *distribution_logger = NULL;
 static FILE *weights_file = NULL;
 unsigned int n_read_samples;
