@@ -38,6 +38,9 @@
 // number of time steps used for calculating the covariance (oscillations)
 #define COV_WINDOW_SIZE 60
 
+// maximum number of samples to learn from for SSL:
+#define MAX_SAMPLES_LEARNING 25000
+
 #include "std.h"
 
 
@@ -61,7 +64,15 @@ struct OpticalFlowLanding {
   float dgain_adaptive;         ///< D-gain for adaptive gain control
   int COV_METHOD;               ///< method to calculate the covariance: between thrust and div (0) or div and div past (1)
   int delay_steps;              ///< number of delay steps for div past
+  // TODO: volatile bool?
+  volatile bool learn_gains;    ///< set to true if the robot needs to learn a mapping from texton distributions to the p-gain
+  float stable_gain_factor;     ///< this factor is multiplied with the gain estimate from SSL, in interval [0,1]. If 1, the system will be unstable, if 0, there is no control (performance).
+  bool load_weights;            ///< load the weights that were learned before
+  float close_to_edge;          ///< if abs(cov_div - reference cov_div) < close_to_edge, then texton distributions and gains are stored for learning
+  bool use_bias;                ///< if true, a bias 1.0f will be added to the feature vector (texton distribution) - this typically leads to very large weights
+  bool snapshot;                ///< if true, besides storing a texton distribution, an image will also be stored (when unstable)
 };
+
 
 extern struct OpticalFlowLanding of_landing_ctrl;
 
@@ -70,6 +81,12 @@ float thrust_history[COV_WINDOW_SIZE];
 float divergence_history[COV_WINDOW_SIZE];
 float past_divergence_history[COV_WINDOW_SIZE];
 unsigned long ind_hist;
+// SSL:
+float *text_dists[MAX_SAMPLES_LEARNING];
+float sonar[MAX_SAMPLES_LEARNING];
+float gains[MAX_SAMPLES_LEARNING];
+float cov_divs_log[MAX_SAMPLES_LEARNING];
+float *weights;
 
 // Without optitrack set to: GUIDANCE_H_MODE_ATTITUDE
 // With optitrack set to: GUIDANCE_H_MODE_HOVER / GUIDANCE_H_MODE_NAV / GUIDANCE_H_MODE_GUIDED
@@ -98,5 +115,13 @@ float previous_err;
 float previous_cov_err;
 float cov_div;
 
+// SSL functions:
+void save_texton_distribution(void);
+void load_texton_distribution(void);
+void fit_linear_model(float* targets, float** samples, uint8_t D, uint16_t count, float* parameters, float* fit_error);
+void learn_from_file(void);
+float predict_gain(float* distribution);
+void save_weights(void);
+void load_weights(void);
 
 #endif /* OPTICAL_FLOW_LANDING_H_ */

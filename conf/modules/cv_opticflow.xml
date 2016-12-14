@@ -73,7 +73,6 @@
         <dl_setting var="opticflow.fast9_min_distance" module="computer_vision/opticflow_module" min="0" step="1" max="500" shortname="fast9_min_distance" param="OPTICFLOW_FAST9_MIN_DISTANCE"/>
         <dl_setting var="opticflow.fast9_padding" module="computer_vision/opticflow_module" min="0" step="1" max="50" shortname="fast9_padding" param="OPTICFLOW_FAST9_PADDING"/>
 
-
 	<!-- Changes pyramid level of lucas kanade optical flow. -->
         <dl_setting var="opticflow.pyramid_level" module="computer_vision/opticflow_module" min="0" step="1" max="10" shortname="pyramid_level" param="OPTICFLOW_PYRAMID_LEVEL"/>
 

@@ -34,6 +34,10 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <stdlib.h>
 #include "fast_rosten.h"
 
+
+// MIN_DIST = 0 means that skipping of pixels around previously found corners will not be used.
+#define MIN_DIST 0
+
 static void fast_make_offsets(int32_t *pixel, uint16_t row_stride, uint8_t pixel_size);
 
 /**
@@ -50,13 +54,19 @@ static void fast_make_offsets(int32_t *pixel, uint16_t row_stride, uint8_t pixel
 */
 void fast9_detect(struct image_t *img, uint8_t threshold, uint16_t min_dist, uint16_t x_padding, uint16_t y_padding, uint16_t *num_corners, uint16_t *ret_corners_length,struct point_t *ret_corners) {
   uint32_t corner_cnt = 0;
-
   int pixel[16];
   int16_t i;
   uint16_t x, y, x_min, x_max, y_min;
   uint8_t need_skip;
   // Set the pixel size
   uint8_t pixel_size = 1;
+
+#if MIN_DIST
+  uint16_t x_min, x_max, y_min, y_max;
+  uint8_t need_skip; 
+  int16_t i;
+#endif
+
   if (img->type == IMAGE_YUV422) {
     pixel_size = 2;
   }
@@ -70,6 +80,9 @@ void fast9_detect(struct image_t *img, uint8_t threshold, uint16_t min_dist, uin
     if (min_dist > 0) y_min = y - min_dist;
 
     for (x = 3 + x_padding; x < img->w - 3 - x_padding; x++) {
+
+
+#if MIN_DIST
       // First check if we aren't in range vertical (TODO: fix less intensive way)
       if (min_dist > 0) {
 
@@ -102,6 +115,7 @@ void fast9_detect(struct image_t *img, uint8_t threshold, uint16_t min_dist, uin
           continue;
         }
       }
+#endif
 
       // Calculate the threshold values
       const uint8_t *p = ((uint8_t *)img->buf) + y * img->w * pixel_size + x * pixel_size + pixel_size / 2;

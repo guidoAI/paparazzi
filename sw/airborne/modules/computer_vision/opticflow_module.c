@@ -190,7 +190,6 @@ struct image_t *opticflow_module_calc(struct image_t *img)
   opticflow_result = temp_result;
   opticflow_got_result = true;
 
-
   // release the mutex as we are done with editing the opticflow result
   pthread_mutex_unlock(&opticflow_mutex);
   return img;

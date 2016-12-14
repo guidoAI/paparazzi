@@ -44,11 +44,14 @@
 #include "size_divergence.h"
 #include "linear_flow_fit.h"
 
+<<<<<<< HEAD
 // Kalman filter
 #include "lib/filters/kalman_filter_vision.h"
 #include "subsystems/imu.h"
 
 
+=======
+>>>>>>> textons
 // whether to show the flow and corners:
 #define OPTICFLOW_SHOW_FLOW 0
 #define OPTICFLOW_SHOW_CORNERS 0
@@ -58,7 +61,7 @@
 #define SIZE_DIV 1
 // LINEAR_FIT makes a linear optical flow field fit and extracts a lot of information:
 // relative velocities in x, y, z (divergence / time to contact), the slope of the surface, and the surface roughness.
-#define LINEAR_FIT 1
+#define LINEAR_FIT 0
 
 // Camera parameters (defaults are from an ARDrone 2)
 #ifndef OPTICFLOW_FOV_W
@@ -129,6 +132,7 @@ PRINT_CONFIG_VAR(OPTICFLOW_FAST9_THRESHOLD)
 
 #ifndef OPTICFLOW_FAST9_MIN_DISTANCE
 #define OPTICFLOW_FAST9_MIN_DISTANCE 10
+<<<<<<< HEAD
 #endif
 PRINT_CONFIG_VAR(OPTICFLOW_FAST9_MIN_DISTANCE)
 
@@ -137,6 +141,16 @@ PRINT_CONFIG_VAR(OPTICFLOW_FAST9_MIN_DISTANCE)
 #endif
 PRINT_CONFIG_VAR(OPTICFLOW_FAST9_PADDING)
 
+=======
+#endif
+PRINT_CONFIG_VAR(OPTICFLOW_FAST9_MIN_DISTANCE)
+
+#ifndef OPTICFLOW_FAST9_PADDING
+#define OPTICFLOW_FAST9_PADDING 20
+#endif
+PRINT_CONFIG_VAR(OPTICFLOW_FAST9_MIN_DISTANCE)
+
+>>>>>>> textons
 // thresholds FAST9 that are currently not set from the GCS:
 #define FAST9_LOW_THRESHOLD 5
 #define FAST9_HIGH_THRESHOLD 60
@@ -246,6 +260,7 @@ void opticflow_calc_init(struct opticflow_t *opticflow, uint16_t w, uint16_t h)
 void calc_fast9_lukas_kanade(struct opticflow_t *opticflow, struct opticflow_state_t *state, struct image_t *img,
                              struct opticflow_result_t *result)
 {
+
   if (opticflow->just_switched_method) {
     opticflow_calc_init(opticflow, img->w, img->h);
   }
@@ -270,6 +285,7 @@ void calc_fast9_lukas_kanade(struct opticflow_t *opticflow, struct opticflow_sta
     image_copy(&opticflow->img_gray, &opticflow->prev_img_gray);
     opticflow->got_first_img = true;
   }
+
 
   // *************************************************************************************
   // Corner detection
@@ -298,7 +314,7 @@ void calc_fast9_lukas_kanade(struct opticflow_t *opticflow, struct opticflow_sta
   image_show_points(img, opticflow->fast9_ret_corners, result->corner_cnt);
 #endif
 
-  // Check if we found some corners to track
+  // Check if we found some corners to track 
   if (result->corner_cnt < 1) {
     image_copy(&opticflow->img_gray, &opticflow->prev_img_gray);
     return;
