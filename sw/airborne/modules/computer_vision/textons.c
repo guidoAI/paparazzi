@@ -641,7 +641,7 @@ void textons_init(void)
     }
   }
 
-  cv_add(texton_func);
+  cv_add_to_device(&TEXTONS_CAMERA, texton_func);
 }
 
 void textons_stop(void)

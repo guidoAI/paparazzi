@@ -60,6 +60,10 @@
       <define name="VIDEO_CAPTURE_PATH" value="/data/ftp/internal_000/images"/>
     </module>
 
+    <module name="cv_textons">
+      <define name="TEXTONS_CAMERA" value="bottom_camera"/>
+    </module>
+
     <module name="optical_flow_landing.xml"/>
 
     <!-- <module name="video_rtp_stream">

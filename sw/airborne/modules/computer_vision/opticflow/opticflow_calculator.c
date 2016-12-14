@@ -44,14 +44,10 @@
 #include "size_divergence.h"
 #include "linear_flow_fit.h"
 
-<<<<<<< HEAD
 // Kalman filter
 #include "lib/filters/kalman_filter_vision.h"
 #include "subsystems/imu.h"
 
-
-=======
->>>>>>> textons
 // whether to show the flow and corners:
 #define OPTICFLOW_SHOW_FLOW 0
 #define OPTICFLOW_SHOW_CORNERS 0
@@ -132,7 +128,6 @@ PRINT_CONFIG_VAR(OPTICFLOW_FAST9_THRESHOLD)
 
 #ifndef OPTICFLOW_FAST9_MIN_DISTANCE
 #define OPTICFLOW_FAST9_MIN_DISTANCE 10
-<<<<<<< HEAD
 #endif
 PRINT_CONFIG_VAR(OPTICFLOW_FAST9_MIN_DISTANCE)
 
@@ -141,16 +136,6 @@ PRINT_CONFIG_VAR(OPTICFLOW_FAST9_MIN_DISTANCE)
 #endif
 PRINT_CONFIG_VAR(OPTICFLOW_FAST9_PADDING)
 
-=======
-#endif
-PRINT_CONFIG_VAR(OPTICFLOW_FAST9_MIN_DISTANCE)
-
-#ifndef OPTICFLOW_FAST9_PADDING
-#define OPTICFLOW_FAST9_PADDING 20
-#endif
-PRINT_CONFIG_VAR(OPTICFLOW_FAST9_MIN_DISTANCE)
-
->>>>>>> textons
 // thresholds FAST9 that are currently not set from the GCS:
 #define FAST9_LOW_THRESHOLD 5
 #define FAST9_HIGH_THRESHOLD 60

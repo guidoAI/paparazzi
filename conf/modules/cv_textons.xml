@@ -4,6 +4,7 @@
   <doc>
     <description>Represent the appearance (texture, color) of an image by means of a texton histogram.</description>
     <section name="TEXTONS" prefix="TEXTONS_">
+      <define name="CAMERA" value="bottom_camera|front_camera" description="The V4L2 camera device that is used for the calculations"/>
       <define name="LOAD_DICTIONARY" value="YES" description="Whether a dictionary is loaded (YES) or learned (NO)."/>
       <define name="REINITIALIZE_DICTIONARY" value="NO" description="If set to YES, the dictionary will be reinitialized with the current image."/>
       <define name="N_TEXTONS" value="20" description="The number of textons (words) in the dictionary."/>

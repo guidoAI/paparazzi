@@ -79,7 +79,7 @@ static void send_divergence(struct transport_tx *trans, struct link_device *dev)
 // include textons for SSL:
 // ************************
 #include <stdio.h>
-#include "textons.h"
+#include "modules/computer_vision/textons.h"
 float* last_texton_distribution; // used to check if a new texton distribution has been received
 #define TEXTON_DISTRIBUTION_PATH /data/video/
 static FILE *distribution_logger = NULL;
@@ -465,7 +465,7 @@ void vertical_ctrl_module_run(bool in_flight)
         if(ind_hist >= COV_WINDOW_SIZE && fabs(error_cov) < of_landing_ctrl.close_to_edge) {
           if(of_landing_ctrl.snapshot) {
             // TODO: watch out, if the texton distribution is the same as the previous one, it will not be saved - and indices of images and the training set will not coincide...
-            video_thread_take_shot(true);
+            // video_thread_take_shot(true); // now defined differently...
           }
           save_texton_distribution();
         }
