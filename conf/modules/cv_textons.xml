@@ -4,6 +4,7 @@
   <doc>
     <description>Represent the appearance (texture, color) of an image by means of a texton histogram.</description>
     <section name="TEXTONS" prefix="TEXTONS_">
+      <define name="RUN" value="YES" description="Whether the texton function is running (YES) or not (NO)."/>  
       <define name="CAMERA" value="bottom_camera|front_camera" description="The V4L2 camera device that is used for the calculations"/>
       <define name="LOAD_DICTIONARY" value="YES" description="Whether a dictionary is loaded (YES) or learned (NO)."/>
       <define name="REINITIALIZE_DICTIONARY" value="NO" description="If set to YES, the dictionary will be reinitialized with the current image."/>
@@ -24,6 +25,7 @@
   <settings>
     <dl_settings>
       <dl_settings NAME="Textons">
+        <dl_setting var="running" min="0" step="1" max="1" module="computer_vision/textons" shortname="running" values="NO|YES" param="TEXTONS_RUN"/>
         <dl_setting var="load_dictionary" min="0" step="1" max="1" module="computer_vision/textons" shortname="load dict." values="NO|YES" param="TEXTONS_LOAD_DICTIONARY"/>
         <dl_setting var="reinitialize_dictionary" min="0" step="1" max="1" module="computer_vision/textons" shortname="reinit dict." values="NO|YES" param="TEXTONS_REINITIALIZE_DICTIONARY"/>
         <dl_setting var="n_textons" min="1" step="1" max="255" shortname="n_textons" param="TEXTONS_N_TEXTONS"/>

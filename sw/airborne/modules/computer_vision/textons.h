@@ -42,6 +42,7 @@ float *TD_1; // temporary array meant for internal use
 uint8_t TD_ID; // indicates which array to take 
 
 // settings
+extern uint8_t running;
 extern uint8_t load_dictionary;
 extern uint8_t reinitialize_dictionary;
 extern uint8_t alpha_uint;

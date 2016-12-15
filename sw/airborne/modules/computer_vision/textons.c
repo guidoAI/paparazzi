@@ -40,6 +40,11 @@ uint8_t dictionary_initialized = 0;
 float *texton_distribution;
 
 // initial settings:
+#ifndef TEXTONS_RUN
+#define TEXTONS_RUN 1
+#endif
+PRINT_CONFIG_VAR(TEXTONS_RUN)
+
 #ifndef TEXTONS_LOAD_DICTIONARY
 #define TEXTONS_LOAD_DICTIONARY 1
 #endif
@@ -100,7 +105,7 @@ PRINT_CONFIG_VAR(TEXTONS_DICTIONARY_NUMBER)
 #endif
 PRINT_CONFIG_VAR(TEXTONS_EXECUTION_PERIOD)
 
-
+uint8_t running = TEXTONS_RUN;
 uint8_t load_dictionary = TEXTONS_LOAD_DICTIONARY;
 uint8_t reinitialize_dictionary = TEXTONS_REINITIALIZE_DICTIONARY;
 uint8_t alpha_uint = TEXTONS_ALPHA;
@@ -134,10 +139,12 @@ static FILE *dictionary_logger = NULL;
 struct image_t *texton_func(struct image_t *img);
 struct image_t *texton_func(struct image_t *img)
 {
+  // whether to execute the function:
+  if(!running) return img;
+
   // only execute the texton function once every execution_period times:
   cycle = (cycle+1) % execution_period;
-  if(cycle > 0) return img; // was > wrong no?
-  // int i;
+  if(cycle > 0) return img;
 
   if (img->buf_size == 0) { return img; }
 
