@@ -116,9 +116,9 @@ void stereocam_to_state(void)
   AbiSendMsgTEXTONS(STEREOCAM2STATE_SENDER_ID, histogram[0], histogram[1], histogram[2], histogram[3], histogram[4], histogram[5], histogram[6], histogram[7], histogram[8], histogram[9]);
 
   // get the divergence from the message:
+  // printf("Divergence in uint8 = %d, ", stereocam_data.data[n_textons_stereoboard]);
   float divergence = (float)stereocam_data.data[n_textons_stereoboard] - 128;
-  // TODO: multiply divergence with a magical factor:
-
+  // printf("divergence in float = %f\n", divergence);
   uint8_t dummy_uint8 = 0;
   uint16_t dummy_uint16 = 0;
   int16_t dummy_int16 = 0;

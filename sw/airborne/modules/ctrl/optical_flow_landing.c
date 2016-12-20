@@ -395,7 +395,12 @@ void vertical_ctrl_module_run(bool in_flight)
         // div_factor = (vz / z) - from optitrack or similar, divided by (divergence_vision / dt)
         divergence_vision_dt = (divergence_vision / dt);
         // for Bebop2: -1.77?
-        div_factor = -1.28f; // magic number comprising field of view etc.
+        if(TEXTONS_FROM_STEREO) {
+          div_factor = 0.11; // magic number comprising field of view etc.
+        }
+        else {
+          div_factor = -1.28f; // magic number comprising field of view etc.
+        }
 
         float new_divergence = divergence_vision_dt * div_factor; // (divergence_vision * div_factor) / dt;
 
