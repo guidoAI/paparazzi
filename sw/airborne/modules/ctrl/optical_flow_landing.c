@@ -63,6 +63,7 @@ long previous_time;
 // sending the divergence message to the ground station:
 static void send_divergence(struct transport_tx *trans, struct link_device *dev)
 {
+  printf("sent: %f\n", divergence);
   pprz_msg_send_DIVERGENCE(trans, dev, AC_ID,
                            &divergence, &divergence_vision_dt, &normalized_thrust,
                            &cov_div, &pstate, &pused, &(of_landing_ctrl.agl));
@@ -319,6 +320,23 @@ void vertical_ctrl_module_run(bool in_flight)
       of_landing_ctrl.load_weights = false;
     }
 
+    // TODO: remove - only for debugging:
+    if(dt == 0.0f) dt = 0.001f;
+    divergence_vision_dt = (divergence_vision / dt);
+    // for Bebop2: -1.77?
+    if(TEXTONS_FROM_STEREO) {
+      div_factor = 0.001; // magic number comprising field of view etc.
+    }
+    else {
+      div_factor = -1.28f; // magic number comprising field of view etc.
+    }
+
+    float new_divergence = divergence_vision_dt * div_factor; // (divergence_vision * div_factor) / dt;
+    // low-pass filter the divergence:
+    divergence = divergence * of_landing_ctrl.lp_factor + (new_divergence * (1.0f - of_landing_ctrl.lp_factor));
+    printf("divergence = %f\n", divergence);
+    
+/*
     // TODO: just for debugging, remove:
     if(TEXTONS_FROM_STEREO) {
       printf("\nTextons: ");
@@ -327,6 +345,8 @@ void vertical_ctrl_module_run(bool in_flight)
         printf("%f ", texton_distribution_stereoboard[i]);
       }
     }
+  */  
+    
     /*
     // TODO: remove, just for testing:
     // of_landing_ctrl.agl = (float) gps.lla_pos.alt / 1000.0f;
@@ -342,7 +362,7 @@ void vertical_ctrl_module_run(bool in_flight)
 
     // When not flying and in mode module:
     // Reset integrators
-    reset_all_vars(); // TODO: uncomment
+    // reset_all_vars(); // TODO: uncomment
 
   } else {
 
@@ -393,10 +413,11 @@ void vertical_ctrl_module_run(bool in_flight)
       if (vision_message_nr != previous_message_nr && dt > 1E-5 && ind_hist > 1) {
         // TODO: this div_factor depends on the subpixel-factor (automatically adapt?)
         // div_factor = (vz / z) - from optitrack or similar, divided by (divergence_vision / dt)
+        if(dt == 0.0f) dt = 0.001f;
         divergence_vision_dt = (divergence_vision / dt);
         // for Bebop2: -1.77?
         if(TEXTONS_FROM_STEREO) {
-          div_factor = 0.11; // magic number comprising field of view etc.
+          div_factor = 0.05; //0.001; // magic number comprising field of view etc.
         }
         else {
           div_factor = -1.28f; // magic number comprising field of view etc.

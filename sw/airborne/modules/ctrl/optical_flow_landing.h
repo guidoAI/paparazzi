@@ -89,10 +89,10 @@ float cov_divs_log[MAX_SAMPLES_LEARNING];
 float *weights;
 
 // Without optitrack set to: GUIDANCE_H_MODE_ATTITUDE
-// With optitrack set to: GUIDANCE_H_MODE_HOVER / GUIDANCE_H_MODE_NAV / GUIDANCE_H_MODE_GUIDED
-#define GUIDANCE_H_MODE_MODULE_SETTING GUIDANCE_H_MODE_NAV
+// With optitrack set to: GUIDANCE_H_MODE_HOVER / GUIDANCE_H_MODE_NAV (optitrack) / GUIDANCE_H_MODE_GUIDED (optic flow) / GUIDANCE_H_MODE_ATTITUDE (manual)
+#define GUIDANCE_H_MODE_MODULE_SETTING GUIDANCE_H_MODE_ATTITUDE
 
-// Own guidance_v
+// Own guidance_v GUIDANCE_V_MODE_MODULE (should be this) / GUIDANCE_V_MODE_RC_DIRECT (doesn't make sense - just to get data from divergence_vision)
 #define GUIDANCE_V_MODE_MODULE_SETTING GUIDANCE_V_MODE_MODULE
 
 // supporting functions for cov calculation:
