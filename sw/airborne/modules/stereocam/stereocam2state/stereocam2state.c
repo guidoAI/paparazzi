@@ -113,12 +113,12 @@ void stereocam_to_state(void)
   DOWNLINK_SEND_TEXTONS(DefaultChannel, DefaultDevice, &histogram[0], &histogram[1], &histogram[2], &histogram[3], &histogram[4], &histogram[5],
                              &histogram[6], &histogram[7], &histogram[8], &histogram[9]);
   // broadcast internally:
-  AbiSendMsgTEXTONS(TEXTONS_ABI_ID, histogram[0], histogram[1], histogram[2], histogram[3], histogram[4], histogram[5], histogram[6], histogram[7], histogram[8], histogram[9]);
+  AbiSendMsgTEXTONS(STEREOCAM2STATE_SENDER_ID, histogram[0], histogram[1], histogram[2], histogram[3], histogram[4], histogram[5], histogram[6], histogram[7], histogram[8], histogram[9]);
 
   // get the divergence from the message:
   float divergence = (float)stereocam_data.data[n_textons_stereoboard] - 128;
   // TODO: multiply divergence with a magical factor:
-  
+
   uint8_t dummy_uint8 = 0;
   uint16_t dummy_uint16 = 0;
   int16_t dummy_int16 = 0;
@@ -130,7 +130,7 @@ void stereocam_to_state(void)
 
   // broadcast internally:
   uint32_t now_ts = get_sys_time_usec(); // include std.h?
-  AbiSendMsgOPTICAL_FLOW(OPTICFLOW_SEND_ABI_ID, now_ts,
+  AbiSendMsgOPTICAL_FLOW(STEREOCAM2STATE_SENDER_ID, now_ts,
                            dummy_int16,
                            dummy_int16,
                            dummy_int16,

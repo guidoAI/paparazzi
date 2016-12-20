@@ -57,6 +57,8 @@
 
   <makefile target="ap">
     <file name="optical_flow_landing.c"/>
+    <file name="pprz_algebra_float.c" dir="math"/>
+    <file name="pprz_matrix_decomp_float.c" dir="math"/>
   </makefile>
 
 </module>

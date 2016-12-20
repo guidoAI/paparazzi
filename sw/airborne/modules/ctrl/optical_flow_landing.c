@@ -83,12 +83,15 @@ static void send_divergence(struct transport_tx *trans, struct link_device *dev)
 #include <stdio.h>
 #include "modules/computer_vision/textons.h"
 float* last_texton_distribution; // used to check if a new texton distribution has been received
+// TODO: last_texton_distribution's size depends on the number of textons in textons.h/c.
+// it should now be set to 10 to match the number of textons on the stereoboard... this is extremely ugly.
 #define n_ts 10
 float texton_distribution_stereoboard[n_ts];
 #define TEXTON_DISTRIBUTION_PATH /data/ftp/internal000
 static FILE *distribution_logger = NULL;
 static FILE *weights_file = NULL;
 unsigned int n_read_samples;
+// paparazzi files for doing svd etc.:
 #include "math/pprz_algebra_float.h"
 #include "math/pprz_matrix_decomp_float.h"
 #include "math/pprz_simple_matrix.h"
@@ -147,7 +150,7 @@ static void vertical_ctrl_agl_cb(uint8_t sender_id __attribute__((unused)), floa
 static void vertical_ctrl_optical_flow_cb(uint8_t sender_id __attribute__((unused)), uint32_t stamp, int16_t flow_x, int16_t flow_y, int16_t flow_der_x, int16_t flow_der_y, uint8_t quality, float size_divergence, float dist);
 // Callback function of the texton histogram from the stereoboard:
 static void vertical_ctrl_textons_cb(uint8_t sender_id, uint8_t histogram0, uint8_t histogram1, uint8_t histogram2, uint8_t histogram3, uint8_t histogram4, uint8_t histogram5, 
-                                     uint8_t histogram6, uint8_t histogram7, uint8_t histogram8, uint8_t histogram9)
+                                     uint8_t histogram6, uint8_t histogram7, uint8_t histogram8, uint8_t histogram9);
 
 struct OpticalFlowLanding of_landing_ctrl;
 
@@ -234,7 +237,7 @@ void vertical_ctrl_module_init(void)
   // Subscribe to the optical flow estimator:
   AbiBindMsgOPTICAL_FLOW(OPTICAL_FLOW_LANDING_OPTICAL_FLOW_ID, &optical_flow_ev, vertical_ctrl_optical_flow_cb);
   // Subscribe to the textons estimator:
-  AbiBindMsgOPTICAL_FLOW(OPTICAL_FLOW_LANDING_TEXTONS_ID, &textons_ev, vertical_ctrl_textons_cb);
+  AbiBindMsgTEXTONS(OPTICAL_FLOW_LANDING_TEXTONS_ID, &textons_ev, vertical_ctrl_textons_cb);
   
   register_periodic_telemetry(DefaultPeriodic, PPRZ_MSG_ID_DIVERGENCE, send_divergence);
 }
@@ -316,6 +319,14 @@ void vertical_ctrl_module_run(bool in_flight)
       of_landing_ctrl.load_weights = false;
     }
 
+    // TODO: just for debugging, remove:
+    if(TEXTONS_FROM_STEREO) {
+      printf("\nTextons: ");
+      for(i = 0; i < n_textons; i++)
+      { 
+        printf("%f ", texton_distribution_stereoboard[i]);
+      }
+    }
     /*
     // TODO: remove, just for testing:
     // of_landing_ctrl.agl = (float) gps.lla_pos.alt / 1000.0f;
@@ -739,12 +750,12 @@ void save_texton_distribution(void)
     for(i = 0; i < n_textons; i++)
     { 
       // check if the texton distribution is the same as the previous one:
-      if(texton_distribution_stereo[i] != last_texton_distribution[i]) 
+      if(texton_distribution_stereoboard[i] != last_texton_distribution[i]) 
       {
         same = 0;
       }
       // update the last texton distribution:
-      last_texton_distribution[i] = texton_distribution_stereo[i];
+      last_texton_distribution[i] = texton_distribution_stereoboard[i];
     }
   }
   // don't save the texton distribution if it is the same as previous time step:
@@ -754,6 +765,7 @@ void save_texton_distribution(void)
     return;
   }*/
 
+  // TODO: if(!same)?
   // If not the same, append the target values (heights, gains) and texton values to a .dat file:
   char filename[512];
 	sprintf(filename, "%s/Training_set_%05d.dat", STRINGIFY(TEXTON_DISTRIBUTION_PATH), 0);
@@ -781,9 +793,9 @@ void save_texton_distribution(void)
     else {
     for(i = 0; i < n_textons-1; i++)
       {
-        fprintf(distribution_logger, "%f ", texton_distribution_stereo[i]);
+        fprintf(distribution_logger, "%f ", texton_distribution_stereoboard[i]);
       }
-      fprintf(distribution_logger, "%f\n", texton_distribution_stereo[n_textons-1]);
+      fprintf(distribution_logger, "%f\n", texton_distribution_stereoboard[n_textons-1]);
     }
     fclose(distribution_logger);
   }
