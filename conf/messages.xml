@@ -2209,8 +2209,7 @@
     <field name="errno"   type="uint8"/>
   </message>
 
-    <message name="DIV_TEXTONS" id="248">
-    <field name="divergence"  type="uint8"/>
+    <message name="TEXTONS" id="248">
     <field name="texton_hist0" type="uint8"/>
     <field name="texton_hist1" type="uint8"/>
     <field name="texton_hist2" type="uint8"/>

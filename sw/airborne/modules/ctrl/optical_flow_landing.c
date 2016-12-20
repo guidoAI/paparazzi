@@ -34,6 +34,8 @@
  */
 
 
+#define TEXTONS_FROM_STEREO 1
+
 float dt;
 float divergence;
 float divergence_vision;
@@ -81,6 +83,8 @@ static void send_divergence(struct transport_tx *trans, struct link_device *dev)
 #include <stdio.h>
 #include "modules/computer_vision/textons.h"
 float* last_texton_distribution; // used to check if a new texton distribution has been received
+#define n_ts 10
+float texton_distribution_stereoboard[n_ts];
 #define TEXTON_DISTRIBUTION_PATH /data/ftp/internal000
 static FILE *distribution_logger = NULL;
 static FILE *weights_file = NULL;
@@ -100,6 +104,13 @@ PRINT_CONFIG_VAR(OPTICAL_FLOW_LANDING_AGL_ID)
 #define OPTICAL_FLOW_LANDING_OPTICAL_FLOW_ID ABI_BROADCAST
 #endif
 PRINT_CONFIG_VAR(OPTICAL_FLOW_LANDING_OPTICAL_FLOW_ID)
+
+/* Textons from the stereoboard */
+#ifndef OPTICAL_FLOW_LANDING_TEXTONS_ID
+#define OPTICAL_FLOW_LANDING_TEXTONS_ID ABI_BROADCAST
+#endif
+PRINT_CONFIG_VAR(OPTICAL_FLOW_LANDING_TEXTONS_ID)
+
 
 // Other default values:
 #ifndef OPTICAL_FLOW_LANDING_PGAIN
@@ -128,11 +139,15 @@ PRINT_CONFIG_VAR(OPTICAL_FLOW_LANDING_OPTICAL_FLOW_ID)
 
 static abi_event agl_ev; ///< The altitude ABI event
 static abi_event optical_flow_ev;
+static abi_event textons_ev;
 
 /// Callback function of the ground altitude
 static void vertical_ctrl_agl_cb(uint8_t sender_id __attribute__((unused)), float distance);
 // Callback function of the optical flow estimate:
 static void vertical_ctrl_optical_flow_cb(uint8_t sender_id __attribute__((unused)), uint32_t stamp, int16_t flow_x, int16_t flow_y, int16_t flow_der_x, int16_t flow_der_y, uint8_t quality, float size_divergence, float dist);
+// Callback function of the texton histogram from the stereoboard:
+static void vertical_ctrl_textons_cb(uint8_t sender_id, uint8_t histogram0, uint8_t histogram1, uint8_t histogram2, uint8_t histogram3, uint8_t histogram4, uint8_t histogram5, 
+                                     uint8_t histogram6, uint8_t histogram7, uint8_t histogram8, uint8_t histogram9)
 
 struct OpticalFlowLanding of_landing_ctrl;
 
@@ -218,7 +233,9 @@ void vertical_ctrl_module_init(void)
   AbiBindMsgAGL(OPTICAL_FLOW_LANDING_AGL_ID, &agl_ev, vertical_ctrl_agl_cb);
   // Subscribe to the optical flow estimator:
   AbiBindMsgOPTICAL_FLOW(OPTICAL_FLOW_LANDING_OPTICAL_FLOW_ID, &optical_flow_ev, vertical_ctrl_optical_flow_cb);
-
+  // Subscribe to the textons estimator:
+  AbiBindMsgOPTICAL_FLOW(OPTICAL_FLOW_LANDING_TEXTONS_ID, &textons_ev, vertical_ctrl_textons_cb);
+  
   register_periodic_telemetry(DefaultPeriodic, PPRZ_MSG_ID_DIVERGENCE, send_divergence);
 }
 
@@ -521,7 +538,12 @@ void vertical_ctrl_module_run(bool in_flight)
         
         // adapt the p-gain with a low-pass filter to the gain predicted by image appearance:
         // TODO: lp_factor is now the same as used for the divergence. This may not be appropriate
-        pstate = predict_gain(texton_distribution);
+        if(!TEXTONS_FROM_STEREO) {
+          pstate = predict_gain(texton_distribution);
+        }
+        else {
+          pstate = predict_gain(texton_distribution_stereoboard);
+        }
         of_landing_ctrl.pgain = of_landing_ctrl.lp_factor * of_landing_ctrl.pgain + (1.0f - of_landing_ctrl.lp_factor) * of_landing_ctrl.stable_gain_factor * pstate;
         pused = of_landing_ctrl.pgain;
 
@@ -623,13 +645,38 @@ static void vertical_ctrl_agl_cb(uint8_t sender_id, float distance)
   // value from the sonar - normally, this is replaced by the optitrack value in the main loop.
   of_landing_ctrl.agl = distance;
 }
+// Getting information from optical flow:
 static void vertical_ctrl_optical_flow_cb(uint8_t sender_id, uint32_t stamp, int16_t flow_x, int16_t flow_y, int16_t flow_der_x, int16_t flow_der_y, uint8_t quality, float size_divergence, float dist)
 {
   divergence_vision = size_divergence;
   vision_message_nr++;
   if (vision_message_nr > 10) { vision_message_nr = 0; }
 }
+// Getting textons:
+static void vertical_ctrl_textons_cb(uint8_t sender_id, uint8_t histogram0, uint8_t histogram1, uint8_t histogram2, uint8_t histogram3, uint8_t histogram4, uint8_t histogram5, 
+                                     uint8_t histogram6, uint8_t histogram7, uint8_t histogram8, uint8_t histogram9)
+{
+  int i;
+  texton_distribution_stereoboard[0] = (float) histogram0;
+  texton_distribution_stereoboard[1] = (float) histogram1;
+  texton_distribution_stereoboard[2] = (float) histogram2;
+  texton_distribution_stereoboard[3] = (float) histogram3;
+  texton_distribution_stereoboard[4] = (float) histogram4;
+  texton_distribution_stereoboard[5] = (float) histogram5;
+  texton_distribution_stereoboard[6] = (float) histogram6;
+  texton_distribution_stereoboard[7] = (float) histogram7;
+  texton_distribution_stereoboard[8] = (float) histogram8;
+  texton_distribution_stereoboard[9] = (float) histogram9;
 
+  float sum = 0;
+  for (i = 0; i < n_ts; i++) {
+    sum += texton_distribution_stereoboard[i];
+  }
+
+  for (i = 0; i < n_ts; i++) {
+    texton_distribution_stereoboard[i] /= sum;
+  }
+}
 
 ////////////////////////////////////////////////////////////////////
 // Call our controller
@@ -676,17 +723,30 @@ void save_texton_distribution(void)
   // Since the control module runs faster than the texton vision process, we need to check that we are storing a recent vision result:
   int i, same;
   same = 1;
-  for(i = 0; i < n_textons; i++)
-  { 
-    // check if the texton distribution is the same as the previous one:
-    if(texton_distribution[i] != last_texton_distribution[i]) 
-    {
-      same = 0;
+  if(!TEXTONS_FROM_STEREO) {
+    for(i = 0; i < n_textons; i++)
+    { 
+      // check if the texton distribution is the same as the previous one:
+      if(texton_distribution[i] != last_texton_distribution[i]) 
+      {
+        same = 0;
+      }
+      // update the last texton distribution:
+      last_texton_distribution[i] = texton_distribution[i];
     }
-    // update the last texton distribution:
-    last_texton_distribution[i] = texton_distribution[i];
   }
- 
+  else {
+    for(i = 0; i < n_textons; i++)
+    { 
+      // check if the texton distribution is the same as the previous one:
+      if(texton_distribution_stereo[i] != last_texton_distribution[i]) 
+      {
+        same = 0;
+      }
+      // update the last texton distribution:
+      last_texton_distribution[i] = texton_distribution_stereo[i];
+    }
+  }
   // don't save the texton distribution if it is the same as previous time step:
   /*if(same)
   {
@@ -711,11 +771,20 @@ void save_texton_distribution(void)
     fprintf(distribution_logger, "%f ", of_landing_ctrl.agl); // sonar measurement
     fprintf(distribution_logger, "%f ", pstate); // gain measurement
     fprintf(distribution_logger, "%f ", cov_div); // cov div measurement
-    for(i = 0; i < n_textons-1; i++)
-    {
-      fprintf(distribution_logger, "%f ", texton_distribution[i]);
+    if(!TEXTONS_FROM_STEREO) {
+      for(i = 0; i < n_textons-1; i++)
+      {
+        fprintf(distribution_logger, "%f ", texton_distribution[i]);
+      }
+      fprintf(distribution_logger, "%f\n", texton_distribution[n_textons-1]);
     }
-    fprintf(distribution_logger, "%f\n", texton_distribution[n_textons-1]);
+    else {
+    for(i = 0; i < n_textons-1; i++)
+      {
+        fprintf(distribution_logger, "%f ", texton_distribution_stereo[i]);
+      }
+      fprintf(distribution_logger, "%f\n", texton_distribution_stereo[n_textons-1]);
+    }
     fclose(distribution_logger);
   }
 }

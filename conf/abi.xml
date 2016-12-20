@@ -88,6 +88,19 @@
       <field name="rpm" type="uint16_t" unit="rpm"/>
     </message>
 
+    <message name="TEXTONS" id="16">
+      <field name="histogram0" type="uint8_t" unit="-"/>
+      <field name="histogram1" type="uint8_t" unit="-"/>
+      <field name="histogram2" type="uint8_t" unit="-"/>
+      <field name="histogram3" type="uint8_t" unit="-"/>
+      <field name="histogram4" type="uint8_t" unit="-"/>
+      <field name="histogram5" type="uint8_t" unit="-"/>
+      <field name="histogram6" type="uint8_t" unit="-"/>
+      <field name="histogram7" type="uint8_t" unit="-"/>
+      <field name="histogram8" type="uint8_t" unit="-"/>
+      <field name="histogram9" type="uint8_t" unit="-"/>
+    </message> 
+
   </msg_class>
 
 </protocol>

@@ -20,10 +20,13 @@
 #endif
 
 #ifndef STEREOCAM2STATE_RECEIVED_DATA_TYPE
-#define STEREOCAM2STATE_RECEIVED_DATA_TYPE 0
+#define STEREOCAM2STATE_RECEIVED_DATA_TYPE 1
 #endif
 
 #include "subsystems/datalink/telemetry.h"
+
+// define for textons:
+#define n_textons_stereoboard 10
 
 void stereocam_to_state(void);
 
@@ -45,6 +48,7 @@ void stereocam_to_state(void)
 
   // Get info from stereocam data
   // 0 = stereoboard's #define SEND_EDGEFLOW
+  // 1 = stereoboard's #define SEND_DIVERGENCE_AND_TEXTONS
 #if STEREOCAM2STATE_RECEIVED_DATA_TYPE == 0
   // opticflow
   int16_t div_x = (int16_t)stereocam_data.data[0] << 8;
@@ -98,6 +102,42 @@ void stereocam_to_state(void)
 
   DOWNLINK_SEND_OPTIC_FLOW_EST(DefaultChannel, DefaultDevice, &fps, &dummy_uint16, &dummy_uint16, &flow_x, &flow_y, &dummy_int16, &dummy_int16,
 		  &vel_x, &vel_y,&dummy_float, &dummy_float, &dummy_float);
+#else
+  // get the textons from the message:
+  uint8_t i;
+  uint8_t histogram[n_textons_stereoboard];
+  for(i = 0; i < n_textons_stereoboard; i++) {
+    histogram[i] = stereocam_data.data[i];
+  }
+  // send to ground station:
+  DOWNLINK_SEND_TEXTONS(DefaultChannel, DefaultDevice, &histogram[0], &histogram[1], &histogram[2], &histogram[3], &histogram[4], &histogram[5],
+                             &histogram[6], &histogram[7], &histogram[8], &histogram[9]);
+  // broadcast internally:
+  AbiSendMsgTEXTONS(TEXTONS_ABI_ID, histogram[0], histogram[1], histogram[2], histogram[3], histogram[4], histogram[5], histogram[6], histogram[7], histogram[8], histogram[9]);
+
+  // get the divergence from the message:
+  float divergence = (float)stereocam_data.data[n_textons_stereoboard] - 128;
+  // TODO: multiply divergence with a magical factor:
+  
+  uint8_t dummy_uint8 = 0;
+  uint16_t dummy_uint16 = 0;
+  int16_t dummy_int16 = 0;
+  float dummy_float = 0;
+
+  // send to ground station:
+  DOWNLINK_SEND_OPTIC_FLOW_EST(DefaultChannel, DefaultDevice, &dummy_float, &dummy_uint16, &dummy_uint16, &dummy_int16, &dummy_int16, &dummy_int16, &dummy_int16,
+		  &dummy_float, &dummy_float, &divergence, &dummy_float, &dummy_float);
+
+  // broadcast internally:
+  uint32_t now_ts = get_sys_time_usec(); // include std.h?
+  AbiSendMsgOPTICAL_FLOW(OPTICFLOW_SEND_ABI_ID, now_ts,
+                           dummy_int16,
+                           dummy_int16,
+                           dummy_int16,
+                           dummy_int16,
+                           dummy_uint8,// FIXME, scale to some quality measure 0-255
+                           divergence,
+                           dummy_float);
 
 #endif
 
