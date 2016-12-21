@@ -28,6 +28,7 @@ else
 end
 x = AA \ b;
 y = AA * x;
+height_gain_estimate = y;
 fprintf('Abs error = %f\n', mean(abs(y-b)));
 if(weights)
     Z = AA * w';
@@ -63,8 +64,15 @@ end
 x = AA \ b;
 y = AA * x;
 figure(); plot(smooth(y, 20)); hold on; plot(b);
+
+b = A(:,1);
+f = height_gain_estimate;
+AA = [f, ones(size(A,1),1)];
+x = AA \ b;
+y = AA * x;
+plot(smooth(y,20));
 title('Sonar height')
-legend({'estimate trained with sonar', 'sonar'});
+legend({'estimate trained with sonar', 'sonar', 'scaled gain estimate'});
 
 figure();
 plot(A(:, 3));
