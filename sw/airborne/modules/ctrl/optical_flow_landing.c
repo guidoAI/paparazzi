@@ -88,7 +88,9 @@ float* last_texton_distribution; // used to check if a new texton distribution h
 // it should now be set to 10 to match the number of textons on the stereoboard... this is extremely ugly.
 #define n_ts 10
 float texton_distribution_stereoboard[n_ts];
-#define TEXTON_DISTRIBUTION_PATH /data/ftp/internal000
+#define TEXTON_DISTRIBUTION_PATH /data/video/
+// On Bebop 2:
+// #define TEXTON_DISTRIBUTION_PATH /data/ftp/internal000
 static FILE *distribution_logger = NULL;
 static FILE *weights_file = NULL;
 unsigned int n_read_samples;
@@ -171,7 +173,12 @@ void vertical_ctrl_module_init(void)
   of_landing_ctrl.divergence_setpoint = 0.0f;
   of_landing_ctrl.cov_set_point = -0.025f;
   of_landing_ctrl.cov_limit = 2.0f; // 0.0010f; //1.0f; // for cov(uz,div)
-  of_landing_ctrl.lp_factor = 0.95f;
+  if(!TEXTONS_FROM_STEREO) {
+    of_landing_ctrl.lp_factor = 0.95f;
+  }
+  else {
+    of_landing_ctrl.lp_factor = 0.75f;
+  }
   of_landing_ctrl.pgain = OPTICAL_FLOW_LANDING_PGAIN;
   of_landing_ctrl.igain = OPTICAL_FLOW_LANDING_IGAIN;
   of_landing_ctrl.dgain = OPTICAL_FLOW_LANDING_DGAIN;
@@ -297,7 +304,7 @@ void vertical_ctrl_module_run(bool in_flight)
   long new_time = spec.tv_nsec / 1.0E6;
   long delta_t = new_time - previous_time;
   dt += ((float)delta_t) / 1000.0f;
-  if (dt > 10.0f) {
+  if (dt > 10.0f || dt == 0.0f) {
     dt = 0.0f;
     return;
   }
@@ -320,6 +327,7 @@ void vertical_ctrl_module_run(bool in_flight)
       of_landing_ctrl.load_weights = false;
     }
 
+    /*
     // TODO: remove - only for debugging:
     if(dt == 0.0f) dt = 0.001f;
     divergence_vision_dt = (divergence_vision / dt);
@@ -335,17 +343,22 @@ void vertical_ctrl_module_run(bool in_flight)
     // low-pass filter the divergence:
     divergence = divergence * of_landing_ctrl.lp_factor + (new_divergence * (1.0f - of_landing_ctrl.lp_factor));
     printf("divergence = %f\n", divergence);
-    
-/*
+    */
+
+    /*
     // TODO: just for debugging, remove:
+    float sum_hist = 0.0f;
     if(TEXTONS_FROM_STEREO) {
       printf("\nTextons: ");
       for(i = 0; i < n_textons; i++)
       { 
-        printf("%f ", texton_distribution_stereoboard[i]);
+        sum_hist += texton_distribution_stereoboard[i];
+        // printf("%f ", texton_distribution_stereoboard[i]);
       }
+      printf(" sum = %f\n", sum_hist);
+      save_texton_distribution();
     }
-  */  
+      */
     
     /*
     // TODO: remove, just for testing:
@@ -362,7 +375,7 @@ void vertical_ctrl_module_run(bool in_flight)
 
     // When not flying and in mode module:
     // Reset integrators
-    // reset_all_vars(); // TODO: uncomment
+    reset_all_vars(); // TODO: uncomment
 
   } else {
 
@@ -413,11 +426,16 @@ void vertical_ctrl_module_run(bool in_flight)
       if (vision_message_nr != previous_message_nr && dt > 1E-5 && ind_hist > 1) {
         // TODO: this div_factor depends on the subpixel-factor (automatically adapt?)
         // div_factor = (vz / z) - from optitrack or similar, divided by (divergence_vision / dt)
-        if(dt == 0.0f) dt = 0.001f;
+        // printf("dt = %f\n", dt);
+        if(dt == 0.0f) { 
+          // printf("??????????????????DT = 0??????????\n");
+          dt = 0.0001f; // This is a new line, but should not influence any bias...
+        }
         divergence_vision_dt = (divergence_vision / dt);
         // for Bebop2: -1.77?
         if(TEXTONS_FROM_STEREO) {
-          div_factor = 0.05; //0.001; // magic number comprising field of view etc.
+          // div_factor without dt (directly on flow) is 0.025
+          div_factor = 0.00008; // 0.05; //0.001; // magic number comprising field of view etc.
         }
         else {
           div_factor = -1.28f; // magic number comprising field of view etc.
@@ -425,10 +443,12 @@ void vertical_ctrl_module_run(bool in_flight)
 
         float new_divergence = divergence_vision_dt * div_factor; // (divergence_vision * div_factor) / dt;
 
+        // TODO: in combination with setting the divergence to the desired set point, this outlier detection can give problems:
         // if very different from the previous divergence, this is likely an outlier: input a thresholded observation into the filter:
-        if (fabs(new_divergence - divergence) > 0.20) {
-          if (new_divergence < divergence) { new_divergence = divergence - 0.10f; }
-          else { new_divergence = divergence + 0.10f; }
+        float max_change = 0.30f;
+        if (fabs(new_divergence - divergence) > max_change) {
+          if (new_divergence < divergence) { new_divergence = divergence - max_change; }
+          else { new_divergence = divergence + max_change; }
         }
 
         // low-pass filter the divergence:
@@ -439,8 +459,10 @@ void vertical_ctrl_module_run(bool in_flight)
       } else {
 
         // after re-entering the module, the divergence should be equal to the set point:
+        // or 0.0 to assume hover when switching to module
         if (ind_hist <= 1) {
-          divergence = of_landing_ctrl.divergence_setpoint;
+          
+          divergence = 0.0f; // of_landing_ctrl.divergence_setpoint;
           for (i = 0; i < COV_WINDOW_SIZE; i++) {
             thrust_history[i] = 0;
             divergence_history[i] = 0;

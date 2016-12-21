@@ -4,7 +4,7 @@ MAX_SAMPLES = 25000;
 start_sample = 1;
 
 BIAS = true;
-weights = true;
+weights = false;
 if(weights)
     w = load('Weights_00000.dat');
 end
