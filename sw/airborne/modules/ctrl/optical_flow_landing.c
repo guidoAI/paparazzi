@@ -322,8 +322,7 @@ void vertical_ctrl_module_run(bool in_flight)
       of_landing_ctrl.learn_gains = false;
     }
     if(of_landing_ctrl.load_weights) {
-      // TODO: uncomment:
-      // load_weights();
+      load_weights();
       of_landing_ctrl.load_weights = false;
     }
 
@@ -360,16 +359,23 @@ void vertical_ctrl_module_run(bool in_flight)
     }
       */
     
-    /*
+    
     // TODO: remove, just for testing:
     // of_landing_ctrl.agl = (float) gps.lla_pos.alt / 1000.0f;
     // printf("Sonar height = %f\n", of_landing_ctrl.agl);
-    if(weights[n_textons] == 0.0f) {
+    /*if(weights[n_textons] == 0.0f) {
       save_texton_distribution();
     }
     else
-    {
-      printf("Predicted gain = %f\n", predict_gain(texton_distribution));
+    {*/
+    /*
+    if(weights[0] != 0.0f) {
+      if(!TEXTONS_FROM_STEREO) {
+        pstate = predict_gain(texton_distribution);
+      }
+      else {
+        pstate = predict_gain(texton_distribution_stereoboard);
+      }
     }
     */
 
@@ -603,7 +609,8 @@ void vertical_ctrl_module_run(bool in_flight)
         else {
           pstate = predict_gain(texton_distribution_stereoboard);
         }
-        of_landing_ctrl.pgain = of_landing_ctrl.lp_factor * of_landing_ctrl.pgain + (1.0f - of_landing_ctrl.lp_factor) * of_landing_ctrl.stable_gain_factor * pstate;
+        float lp_factor_prediction = 0.95; 
+        of_landing_ctrl.pgain = lp_factor_prediction * of_landing_ctrl.pgain + (1.0f - lp_factor_prediction) * of_landing_ctrl.stable_gain_factor * pstate;
         pused = of_landing_ctrl.pgain;
 
         // make sure pused does not become too small, nor grows too fast:
@@ -1075,7 +1082,7 @@ void load_weights(void) {
     // load the weights, stored in a single row:
     for(i = 0; i <= n_textons; i++)
     {
-      read_result = fscanf(distribution_logger, "%f ", &weights[i]);
+      read_result = fscanf(weights_file, "%f ", &weights[i]);
 			if(read_result == EOF) break;
     }
     fclose(weights_file); 

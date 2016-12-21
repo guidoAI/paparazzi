@@ -3,8 +3,8 @@ function train()
 MAX_SAMPLES = 25000;
 start_sample = 1;
 
-BIAS = true;
-weights = true;
+BIAS = false;
+weights = false;
 if(weights)
     w = load('Weights_00000.dat');
 end
@@ -28,6 +28,12 @@ else
 end
 x = AA \ b;
 y = AA * x;
+fid = fopen('Weights_MATLAB.dat', 'w');
+for i = 1:length(x)-1
+    fprintf(fid, '%f ', x(i));
+end
+fprintf(fid, '%f', x(end));
+fclose(fid);
 height_gain_estimate = y;
 fprintf('Abs error = %f\n', mean(abs(y-b)));
 if(weights)
