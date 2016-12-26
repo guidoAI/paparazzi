@@ -41,6 +41,10 @@ float divergence;
 float divergence_vision;
 float divergence_vision_dt;
 float normalized_thrust;
+// for RLS, recursive least squares:
+float P_RLS[n_textons+1][n_textons+1];
+// forgetting factor:
+float lambda;
 
 // minimum value of the P-gain for divergence control
 // adaptive control will not be able to go lower
@@ -238,7 +242,23 @@ void vertical_ctrl_module_init(void)
   {
     weights[i] = 0.0f;
   }
-  
+  // RLS:  
+  int j;
+  for(i = 0; i < n_textons+1; i++)
+  {
+    for(j = 0; j < n_texonts+1; j++)
+    {
+      if(i == j)
+      {
+        P_RLS[i][j] = 1.0f;
+      }
+      else
+      {
+        P_RLS[i][j] = 0.0f;
+      }
+    }
+  }
+  lambda = 0.999;
 
   // Subscribe to the altitude above ground level ABI messages
   AbiBindMsgAGL(OPTICAL_FLOW_LANDING_AGL_ID, &agl_ev, vertical_ctrl_agl_cb);
@@ -923,6 +943,139 @@ void learn_from_file(void)
 }
 
 /**
+ * Recursively fit a linear model from samples to target values - batch mode, possibly for initialization.
+ * @param[in] targets The target values
+ * @param[in] samples The samples / feature vectors
+ * @param[in] D The dimensionality of the samples
+ * @param[in] count The number of samples
+ * @param[out] parameters* Parameters of the linear fit
+ * @param[out] fit_error* Total error of the fit // TODO: relevant for RLS?
+ */
+void recursive_least_squares_batch(float* targets, float** samples, uint8_t D, uint16_t count, float* params, float* fit_error)
+{
+  // TODO: potentially randomizing the sequence of the samples, as not to get a bias towards the later samples
+
+  // local vars for iterating, random numbers:
+  int sam, d;
+  uint8_t D_1 = D+1;
+  float augmented_sample[D_1];
+  // augmented sample is used if the bias is used:
+  augmented_sample[D] = 1.0f;
+
+  // Initialize the weights with 0.0f:
+  for(d = 0; d < D_1; d++)
+  {
+    weights[d] = 0.0f;
+  }
+
+  // Reset the P matrix:
+  int i, j;
+  for(i = 0; i < n_textons+1; i++)
+  {
+    for(j = 0; j < n_texonts+1; j++)
+    {
+      if(i == j)
+      {
+        P_RLS[i][j] = 1.0f;
+      }
+      else
+      {
+        P_RLS[i][j] = 0.0f;
+      }
+    }
+  }
+
+  // give the samples one by one to the recursive procedure:
+  for(sam = 0; sam < count; sam++)
+  {
+    if(!of_landing_ctrl.use_bias)
+    {
+      recursive_least_squares(targets[sam], samples[sam], D, params);
+    }
+    else
+    {
+      for(d = 0; d < D; d++)
+      {
+        augmented_sample[d] = samples[sam][d];
+      }
+      recursive_least_squares(targets[sam], augmented_sample, D_1, params);
+    }
+  }
+}
+
+static inline void float_mat_div_scalar(float **o, float **a, float scalar, int m, int n)
+{
+   int i, j;
+   for (i = 0; i < m; i++) {
+     for (j = 0; j < n; j++) {
+         o[i][j] = a[i][j] / scalar;
+     }
+   }
+}
+
+static inline void float_mat_mul_scalar(float **o, float **a, float scalar, int m, int n)
+{
+   int i, j;
+   for (i = 0; i < m; i++) {
+     for (j = 0; j < n; j++) {
+         o[i][j] = a[i][j] * scalar;
+     }
+   }
+}
+
+
+void recursive_least_squares(float target, float* sample, uint8_t length_sample, float* params)
+{
+  // MATLAB procedure:
+  /*
+    u = features(i,:);
+    phi = u * P ;
+	  k(:, i) = phi' / (lamda + phi * u' );
+    y(i)= weights(:,i)' * u';
+    e(i) = targets(i) - y(i) ;
+	  weights(:,i+1) = weights(:,i) + k(:, i) * e(i) ;
+	  P = ( P - k(:, i) * phi ) / lamda;
+  */
+
+
+  float _phi[length_sample];
+  float _k[length_sample];
+  float _ke[length_sample];
+  float prediction, error;
+  float _u_phi_u;
+  float scalar;
+  float _O[length_sample][length_sample];
+
+  // TODO: Does this initialization actually do anything useful?
+  MAKE_MATRIX_PTR(u, sample, 1);
+  MAKE_MATRIX_PTR(uT, sample, length_sample); // transpose
+  MAKE_MATRIX_PTR(phi, _phi, 1);
+  MAKE_MATRIX_PTR(u_P_uT, _u_phi_u, 1); // actually a scalar
+  MAKE_MATRIX_PTR(k, _k, length_sample);
+  MAKE_MATRIX_PTR(ke, _ke, length_sample);
+  // TODO: does this go well for bias / no bias? Because P_RLS is created with (n_textons+1) x (n_textons+1)
+  MAKE_MATRIX_PTR(P, P_RLS, length_sample);
+  MAKE_MATRIX_PTR(O, _O, length_sample);
+  // result of multiplication goes into phi
+  MAT_MUL(1, length_sample, length_sample, phi, u, P);
+  // scalar:
+  MAT_MUL(1, length_sample, 1, u_P_uT, phi, uT);
+  scalar = u_P_uT[0];
+  // TODO: should be phi-transpose, but does it really matter?
+  float_mat_div_scalar(k, phi, lambda+scalar, length_sample, 1);
+  prediction = predict_gain(sample);
+  error = target - prediction;
+  float_mat_mul_scalar(ke, k, error, length_sample, 1);
+  for(i = 0; i < length_sample; i++)
+  {
+    weights[i] += ke[i];
+  }
+  MAT_MUL(length_sample, 1, length_sample, O, k, phi);
+  MAT_SUB(length_sample, length_sample, P, P, O);
+  float_mat_div_scalar(P, P, lambda, length_sample, length_sample);
+}
+
+/**
  * Fit a linear model from samples to target values.
  * @param[in] targets The target values
  * @param[in] samples The samples / feature vectors
@@ -1001,6 +1154,8 @@ void fit_linear_model(float* targets, float** samples, uint8_t D, uint16_t count
   }
   
 }
+
+
 
 // General TODO: what happens if n_textons changes?
 
