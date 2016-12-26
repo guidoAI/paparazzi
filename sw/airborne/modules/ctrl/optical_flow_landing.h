@@ -124,4 +124,7 @@ float predict_gain(float* distribution);
 void save_weights(void);
 void load_weights(void);
 
+void recursive_least_squares_batch(float* targets, float** samples, uint8_t D, uint16_t count, float* params, float* fit_error);
+void recursive_least_squares(float target, float* sample, uint8_t length_sample, float* params);
+
 #endif /* OPTICAL_FLOW_LANDING_H_ */

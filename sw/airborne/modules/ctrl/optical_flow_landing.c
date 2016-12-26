@@ -41,10 +41,6 @@ float divergence;
 float divergence_vision;
 float divergence_vision_dt;
 float normalized_thrust;
-// for RLS, recursive least squares:
-float P_RLS[n_textons+1][n_textons+1];
-// forgetting factor:
-float lambda;
 
 // minimum value of the P-gain for divergence control
 // adaptive control will not be able to go lower
@@ -95,6 +91,12 @@ float texton_distribution_stereoboard[n_ts];
 #define TEXTON_DISTRIBUTION_PATH /data/video/
 // On Bebop 2:
 // #define TEXTON_DISTRIBUTION_PATH /data/ftp/internal000
+
+// for RLS, recursive least squares:
+float** P_RLS;
+// forgetting factor:
+float lambda;
+
 static FILE *distribution_logger = NULL;
 static FILE *weights_file = NULL;
 unsigned int n_read_samples;
@@ -243,10 +245,12 @@ void vertical_ctrl_module_init(void)
     weights[i] = 0.0f;
   }
   // RLS:  
+  // TODO: not freed!
+  P_RLS = (float **)calloc((n_textons+1)*(n_textons+1),sizeof(float));
   int j;
   for(i = 0; i < n_textons+1; i++)
   {
-    for(j = 0; j < n_texonts+1; j++)
+    for(j = 0; j < n_textons+1; j++)
     {
       if(i == j)
       {
@@ -972,7 +976,7 @@ void recursive_least_squares_batch(float* targets, float** samples, uint8_t D, u
   int i, j;
   for(i = 0; i < n_textons+1; i++)
   {
-    for(j = 0; j < n_texonts+1; j++)
+    for(j = 0; j < n_textons+1; j++)
     {
       if(i == j)
       {
@@ -1038,19 +1042,31 @@ void recursive_least_squares(float target, float* sample, uint8_t length_sample,
   */
 
 
-  float _phi[length_sample];
-  float _k[length_sample];
-  float _ke[length_sample];
+  float _u[1][length_sample];
+  float _uT[length_sample][1];
+  float _phi[1][length_sample];
+  float _phiT[length_sample][1];
+  float _k[length_sample][1];
+  float _ke[length_sample][1];
   float prediction, error;
-  float _u_phi_u;
+  float _u_P_uT[1][1];
   float scalar;
   float _O[length_sample][length_sample];
 
+  int i;
+
+  for(i=0; i < length_sample; i++)
+  {
+    _u[0][i] = sample[i];
+    _uT[i][0] = sample[i];
+  }
+
   // TODO: Does this initialization actually do anything useful?
-  MAKE_MATRIX_PTR(u, sample, 1);
-  MAKE_MATRIX_PTR(uT, sample, length_sample); // transpose
+  MAKE_MATRIX_PTR(u, _u, 1);
+  MAKE_MATRIX_PTR(uT, _uT, length_sample); // transpose
   MAKE_MATRIX_PTR(phi, _phi, 1);
-  MAKE_MATRIX_PTR(u_P_uT, _u_phi_u, 1); // actually a scalar
+  MAKE_MATRIX_PTR(phiT, _phiT, 1);
+  MAKE_MATRIX_PTR(u_P_uT, _u_P_uT, 1); // actually a scalar
   MAKE_MATRIX_PTR(k, _k, length_sample);
   MAKE_MATRIX_PTR(ke, _ke, length_sample);
   // TODO: does this go well for bias / no bias? Because P_RLS is created with (n_textons+1) x (n_textons+1)
@@ -1058,17 +1074,20 @@ void recursive_least_squares(float target, float* sample, uint8_t length_sample,
   MAKE_MATRIX_PTR(O, _O, length_sample);
   // result of multiplication goes into phi
   MAT_MUL(1, length_sample, length_sample, phi, u, P);
+  for(i = 0; i < length_sample; i++)
+  {
+    phiT[i][0] = phi[0][i];
+  }  
   // scalar:
   MAT_MUL(1, length_sample, 1, u_P_uT, phi, uT);
-  scalar = u_P_uT[0];
-  // TODO: should be phi-transpose, but does it really matter?
-  float_mat_div_scalar(k, phi, lambda+scalar, length_sample, 1);
+  scalar = u_P_uT[0][0];
+  float_mat_div_scalar(k, phiT, lambda+scalar, length_sample, 1);
   prediction = predict_gain(sample);
   error = target - prediction;
   float_mat_mul_scalar(ke, k, error, length_sample, 1);
   for(i = 0; i < length_sample; i++)
   {
-    weights[i] += ke[i];
+    weights[i] += ke[i][0];
   }
   MAT_MUL(length_sample, 1, length_sample, O, k, phi);
   MAT_SUB(length_sample, length_sample, P, P, O);
