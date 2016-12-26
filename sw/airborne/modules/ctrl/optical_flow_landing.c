@@ -81,6 +81,7 @@ static void send_divergence(struct transport_tx *trans, struct link_device *dev)
 // ************************
 // include textons for SSL:
 // ************************
+#define RECURSIVE_LEARNING 1
 #include <stdio.h>
 #include "modules/computer_vision/textons.h"
 float* last_texton_distribution; // used to check if a new texton distribution has been received
@@ -930,8 +931,16 @@ void learn_from_file(void)
   // then learn from it:
   // TODO: uncomment & comment to learn gains instead of sonar:
   printf("FIT MODEL\n");
-  fit_linear_model(gains, text_dists, n_textons, n_read_samples, weights, &fit_error);
-  // fit_linear_model(sonar, text_dists, n_textons, n_read_samples, weights, &fit_error);
+  if(!RECURSIVE_LEARNING)
+  {
+    fit_linear_model(gains, text_dists, n_textons, n_read_samples, weights, &fit_error);
+    // fit_linear_model(sonar, text_dists, n_textons, n_read_samples, weights, &fit_error);
+  }
+  else
+  {
+    printf("RECURSIVE!\n");
+    recursive_least_squares_batch(gains, text_dists, n_textons, n_read_samples, weights, &fit_error);
+  }
 
   printf("SAVE WEIGHTS\n");
   // save the weights to a file:
@@ -958,7 +967,8 @@ void learn_from_file(void)
 void recursive_least_squares_batch(float* targets, float** samples, uint8_t D, uint16_t count, float* params, float* fit_error)
 {
   // TODO: potentially randomizing the sequence of the samples, as not to get a bias towards the later samples
-
+  // TODO: determine the error over the set. For now, we set the error to 0:
+  (*fit_error) = 0.0f;
   // local vars for iterating, random numbers:
   int sam, d;
   uint8_t D_1 = D+1;
@@ -972,7 +982,7 @@ void recursive_least_squares_batch(float* targets, float** samples, uint8_t D, u
     weights[d] = 0.0f;
   }
 
-  // Reset the P matrix:
+  // Reset the P matrix to an identity matrix:
   int i, j;
   for(i = 0; i < n_textons+1; i++)
   {
@@ -1041,7 +1051,6 @@ void recursive_least_squares(float target, float* sample, uint8_t length_sample,
 	  P = ( P - k(:, i) * phi ) / lamda;
   */
 
-
   float _u[1][length_sample];
   float _uT[length_sample][1];
   float _phi[1][length_sample];
@@ -1052,16 +1061,14 @@ void recursive_least_squares(float target, float* sample, uint8_t length_sample,
   float _u_P_uT[1][1];
   float scalar;
   float _O[length_sample][length_sample];
-
   int i;
 
+  // u = features(i,:);
   for(i=0; i < length_sample; i++)
   {
     _u[0][i] = sample[i];
     _uT[i][0] = sample[i];
   }
-
-  // TODO: Does this initialization actually do anything useful?
   MAKE_MATRIX_PTR(u, _u, 1);
   MAKE_MATRIX_PTR(uT, _uT, length_sample); // transpose
   MAKE_MATRIX_PTR(phi, _phi, 1);
@@ -1069,11 +1076,16 @@ void recursive_least_squares(float target, float* sample, uint8_t length_sample,
   MAKE_MATRIX_PTR(u_P_uT, _u_P_uT, 1); // actually a scalar
   MAKE_MATRIX_PTR(k, _k, length_sample);
   MAKE_MATRIX_PTR(ke, _ke, length_sample);
+  
   // TODO: does this go well for bias / no bias? Because P_RLS is created with (n_textons+1) x (n_textons+1)
+  // I think yes, as long as P_RLS is initialized with n_textons+1 rows and columns.
   MAKE_MATRIX_PTR(P, P_RLS, length_sample);
   MAKE_MATRIX_PTR(O, _O, length_sample);
+
+  // phi = u * P ;
   // result of multiplication goes into phi
   MAT_MUL(1, length_sample, length_sample, phi, u, P);
+  // k(:, i) = phi' / (lamda + phi * u' );
   for(i = 0; i < length_sample; i++)
   {
     phiT[i][0] = phi[0][i];
@@ -1082,13 +1094,17 @@ void recursive_least_squares(float target, float* sample, uint8_t length_sample,
   MAT_MUL(1, length_sample, 1, u_P_uT, phi, uT);
   scalar = u_P_uT[0][0];
   float_mat_div_scalar(k, phiT, lambda+scalar, length_sample, 1);
+  // y(i)= weights(:,i)' * u';
   prediction = predict_gain(sample);
+  // e(i) = targets(i) - y(i) ;
   error = target - prediction;
+  // weights(:,i+1) = weights(:,i) + k(:, i) * e(i) ;
   float_mat_mul_scalar(ke, k, error, length_sample, 1);
   for(i = 0; i < length_sample; i++)
   {
     weights[i] += ke[i][0];
   }
+  // P = ( P - k(:, i) * phi ) / lamda;
   MAT_MUL(length_sample, 1, length_sample, O, k, phi);
   MAT_SUB(length_sample, length_sample, P, P, O);
   float_mat_div_scalar(P, P, lambda, length_sample, length_sample);
