@@ -63,7 +63,6 @@ long previous_time;
 // sending the divergence message to the ground station:
 static void send_divergence(struct transport_tx *trans, struct link_device *dev)
 {
-  printf("sent: %f\n", divergence);
   pprz_msg_send_DIVERGENCE(trans, dev, AC_ID,
                            &divergence, &divergence_vision_dt, &normalized_thrust,
                            &cov_div, &pstate, &pused, &(of_landing_ctrl.agl));
@@ -202,7 +201,7 @@ void vertical_ctrl_module_init(void)
   of_landing_ctrl.stable_gain_factor = STABLE_GAIN_FACTOR;
   of_landing_ctrl.load_weights = false;
   of_landing_ctrl.close_to_edge = 0.005;
-  of_landing_ctrl.use_bias = false;
+  of_landing_ctrl.use_bias = true; // true for recursive estimation
   of_landing_ctrl.snapshot = false;
   
   struct timespec spec;
@@ -240,6 +239,7 @@ void vertical_ctrl_module_init(void)
   {
     last_texton_distribution[i] = 0.0f;
   }
+  // TODO: not freed!
   weights = (float *)calloc(n_textons+1,sizeof(float));
   for(i = 0; i <= n_textons; i++)
   {
@@ -247,7 +247,11 @@ void vertical_ctrl_module_init(void)
   }
   // RLS:  
   // TODO: not freed!
-  P_RLS = (float **)calloc((n_textons+1)*(n_textons+1),sizeof(float));
+  P_RLS = (float **)calloc((n_textons+1),sizeof(float*));
+  for(i = 0; i < n_textons+1; i++)
+  {
+    P_RLS[i] = (float *)calloc((n_textons+1),sizeof(float));
+  }
   int j;
   for(i = 0; i < n_textons+1; i++)
   {
@@ -966,6 +970,7 @@ void learn_from_file(void)
  */
 void recursive_least_squares_batch(float* targets, float** samples, uint8_t D, uint16_t count, float* params, float* fit_error)
 {
+  printf("START RECURSIVE!\n");
   // TODO: potentially randomizing the sequence of the samples, as not to get a bias towards the later samples
   // TODO: determine the error over the set. For now, we set the error to 0:
   (*fit_error) = 0.0f;
@@ -1015,6 +1020,8 @@ void recursive_least_squares_batch(float* targets, float** samples, uint8_t D, u
       recursive_least_squares(targets[sam], augmented_sample, D_1, params);
     }
   }
+
+  printf("READY!!\n");
 }
 
 static inline void float_mat_div_scalar(float **o, float **a, float scalar, int m, int n)
@@ -1072,7 +1079,7 @@ void recursive_least_squares(float target, float* sample, uint8_t length_sample,
   MAKE_MATRIX_PTR(u, _u, 1);
   MAKE_MATRIX_PTR(uT, _uT, length_sample); // transpose
   MAKE_MATRIX_PTR(phi, _phi, 1);
-  MAKE_MATRIX_PTR(phiT, _phiT, 1);
+  MAKE_MATRIX_PTR(phiT, _phiT, length_sample);
   MAKE_MATRIX_PTR(u_P_uT, _u_P_uT, 1); // actually a scalar
   MAKE_MATRIX_PTR(k, _k, length_sample);
   MAKE_MATRIX_PTR(ke, _ke, length_sample);
@@ -1081,7 +1088,6 @@ void recursive_least_squares(float target, float* sample, uint8_t length_sample,
   // I think yes, as long as P_RLS is initialized with n_textons+1 rows and columns.
   MAKE_MATRIX_PTR(P, P_RLS, length_sample);
   MAKE_MATRIX_PTR(O, _O, length_sample);
-
   // phi = u * P ;
   // result of multiplication goes into phi
   MAT_MUL(1, length_sample, length_sample, phi, u, P);
@@ -1257,7 +1263,6 @@ void save_weights(void) {
 }
 
 void load_weights(void) {
-  printf("A\n");
   int i, read_result;
   char filename[512];
   sprintf(filename, "%s/Weights_%05d.dat", STRINGIFY(TEXTON_DISTRIBUTION_PATH), 0);
@@ -1277,5 +1282,4 @@ void load_weights(void) {
     }
     fclose(weights_file); 
   }
-  printf("B\n");
 }
