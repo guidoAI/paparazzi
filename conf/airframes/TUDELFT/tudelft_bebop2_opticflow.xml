@@ -18,7 +18,7 @@
     <module name="actuators" type="bebop"/>
     <module name="imu" type="bebop"/>
     <module name="gps" type="datalink"/>
-    <module name="stabilization" type="indi"/>
+    <module name="stabilization" type="indi_simple"/>
     <!-- <module name="guidance" type="indi">
       <define name="GUIDANCE_INDI_SPECIFIC_FORCE_GAIN" value="-500.0"/>
     </module> -->
@@ -40,7 +40,9 @@
     <module name="logger_file">
       <define name="FILE_LOGGER_PATH" value="/data/ftp/internal_000"/>
     </module>
+
     <module name="video_thread"/>
+
     <module name="pose_history"/>
 
   <module name="cv_opticflow">
@@ -58,10 +60,6 @@
       <define name="VIDEO_CAPTURE_CAMERA" value="bottom_camera"/>
       <!-- <define name="VIDEO_CAPTURE_CAMERA" value="front_camera"/> -->
       <define name="VIDEO_CAPTURE_PATH" value="/data/ftp/internal_000/images"/>
-    </module>
-
-    <module name="cv_textons">
-      <define name="TEXTONS_CAMERA" value="bottom_camera"/>
     </module>
 
     <module name="optical_flow_landing.xml"/>
