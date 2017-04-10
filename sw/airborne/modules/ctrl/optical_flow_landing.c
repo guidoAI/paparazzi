@@ -472,7 +472,7 @@ void vertical_ctrl_module_run(bool in_flight)
           float err = phase_0_set_point - divergence;
           int32_t thrust = nominal_throttle + pused * err * MAX_PPRZ + istate * of_landing_ctrl.sum_err * MAX_PPRZ + dstate * of_landing_ctrl.d_err * MAX_PPRZ;;
           // bound thrust:
-          Bound(thrust, 0.55 * nominal_throttle, 0.95 * MAX_PPRZ);
+          Bound(thrust, 0.25 * nominal_throttle, 0.99 * MAX_PPRZ);
           // histories and cov detection:
           normalized_thrust = (float)(thrust / (MAX_PPRZ / 100));
           thrust_history[ind_hist % COV_WINDOW_SIZE] = normalized_thrust;
@@ -522,7 +522,7 @@ void vertical_ctrl_module_run(bool in_flight)
           // make sure the p gain is logged:
           pused = pstate;
           // bound thrust:
-          Bound(thrust, 0.55 * nominal_throttle, 0.95 * MAX_PPRZ);
+          Bound(thrust, 0.25 * nominal_throttle, 0.99 * MAX_PPRZ);
 
           // printf("ELC phase 1, gain = %f\n", pstate);
           // histories and cov detection:
