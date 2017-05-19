@@ -104,11 +104,11 @@ PRINT_CONFIG_VAR(OPTICAL_FLOW_LANDING_OPTICAL_FLOW_ID)
 #endif
 
 #ifndef OPTICAL_FLOW_LANDING_IGAIN
-#define OPTICAL_FLOW_LANDING_IGAIN 0.005
+#define OPTICAL_FLOW_LANDING_IGAIN 0.10
 #endif
 
 #ifndef OPTICAL_FLOW_LANDING_DGAIN
-#define OPTICAL_FLOW_LANDING_DGAIN 0.50
+#define OPTICAL_FLOW_LANDING_DGAIN 0.0
 #endif
 
 #ifndef OPTICAL_FLOW_LANDING_VISION_METHOD
@@ -147,9 +147,9 @@ void vertical_ctrl_module_init(void)
   of_landing_ctrl.agl_lp = 0.0f;
   of_landing_ctrl.vel = 0.0f;
   of_landing_ctrl.divergence_setpoint = 0.0f;
-  of_landing_ctrl.cov_set_point = -0.025f;
-  of_landing_ctrl.cov_limit = 0.005f; //1.0f; // for cov(uz,div)
-  of_landing_ctrl.lp_factor = 0.95f;
+  of_landing_ctrl.cov_set_point = -0.010f;
+  of_landing_ctrl.cov_limit = 0.0025f; //1.0f; // for cov(uz,div)
+  of_landing_ctrl.lp_factor = 0.5f;
   of_landing_ctrl.pgain = OPTICAL_FLOW_LANDING_PGAIN;
   of_landing_ctrl.igain = OPTICAL_FLOW_LANDING_IGAIN;
   of_landing_ctrl.dgain = OPTICAL_FLOW_LANDING_DGAIN;
@@ -271,91 +271,93 @@ void vertical_ctrl_module_run(bool in_flight)
 
     // When not flying and in mode module:
     // Reset integrators, landing phases, etc.
-    reset_all_vars();
+    // reset_all_vars();
+  }
 
-  } else {
+  /***********
+   * VISION
+   ***********/
 
-    /***********
-     * VISION
-     ***********/
+  if (of_landing_ctrl.VISION_METHOD == 0) {
 
-    if (of_landing_ctrl.VISION_METHOD == 0) {
+    // SIMULATED DIVERGENCE:
 
-      // SIMULATED DIVERGENCE:
+    // USE OPTITRACK HEIGHT
+    of_landing_ctrl.agl = (float) gps.lla_pos.alt / 1000.0f;
+    // else we get an immediate jump in divergence when switching on.
+    if (of_landing_ctrl.agl_lp < 1E-5 || ind_hist == 0) {
+      of_landing_ctrl.agl_lp = of_landing_ctrl.agl;
+    }
+    if (fabs(of_landing_ctrl.agl - of_landing_ctrl.agl_lp) > 1.0f) {
+      // ignore outliers:
+      of_landing_ctrl.agl = of_landing_ctrl.agl_lp;
+    }
+    // calculate the new low-pass height and the velocity
+    lp_height = of_landing_ctrl.agl_lp * of_landing_ctrl.lp_factor + of_landing_ctrl.agl * (1.0f - of_landing_ctrl.lp_factor);
 
-      // USE OPTITRACK HEIGHT
-      of_landing_ctrl.agl = (float) gps.lla_pos.alt / 1000.0f;
-      // else we get an immediate jump in divergence when switching on.
-      if (of_landing_ctrl.agl_lp < 1E-5 || ind_hist == 0) {
-        of_landing_ctrl.agl_lp = of_landing_ctrl.agl;
-      }
-      if (fabs(of_landing_ctrl.agl - of_landing_ctrl.agl_lp) > 1.0f) {
-        // ignore outliers:
-        of_landing_ctrl.agl = of_landing_ctrl.agl_lp;
-      }
-      // calculate the new low-pass height and the velocity
-      lp_height = of_landing_ctrl.agl_lp * of_landing_ctrl.lp_factor + of_landing_ctrl.agl * (1.0f - of_landing_ctrl.lp_factor);
+    // only calculate velocity and divergence if dt is large enough:
+    if (dt > 0.0001f) {
+      of_landing_ctrl.vel = (lp_height - of_landing_ctrl.agl_lp) / dt;
+      of_landing_ctrl.agl_lp = lp_height;
 
-      // only calculate velocity and divergence if dt is large enough:
-      if (dt > 0.0001f) {
-        of_landing_ctrl.vel = (lp_height - of_landing_ctrl.agl_lp) / dt;
-        of_landing_ctrl.agl_lp = lp_height;
-
-        // calculate the fake divergence:
-        if (of_landing_ctrl.agl_lp > 0.0001f) {
-          divergence = of_landing_ctrl.vel / of_landing_ctrl.agl_lp;
-          divergence_vision_dt = (divergence_vision / dt);
-          if (fabs(divergence_vision_dt) > 1E-5) {
-            div_factor = divergence / divergence_vision_dt;
-          }
-        } else {
-          divergence = 1000.0f;
-          // perform no control with this value (keeping thrust the same)
-          return;
+      // calculate the fake divergence:
+      if (of_landing_ctrl.agl_lp > 0.0001f) {
+        divergence = of_landing_ctrl.vel / of_landing_ctrl.agl_lp;
+        divergence_vision_dt = (divergence_vision / dt);
+        if (fabs(divergence_vision_dt) > 1E-5) {
+          div_factor = divergence / divergence_vision_dt;
         }
-        // reset dt:
-        dt = 0.0f;
-      }
-    } else {
-      // USE REAL VISION OUTPUTS:
-
-      if (vision_message_nr != previous_message_nr && dt > 1E-5 && ind_hist > 1) {
-        // TODO: this div_factor depends on the subpixel-factor (automatically adapt?)
-        div_factor = -1.28f; // magic number comprising field of view etc.
-        float new_divergence = (divergence_vision * div_factor) / dt;
-
-        if (fabs(new_divergence - divergence) > 0.20) {
-          if (new_divergence < divergence) { new_divergence = divergence - 0.10f; }
-          else { new_divergence = divergence + 0.10f; }
-        }
-        // low-pass filter the divergence:
-        divergence = divergence * of_landing_ctrl.lp_factor + (new_divergence * (1.0f - of_landing_ctrl.lp_factor));
-        previous_message_nr = vision_message_nr;
-        dt = 0.0f;
       } else {
-        // after re-entering the module, the divergence should be equal to the set point:
-        if (ind_hist <= 1) {
-          divergence = of_landing_ctrl.divergence_setpoint;
-          for (i = 0; i < COV_WINDOW_SIZE; i++) {
-            thrust_history[i] = 0;
-            divergence_history[i] = 0;
-          }
-          ind_hist++;
-          dt = 0.0f;
-          int32_t nominal_throttle = of_landing_ctrl.nominal_thrust * MAX_PPRZ;
-          stabilization_cmd[COMMAND_THRUST] = nominal_throttle;
-
-        }
-        // else: do nothing, let dt increment
+        divergence = 1000.0f;
+        // perform no control with this value (keeping thrust the same)
         return;
       }
+      // reset dt:
+      dt = 0.0f;
     }
+  } else {
+    // USE REAL VISION OUTPUTS:
+
+    if (vision_message_nr != previous_message_nr && dt > 1E-5 && ind_hist > 1) {
+      // TODO: this div_factor depends on the subpixel-factor (automatically adapt?)
+      div_factor = -1.28f; // magic number comprising field of view etc.
+      float new_divergence = (divergence_vision * div_factor) / dt;
+
+      if (fabs(new_divergence - divergence) > 0.20) {
+        if (new_divergence < divergence) { new_divergence = divergence - 0.10f; }
+        else { new_divergence = divergence + 0.10f; }
+      }
+      // low-pass filter the divergence:
+      divergence = divergence * of_landing_ctrl.lp_factor + (new_divergence * (1.0f - of_landing_ctrl.lp_factor));
+      previous_message_nr = vision_message_nr;
+      dt = 0.0f;
+    } else {
+      // after re-entering the module, the divergence should be equal to the set point:
+      if (ind_hist <= 1) {
+        divergence = of_landing_ctrl.divergence_setpoint;
+        for (i = 0; i < COV_WINDOW_SIZE; i++) {
+          thrust_history[i] = 0;
+          divergence_history[i] = 0;
+        }
+        ind_hist++;
+        dt = 0.0f;
+        int32_t nominal_throttle = of_landing_ctrl.nominal_thrust * MAX_PPRZ;
+        stabilization_cmd[COMMAND_THRUST] = nominal_throttle;
+
+      }
+      // else: do nothing, let dt increment
+      return;
+    }
+  }
+
+  if(in_flight)
+  {
 
     /***********
     * CONTROL
     ***********/
 
-    int32_t nominal_throttle = of_landing_ctrl.nominal_thrust * MAX_PPRZ; \
+    int32_t nominal_throttle = of_landing_ctrl.nominal_thrust * MAX_PPRZ;
 
     // landing indicates whether the drone is already performing a final landing procedure (flare):
     if (!landing) {
@@ -489,7 +491,7 @@ void vertical_ctrl_module_run(bool in_flight)
             cov_div = get_cov(past_divergence_history, divergence_history, COV_WINDOW_SIZE);
           }
           // printf("ELC phase 0, gain = %f, cov_div = %f\n", pstate, cov_div);
-          if (ind_hist >= COV_WINDOW_SIZE && module_active_time_sec > 10.0f && fabs(cov_div - of_landing_ctrl.cov_set_point) < of_landing_ctrl.cov_limit) {
+          if (ind_hist >= COV_WINDOW_SIZE && cov_div <= of_landing_ctrl.cov_set_point) { // && module_active_time_sec > 10.0f
             // next phase:
             elc_phase=1;
             clock_gettime(CLOCK_MONOTONIC, &spec);
@@ -541,7 +543,7 @@ void vertical_ctrl_module_run(bool in_flight)
             cov_div = get_cov(past_divergence_history, divergence_history, COV_WINDOW_SIZE);
           }
 
-          if (ind_hist >= COV_WINDOW_SIZE && fabs(cov_div) > of_landing_ctrl.cov_limit) {
+          if (ind_hist >= COV_WINDOW_SIZE && cov_div < of_landing_ctrl.cov_set_point) {
             // nothing...
           }
           stabilization_cmd[COMMAND_THRUST] = thrust;
@@ -668,6 +670,8 @@ void guidance_v_module_enter(void)
   pstate = of_landing_ctrl.pgain;
   pused = pstate;
   istate = of_landing_ctrl.igain;
+  // adaptive estimation:
+  of_landing_ctrl.nominal_thrust = (float) stabilization_cmd[COMMAND_THRUST] / MAX_PPRZ;
 }
 
 void guidance_v_module_run(bool in_flight)

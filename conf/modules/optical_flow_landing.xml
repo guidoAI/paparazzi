@@ -11,9 +11,9 @@
     </description>
     <define name="OPTICAL_FLOW_LANDING_AGL_ID" value="ABI_BROADCAST" description="Sender id of the AGL (sonar) ABI message"/>
     <section name="OPTICAL_FLOW_LANDING" prefix="OPTICAL_FLOW_LANDING_">
-      <define name="PGAIN" value="0.40" description="P gain on height error"/>
-      <define name="IGAIN" value="0.005" description="I gain on summed height error"/>
-      <define name="DGAIN" value="0.10" description="D gain on summed height error"/>
+      <define name="PGAIN" value="0.50" description="P gain on height error"/>
+      <define name="IGAIN" value="0.10" description="I gain on summed height error"/>
+      <define name="DGAIN" value="0.0" description="D gain on summed height error"/>
       <define name="VISION_METHOD" value="1" description="0 = fake vision, 1 = real vision"/>
       <define name="CONTROL_METHOD" value="2" description="0 = fixed gain control, 1 = adaptive gain control, 2 = exponential control"/>
       <define name="COV_METHOD" value="0" description="0 = cov(uz, div), 1 = cov(div_past, div)"/>
