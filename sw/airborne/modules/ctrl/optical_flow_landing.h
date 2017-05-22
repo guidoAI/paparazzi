@@ -35,11 +35,9 @@
 #ifndef OPTICAL_FLOW_LANDING_H_
 #define OPTICAL_FLOW_LANDING_H_
 
-// number of time steps used for calculating the covariance (oscillations)
-#define COV_WINDOW_SIZE 60
-
 #include "std.h"
 
+#define MAX_COV_WINDOW_SIZE 100
 
 struct OpticalFlowLanding {
   float agl;                    ///< agl = height from sonar (only used when using "fake" divergence)
@@ -62,15 +60,16 @@ struct OpticalFlowLanding {
   float dgain_adaptive;         ///< D-gain for adaptive gain control
   int COV_METHOD;               ///< method to calculate the covariance: between thrust and div (0) or div and div past (1)
   int delay_steps;              ///< number of delay steps for div past
+  int window_size;				///< number of time steps in "window" used for getting the covariance
   float reduction_factor_elc;   ///< reduction factor - after oscillation, how much to reduce the gain...
 };
 
 extern struct OpticalFlowLanding of_landing_ctrl;
 
 // arrays containing histories for determining covariance
-float thrust_history[COV_WINDOW_SIZE];
-float divergence_history[COV_WINDOW_SIZE];
-float past_divergence_history[COV_WINDOW_SIZE];
+float thrust_history[MAX_COV_WINDOW_SIZE];
+float divergence_history[MAX_COV_WINDOW_SIZE];
+float past_divergence_history[MAX_COV_WINDOW_SIZE];
 unsigned long ind_hist;
 
 // Without optitrack set to: GUIDANCE_H_MODE_ATTITUDE
