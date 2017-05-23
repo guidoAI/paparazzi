@@ -100,11 +100,11 @@ PRINT_CONFIG_VAR(OPTICAL_FLOW_LANDING_OPTICAL_FLOW_ID)
 
 // Other default values:
 #ifndef OPTICAL_FLOW_LANDING_PGAIN
-#define OPTICAL_FLOW_LANDING_PGAIN 0.12
+#define OPTICAL_FLOW_LANDING_PGAIN 0.250
 #endif
 
 #ifndef OPTICAL_FLOW_LANDING_IGAIN
-#define OPTICAL_FLOW_LANDING_IGAIN 0.01
+#define OPTICAL_FLOW_LANDING_IGAIN 0.025
 #endif
 
 #ifndef OPTICAL_FLOW_LANDING_DGAIN
@@ -182,6 +182,7 @@ void vertical_ctrl_module_init(void)
   for (i = 0; i < MAX_COV_WINDOW_SIZE; i++) {
     thrust_history[i] = 0;
     divergence_history[i] = 0;
+    dt_history[i] = 0;
   }
 
   // reset errors, thrust, divergence, etc.:
@@ -240,6 +241,7 @@ void reset_all_vars()
   for (i = 0; i < MAX_COV_WINDOW_SIZE; i++) {
     thrust_history[i] = 0;
     divergence_history[i] = 0;
+    dt_history[i] = 0;
   }
   landing = 0;
   elc_phase = 0;
@@ -273,12 +275,14 @@ void vertical_ctrl_module_run(bool in_flight)
   float module_active_time_sec = (float) module_active_time / 1000.0f;
 
   printf("dt = %f\n", dt);
+  dt_history[ind_hist % of_landing_ctrl.window_size] = dt;
+  ind_hist++;
 
   if (!in_flight) {
 
     // When not flying and in mode module:
     // Reset integrators, landing phases, etc.
-    // reset_all_vars();
+    // reset_all_vars(); // commented out to allow us to study the observation variables without flying
   }
 
   /***********
@@ -369,8 +373,9 @@ void vertical_ctrl_module_run(bool in_flight)
         for (i = 0; i < MAX_COV_WINDOW_SIZE; i++) {
           thrust_history[i] = 0;
           divergence_history[i] = 0;
+          dt_history[i] = 0;
         }
-        ind_hist++;
+        //ind_hist++;
         dt = 0.0f;
         int32_t nominal_throttle = of_landing_ctrl.nominal_thrust * MAX_PPRZ;
         stabilization_cmd[COMMAND_THRUST] = nominal_throttle;
@@ -420,12 +425,13 @@ void vertical_ctrl_module_run(bool in_flight)
         while (ind_past < 0) { ind_past += of_landing_ctrl.window_size; }
         float past_divergence = divergence_history[ind_past];
         past_divergence_history[ind_hist % of_landing_ctrl.window_size] = past_divergence;
-        ind_hist++;
+        // ind_hist++;
         // determine the covariance for landing detection:
         if (of_landing_ctrl.COV_METHOD == 0) {
           cov_div = get_cov(thrust_history, divergence_history, of_landing_ctrl.window_size);
         } else {
           cov_div = get_cov(past_divergence_history, divergence_history, of_landing_ctrl.window_size);
+          printf("Time window in seconds: %f\n", get_mean_array(dt_history, of_landing_ctrl.window_size) * of_landing_ctrl.window_size);
         }
 
         if (ind_hist >= of_landing_ctrl.window_size && fabs(cov_div) > of_landing_ctrl.cov_limit) {
@@ -470,7 +476,7 @@ void vertical_ctrl_module_run(bool in_flight)
         while (ind_past < 0) { ind_past += of_landing_ctrl.window_size; }
         float past_divergence = divergence_history[ind_past];
         past_divergence_history[ind_hist % of_landing_ctrl.window_size] = 100.0f * past_divergence;
-        ind_hist++;
+        // ind_hist++;
 
         // only take covariance into account if there are enough samples in the histories:
         if (ind_hist >= of_landing_ctrl.window_size) {
@@ -478,6 +484,7 @@ void vertical_ctrl_module_run(bool in_flight)
             cov_div = get_cov(thrust_history, divergence_history, of_landing_ctrl.window_size);
           } else {
             cov_div = get_cov(past_divergence_history, divergence_history, of_landing_ctrl.window_size);
+            printf("Time window in seconds: %f\n", get_mean_array(dt_history, of_landing_ctrl.window_size) * of_landing_ctrl.window_size);
           }
         } else {
           cov_div = of_landing_ctrl.cov_set_point;
@@ -514,12 +521,13 @@ void vertical_ctrl_module_run(bool in_flight)
           while (ind_past < 0) { ind_past += of_landing_ctrl.window_size; }
           float past_divergence = divergence_history[ind_past];
           past_divergence_history[ind_hist % of_landing_ctrl.window_size] = past_divergence;
-          ind_hist++;
+          // ind_hist++;
           // determine the covariance for landing detection:
           if (of_landing_ctrl.COV_METHOD == 0) {
             cov_div = get_cov(thrust_history, divergence_history, of_landing_ctrl.window_size);
           } else {
             cov_div = get_cov(past_divergence_history, divergence_history, of_landing_ctrl.window_size);
+            printf("Time window in seconds: %f\n", get_mean_array(dt_history, of_landing_ctrl.window_size) * of_landing_ctrl.window_size);
           }
           // printf("ELC phase 0, gain = %f, cov_div = %f\n", pstate, cov_div);
           if (ind_hist >= of_landing_ctrl.window_size && cov_div <= of_landing_ctrl.cov_set_point) { // && module_active_time_sec > 10.0f
@@ -566,12 +574,13 @@ void vertical_ctrl_module_run(bool in_flight)
           while (ind_past < 0) { ind_past += of_landing_ctrl.window_size; }
           float past_divergence = divergence_history[ind_past];
           past_divergence_history[ind_hist % of_landing_ctrl.window_size] = past_divergence;
-          ind_hist++;
+          // ind_hist++;
           // determine the covariance for landing detection:
           if (of_landing_ctrl.COV_METHOD == 0) {
             cov_div = get_cov(thrust_history, divergence_history, of_landing_ctrl.window_size);
           } else {
             cov_div = get_cov(past_divergence_history, divergence_history, of_landing_ctrl.window_size);
+            printf("Time window in seconds: %f\n", get_mean_array(dt_history, of_landing_ctrl.window_size) * of_landing_ctrl.window_size);
           }
 
           if (ind_hist >= of_landing_ctrl.window_size && cov_div < of_landing_ctrl.cov_set_point) {
