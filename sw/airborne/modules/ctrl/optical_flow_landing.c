@@ -141,6 +141,12 @@ struct OpticalFlowLanding of_landing_ctrl;
 void vertical_ctrl_module_init(void);
 void vertical_ctrl_module_run(bool in_flight);
 
+
+// for exponential gain landing, gain increase per second:
+// for Ar drone 2: 1.001 (factor)
+// for Bebop 2: 0.01 works
+#define INCREASE_GAIN_PER_SECOND 0.02
+
 /**
  * Initialize the optical flow landing module
  */
@@ -152,9 +158,9 @@ void vertical_ctrl_module_init(void)
   of_landing_ctrl.agl_lp = 0.0f;
   of_landing_ctrl.vel = 0.0f;
   of_landing_ctrl.divergence_setpoint = -0.20f;
-  of_landing_ctrl.cov_set_point = -0.05f; // for cov(div, div delta t); // -0.010f; // for cov(uz, div)
+  of_landing_ctrl.cov_set_point = -0.020f; // for cov(div, div delta t); // -0.010f; // for cov(uz, div)
   of_landing_ctrl.cov_limit = 0.0025f; //1.0f; // for cov(uz,div)
-  of_landing_ctrl.lp_factor = 0.6f;
+  of_landing_ctrl.lp_factor = 0.75f; // for Bebop 2  // 0.60f; // for AR drone
   of_landing_ctrl.pgain = OPTICAL_FLOW_LANDING_PGAIN;
   of_landing_ctrl.igain = OPTICAL_FLOW_LANDING_IGAIN;
   of_landing_ctrl.dgain = OPTICAL_FLOW_LANDING_DGAIN;
@@ -169,7 +175,7 @@ void vertical_ctrl_module_init(void)
   of_landing_ctrl.pgain_adaptive = 10.0;
   of_landing_ctrl.igain_adaptive = 0.25;
   of_landing_ctrl.dgain_adaptive = 0.00;
-  of_landing_ctrl.reduction_factor_elc = 0.75f;
+  of_landing_ctrl.reduction_factor_elc = 0.80f;
 
   struct timespec spec;
   clock_gettime(CLOCK_MONOTONIC, &spec);
@@ -434,11 +440,13 @@ void vertical_ctrl_module_run(bool in_flight)
           printf("Time window in seconds: %f\n", get_mean_array(dt_history, of_landing_ctrl.window_size) * of_landing_ctrl.window_size);
         }
 
+        // TODO: remove comment, this is just for debugging:
+        /*
         if (ind_hist >= of_landing_ctrl.window_size && fabs(cov_div) > of_landing_ctrl.cov_limit) {
           // land by setting 90% nominal thrust:
           landing = 1;
           thrust = 0.90 * nominal_throttle;
-        }
+        }*/
         stabilization_cmd[COMMAND_THRUST] = thrust;
         of_landing_ctrl.sum_err += err;
         of_landing_ctrl.d_err = of_landing_ctrl.lp_factor * of_landing_ctrl.d_err + (1-of_landing_ctrl.lp_factor) * (err - previous_err) * 10.0f; // 10.0f to make it similarly sized to the error
@@ -507,10 +515,22 @@ void vertical_ctrl_module_run(bool in_flight)
           // increase the gain till you start oscillating:
           float phase_0_set_point = 0.0f;
           // increase the p-gain:
-          pstate *= 1.001f; //+= 0.001;
+//          pstate *= INCREASE_GAIN_FACTOR; //+= 0.001;
+//          pused = pstate;
+//          istate *= INCREASE_GAIN_FACTOR;
+//          dstate *= INCREASE_GAIN_FACTOR;
+
+          float time_factor;
+          if(ind_hist >= 1)
+        	  time_factor = dt_history[(ind_hist-1) % of_landing_ctrl.window_size];
+          else
+        	  time_factor = 0.0f;
+          pstate += time_factor * INCREASE_GAIN_PER_SECOND;
+          float gain_factor = pstate / pused;
+          istate *= gain_factor;
+          dstate *= gain_factor;
           pused = pstate;
-          istate *= 1.001f;
-          dstate *= 1.001f;
+
           // use the divergence for control:
           float err = phase_0_set_point - divergence;
           int32_t thrust = nominal_throttle + pused * err * MAX_PPRZ + istate * of_landing_ctrl.sum_err * MAX_PPRZ + dstate * of_landing_ctrl.d_err * MAX_PPRZ;;
@@ -533,7 +553,8 @@ void vertical_ctrl_module_run(bool in_flight)
             printf("Time window in seconds: %f\n", get_mean_array(dt_history, of_landing_ctrl.window_size) * of_landing_ctrl.window_size);
           }
           // printf("ELC phase 0, gain = %f, cov_div = %f\n", pstate, cov_div);
-          if (ind_hist >= of_landing_ctrl.window_size && cov_div <= of_landing_ctrl.cov_set_point) { // && module_active_time_sec > 10.0f
+          // if (ind_hist >= of_landing_ctrl.window_size && cov_div <= of_landing_ctrl.cov_set_point) { // && module_active_time_sec > 10.0f
+          if(true) {
             // next phase:
             elc_phase=1;
             clock_gettime(CLOCK_MONOTONIC, &spec);
@@ -604,10 +625,10 @@ void vertical_ctrl_module_run(bool in_flight)
           of_landing_ctrl.sum_err += err;
           of_landing_ctrl.d_err = of_landing_ctrl.lp_factor * of_landing_ctrl.d_err + (1-of_landing_ctrl.lp_factor) * (err - previous_err) * 10.0f; // 10.0f to make it similarly sized to the error
           previous_err = err;
-//          float p_land_threshold = 0.05;
-//          if(pstate < p_land_threshold) {
-//            elc_phase = 2;
-//          }
+          float p_land_threshold = 0.20;
+          if(pstate < p_land_threshold) {
+            elc_phase = 2;
+          }
         }
         else {
           // land with 90% nominal thrust:

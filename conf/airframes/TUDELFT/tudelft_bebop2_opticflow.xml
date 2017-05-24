@@ -27,9 +27,11 @@
       <define name="AHRS_USE_GPS_HEADING" value="TRUE"/>
       <define name="AHRS_HEADING_UPDATE_GPS_MIN_SPEED" value="0"/>
     </module>
-    <module name="ins" type="extended">
-        <define name="INS_INT_GPS_ID" value="ABI_DISABLE"/>
-    </module>
+    <module name="ins" type="extended"/>
+    <!-- Disable use of GPS: -->
+    <!--    <define name="INS_INT_GPS_ID" value="ABI_DISABLE"/>
+    </module> -->
+    
   </firmware>
 
   <modules main_freq="512">
@@ -223,9 +225,9 @@
   <section name="GUIDANCE_H" prefix="GUIDANCE_H_">
     <define name="REF_MAX_SPEED" value="2" unit="m/s"/>
     <define name="MAX_BANK" value="35" unit="deg"/>
-    <define name="PGAIN" value="0"/> <!-- 120 -->
-    <define name="DGAIN" value="302"/> <!-- 80 -->
-    <define name="IGAIN" value="0"/> <!-- 30 -->
+    <define name="PGAIN" value="82"/> <!-- GPS: 120 no GPS: 0--> 
+    <define name="DGAIN" value="68"/> <!-- GPS: 80 no GPS: 302-->
+    <define name="IGAIN" value="10"/> <!-- GPS: 30 no GPS: 0-->
   </section>
 
   <section name="NAVIGATION" prefix="NAV_">
@@ -240,12 +242,17 @@
   </section>
 
   <section name="AUTOPILOT">
+    <define name="MODE_STARTUP" value="AP_MODE_NAV"/>
+    <define name="MODE_MANUAL" value="AP_MODE_ATTITUDE_DIRECT"/>
+    <define name="MODE_AUTO1" value="AP_MODE_ATTITUDE_DIRECT"/>
+    <define name="MODE_AUTO2" value="AP_MODE_NAV"/>
+
+    <!--
     <define name="MODE_STARTUP" value="AP_MODE_ATTITUDE_DIRECT"/>
-    <!-- <define name="MODE_MANUAL" value="AP_MODE_ATTITUDE_DIRECT"/> -->
     <define name="MODE_MANUAL" value="AP_MODE_MODULE"/>
     <define name="MODE_AUTO1" value="AP_MODE_ATTITUDE_Z_HOLD"/>
     <define name="MODE_AUTO2" value="AP_MODE_ATTITUDE_DIRECT"/>
-
+    -->
     <define name="NO_RC_THRUST_LIMIT" value="TRUE"/>
   </section>
 
