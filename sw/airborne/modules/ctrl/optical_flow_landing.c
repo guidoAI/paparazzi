@@ -120,7 +120,7 @@ PRINT_CONFIG_VAR(OPTICAL_FLOW_LANDING_OPTICAL_FLOW_ID)
 #endif
 
 #ifndef OPTICAL_FLOW_LANDING_COV_METHOD
-#define OPTICAL_FLOW_LANDING_COV_METHOD 1
+#define OPTICAL_FLOW_LANDING_COV_METHOD 0
 #endif
 
 // number of time steps used for calculating the covariance (oscillations)
@@ -151,10 +151,10 @@ void vertical_ctrl_module_init(void)
   of_landing_ctrl.agl = 0.0f;
   of_landing_ctrl.agl_lp = 0.0f;
   of_landing_ctrl.vel = 0.0f;
-  of_landing_ctrl.divergence_setpoint = -0.10f;
-  of_landing_ctrl.cov_set_point = -0.0005f; // for cov(div, div delta t); // -0.010f; // for cov(uz, div)
+  of_landing_ctrl.divergence_setpoint = -0.20f;
+  of_landing_ctrl.cov_set_point = -0.05f; // for cov(div, div delta t); // -0.010f; // for cov(uz, div)
   of_landing_ctrl.cov_limit = 0.0025f; //1.0f; // for cov(uz,div)
-  of_landing_ctrl.lp_factor = 0.3f;
+  of_landing_ctrl.lp_factor = 0.6f;
   of_landing_ctrl.pgain = OPTICAL_FLOW_LANDING_PGAIN;
   of_landing_ctrl.igain = OPTICAL_FLOW_LANDING_IGAIN;
   of_landing_ctrl.dgain = OPTICAL_FLOW_LANDING_DGAIN;
@@ -499,7 +499,10 @@ void vertical_ctrl_module_run(bool in_flight)
       }
       else if(of_landing_ctrl.CONTROL_METHOD == 2) {
 
+    	// *************************************
         // Exponentially decaying gain strategy:
+    	// *************************************
+
         if(elc_phase == 0) {
           // increase the gain till you start oscillating:
           float phase_0_set_point = 0.0f;
@@ -583,6 +586,7 @@ void vertical_ctrl_module_run(bool in_flight)
             printf("Time window in seconds: %f\n", get_mean_array(dt_history, of_landing_ctrl.window_size) * of_landing_ctrl.window_size);
           }
 
+          /*
           if (ind_hist >= of_landing_ctrl.window_size && cov_div < of_landing_ctrl.cov_set_point) {
         	// handling oscillations on the way down:
             elc_p_gain_start = pstate * of_landing_ctrl.reduction_factor_elc;
@@ -595,6 +599,7 @@ void vertical_ctrl_module_run(bool in_flight)
 			  divergence_history[i] = 0;
 		    }
           }
+          */
           stabilization_cmd[COMMAND_THRUST] = thrust;
           of_landing_ctrl.sum_err += err;
           of_landing_ctrl.d_err = of_landing_ctrl.lp_factor * of_landing_ctrl.d_err + (1-of_landing_ctrl.lp_factor) * (err - previous_err) * 10.0f; // 10.0f to make it similarly sized to the error
