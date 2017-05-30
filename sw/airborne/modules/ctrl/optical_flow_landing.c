@@ -100,11 +100,11 @@ PRINT_CONFIG_VAR(OPTICAL_FLOW_LANDING_OPTICAL_FLOW_ID)
 
 // Other default values:
 #ifndef OPTICAL_FLOW_LANDING_PGAIN
-#define OPTICAL_FLOW_LANDING_PGAIN 0.250
+#define OPTICAL_FLOW_LANDING_PGAIN 0.40
 #endif
 
 #ifndef OPTICAL_FLOW_LANDING_IGAIN
-#define OPTICAL_FLOW_LANDING_IGAIN 0.025
+#define OPTICAL_FLOW_LANDING_IGAIN 0.01
 #endif
 
 #ifndef OPTICAL_FLOW_LANDING_DGAIN
@@ -158,7 +158,7 @@ void vertical_ctrl_module_init(void)
   of_landing_ctrl.agl_lp = 0.0f;
   of_landing_ctrl.vel = 0.0f;
   of_landing_ctrl.divergence_setpoint = -0.20f;
-  of_landing_ctrl.cov_set_point = -0.010f; // for cov(div, div delta t); // -0.010f; // for cov(uz, div)
+  of_landing_ctrl.cov_set_point = -0.0075f; // for cov(div, div delta t); // -0.010f; // for cov(uz, div)
   of_landing_ctrl.cov_limit = 0.0025f; //1.0f; // for cov(uz,div)
   of_landing_ctrl.lp_factor = 0.75f; // for Bebop 2  // 0.60f; // for AR drone
   of_landing_ctrl.pgain = OPTICAL_FLOW_LANDING_PGAIN;
@@ -512,16 +512,11 @@ void vertical_ctrl_module_run(bool in_flight)
     	// *************************************
         // Exponentially decaying gain strategy:
     	// *************************************
-
+    	float phase_0_set_point = 0.0f;
         if(elc_phase == 0) {
           // increase the gain till you start oscillating:
-          float phase_0_set_point = 0.0f;
-          // increase the p-gain:
-//          pstate *= INCREASE_GAIN_FACTOR; //+= 0.001;
-//          pused = pstate;
-//          istate *= INCREASE_GAIN_FACTOR;
-//          dstate *= INCREASE_GAIN_FACTOR;
 
+          // increase the gains:
           if(cov_div > of_landing_ctrl.cov_set_point)
           {
 			  float time_factor;
@@ -583,6 +578,7 @@ void vertical_ctrl_module_run(bool in_flight)
             elc_i_gain_start = of_landing_ctrl.reduction_factor_elc * istate;
             elc_d_gain_start = of_landing_ctrl.reduction_factor_elc * dstate;
             count_covdiv = 0;
+            of_landing_ctrl.sum_err = 0.0f;
           }
           stabilization_cmd[COMMAND_THRUST] = thrust;
           of_landing_ctrl.sum_err += err;
@@ -590,6 +586,48 @@ void vertical_ctrl_module_run(bool in_flight)
           previous_err = err;
         }
         else if (elc_phase == 1) {
+          // control divergence to 0 with the reduced gain:
+		  pstate = elc_p_gain_start;
+		  istate = elc_i_gain_start;
+		  dstate = elc_d_gain_start;
+
+		  clock_gettime(CLOCK_MONOTONIC, &spec);
+		  new_time = spec.tv_sec * 1E3 + spec.tv_nsec / 1E6;
+		  float t_interval = (new_time - elc_time_start) / 1000.0f;
+		  // printf("start = %d, now = %d, time interval = %f\n", elc_time_start, new_time, t_interval);
+		  // this should not happen, but just to be sure to prevent too high gain values:
+		  if(t_interval < 0) t_interval = 0.0f;
+
+
+		  // use the divergence for control:
+		  float err = phase_0_set_point - divergence;
+		  int32_t thrust = nominal_throttle + pused * err * MAX_PPRZ + istate * of_landing_ctrl.sum_err * MAX_PPRZ + dstate * of_landing_ctrl.d_err * MAX_PPRZ;;
+		  // bound thrust:
+		  Bound(thrust, 0.25 * nominal_throttle, 0.99 * MAX_PPRZ);
+		  // histories and cov detection:
+		  normalized_thrust = (float)(thrust / (MAX_PPRZ / 100));
+		  thrust_history[ind_hist % of_landing_ctrl.window_size] = normalized_thrust;
+		  divergence_history[ind_hist % of_landing_ctrl.window_size] = divergence;
+		  int ind_past = (ind_hist % of_landing_ctrl.window_size) - of_landing_ctrl.delay_steps;
+		  while (ind_past < 0) { ind_past += of_landing_ctrl.window_size; }
+		  float past_divergence = divergence_history[ind_past];
+		  past_divergence_history[ind_hist % of_landing_ctrl.window_size] = past_divergence;
+
+		  if (t_interval >= 3.0f && divergence*of_landing_ctrl.divergence_setpoint >= 0.0f) { // && module_active_time_sec > 10.0f
+			// if(true) {
+			  // next phase:
+			  elc_phase=2;
+			  clock_gettime(CLOCK_MONOTONIC, &spec);
+			  elc_time_start = spec.tv_sec * 1E3 + spec.tv_nsec / 1E6;
+			  count_covdiv = 0;
+			}
+
+		  stabilization_cmd[COMMAND_THRUST] = thrust;
+		  of_landing_ctrl.sum_err += err;
+		  of_landing_ctrl.d_err = of_landing_ctrl.lp_factor * of_landing_ctrl.d_err + (1-of_landing_ctrl.lp_factor) * (err - previous_err) * 10.0f; // 10.0f to make it similarly sized to the error
+		  previous_err = err;
+        }
+        else if (elc_phase == 2) {
           // land while exponentially decreasing the gain:
           clock_gettime(CLOCK_MONOTONIC, &spec);
           new_time = spec.tv_sec * 1E3 + spec.tv_nsec / 1E6;
@@ -597,10 +635,18 @@ void vertical_ctrl_module_run(bool in_flight)
           // printf("start = %d, now = %d, time interval = %f\n", elc_time_start, new_time, t_interval);
           // this should not happen, but just to be sure to prevent too high gain values:
           if(t_interval < 0) t_interval = 0.0f;
-          // determine the P-gain, exponentially decaying: 
-          pstate = elc_p_gain_start*exp(of_landing_ctrl.divergence_setpoint*t_interval);
-          istate = elc_i_gain_start*exp(of_landing_ctrl.divergence_setpoint*t_interval);
-          dstate = elc_d_gain_start*exp(of_landing_ctrl.divergence_setpoint*t_interval);
+          // determine the P-gain, exponentially decaying:
+          float gain_scaling = exp(of_landing_ctrl.divergence_setpoint*t_interval);
+          if(gain_scaling <= 1.0f)
+          {
+			  pstate = elc_p_gain_start*gain_scaling;
+			  istate = elc_i_gain_start*gain_scaling;
+			  dstate = elc_d_gain_start*gain_scaling;
+          }
+          else
+          {
+        	  // should not happen...
+          }
           // use the divergence for control:
           float err = of_landing_ctrl.divergence_setpoint - divergence;
           int32_t thrust = nominal_throttle + pstate * err * MAX_PPRZ + istate * of_landing_ctrl.sum_err * MAX_PPRZ + dstate * of_landing_ctrl.d_err * MAX_PPRZ;;
@@ -645,7 +691,7 @@ void vertical_ctrl_module_run(bool in_flight)
           of_landing_ctrl.sum_err += err;
           of_landing_ctrl.d_err = of_landing_ctrl.lp_factor * of_landing_ctrl.d_err + (1-of_landing_ctrl.lp_factor) * (err - previous_err) * 10.0f; // 10.0f to make it similarly sized to the error
           previous_err = err;
-          float p_land_threshold = 0.20;
+          float p_land_threshold = 0.15;
           if(pstate < p_land_threshold) {
             elc_phase = 2;
           }
