@@ -56,7 +56,7 @@ long elc_time_start;
 float elc_p_gain_start;
 float elc_i_gain_start;
 float elc_d_gain_start;
-
+long count_covdiv;
 
 // minimum value of the P-gain for divergence control
 // adaptive control will not be able to go lower
@@ -158,7 +158,7 @@ void vertical_ctrl_module_init(void)
   of_landing_ctrl.agl_lp = 0.0f;
   of_landing_ctrl.vel = 0.0f;
   of_landing_ctrl.divergence_setpoint = -0.20f;
-  of_landing_ctrl.cov_set_point = -0.020f; // for cov(div, div delta t); // -0.010f; // for cov(uz, div)
+  of_landing_ctrl.cov_set_point = -0.010f; // for cov(div, div delta t); // -0.010f; // for cov(uz, div)
   of_landing_ctrl.cov_limit = 0.0025f; //1.0f; // for cov(uz,div)
   of_landing_ctrl.lp_factor = 0.75f; // for Bebop 2  // 0.60f; // for AR drone
   of_landing_ctrl.pgain = OPTICAL_FLOW_LANDING_PGAIN;
@@ -212,6 +212,7 @@ void vertical_ctrl_module_init(void)
   // exponentially decreasing gain while landing:
   elc_phase = 0;
   elc_time_start = 0;
+  count_covdiv = 0;
 
   // Subscribe to the altitude above ground level ABI messages
   AbiBindMsgAGL(OPTICAL_FLOW_LANDING_AGL_ID, &agl_ev, vertical_ctrl_agl_cb);
@@ -232,7 +233,7 @@ void reset_all_vars()
   of_landing_ctrl.d_err = 0;
   stabilization_cmd[COMMAND_THRUST] = 0;
   of_landing_ctrl.agl_lp = 0;
-  cov_div = of_landing_ctrl.cov_set_point;
+  cov_div = 0.0f; // of_landing_ctrl.cov_set_point;
   normalized_thrust = 0.0f;
   dt = 0.0f;
   previous_err = 0.0f;
@@ -251,6 +252,7 @@ void reset_all_vars()
   }
   landing = 0;
   elc_phase = 0;
+  count_covdiv = 0;
 }
 
 /**
@@ -520,17 +522,19 @@ void vertical_ctrl_module_run(bool in_flight)
 //          istate *= INCREASE_GAIN_FACTOR;
 //          dstate *= INCREASE_GAIN_FACTOR;
 
-          float time_factor;
-          if(ind_hist >= 1)
-        	  time_factor = dt_history[(ind_hist-1) % of_landing_ctrl.window_size];
-          else
-        	  time_factor = 0.0f;
-          pstate += time_factor * INCREASE_GAIN_PER_SECOND;
-          float gain_factor = pstate / pused;
-          istate *= gain_factor;
-          dstate *= gain_factor;
-          pused = pstate;
-
+          if(cov_div > of_landing_ctrl.cov_set_point)
+          {
+			  float time_factor;
+			  if(ind_hist >= 1)
+				  time_factor = dt_history[(ind_hist-1) % of_landing_ctrl.window_size];
+			  else
+				  time_factor = 0.0f;
+			  pstate += time_factor * INCREASE_GAIN_PER_SECOND;
+			  float gain_factor = pstate / pused;
+			  istate *= gain_factor;
+			  dstate *= gain_factor;
+			  pused = pstate;
+          }
           // use the divergence for control:
           float err = phase_0_set_point - divergence;
           int32_t thrust = nominal_throttle + pused * err * MAX_PPRZ + istate * of_landing_ctrl.sum_err * MAX_PPRZ + dstate * of_landing_ctrl.d_err * MAX_PPRZ;;
@@ -546,15 +550,30 @@ void vertical_ctrl_module_run(bool in_flight)
           past_divergence_history[ind_hist % of_landing_ctrl.window_size] = past_divergence;
           // ind_hist++;
           // determine the covariance for landing detection:
+          float new_cov_div;
           if (of_landing_ctrl.COV_METHOD == 0) {
-            cov_div = get_cov(thrust_history, divergence_history, of_landing_ctrl.window_size);
+        	new_cov_div = get_cov(thrust_history, divergence_history, of_landing_ctrl.window_size);
           } else {
-            cov_div = get_cov(past_divergence_history, divergence_history, of_landing_ctrl.window_size);
+        	new_cov_div = get_cov(past_divergence_history, divergence_history, of_landing_ctrl.window_size);
             printf("Time window in seconds: %f\n", get_mean_array(dt_history, of_landing_ctrl.window_size) * of_landing_ctrl.window_size);
           }
+          // low pass filter cov div and remove outliers:
+          float lp_cov_div = 0.99;
+          if(abs(cov_div - new_cov_div) < 0.025)
+          {
+        	  cov_div = lp_cov_div * cov_div + (1-lp_cov_div) * new_cov_div;
+          }
           // printf("ELC phase 0, gain = %f, cov_div = %f\n", pstate, cov_div);
-          // if (ind_hist >= of_landing_ctrl.window_size && cov_div <= of_landing_ctrl.cov_set_point) { // && module_active_time_sec > 10.0f
-          if(true) {
+          if(cov_div <= of_landing_ctrl.cov_set_point)
+          {
+        	  count_covdiv++;
+          }
+          else
+          {
+        	  count_covdiv = 0;
+          }
+          if (ind_hist >= of_landing_ctrl.window_size && count_covdiv > 300) { // && module_active_time_sec > 10.0f
+          // if(true) {
             // next phase:
             elc_phase=1;
             clock_gettime(CLOCK_MONOTONIC, &spec);
@@ -563,6 +582,7 @@ void vertical_ctrl_module_run(bool in_flight)
             elc_p_gain_start = of_landing_ctrl.reduction_factor_elc * pstate;
             elc_i_gain_start = of_landing_ctrl.reduction_factor_elc * istate;
             elc_d_gain_start = of_landing_ctrl.reduction_factor_elc * dstate;
+            count_covdiv = 0;
           }
           stabilization_cmd[COMMAND_THRUST] = thrust;
           of_landing_ctrl.sum_err += err;
@@ -725,7 +745,7 @@ void guidance_v_module_enter(void)
   previous_err = 0.0f;
   previous_cov_err = 0.0f;
   of_landing_ctrl.agl_lp = 0.0f;
-  cov_div = of_landing_ctrl.cov_set_point;
+  cov_div = 0.0f; //of_landing_ctrl.cov_set_point;
   normalized_thrust = 0.0f;
   divergence = of_landing_ctrl.divergence_setpoint;
   dt = 0.0f;
@@ -742,6 +762,7 @@ void guidance_v_module_enter(void)
   // Exponentially decreasing gain:
   elc_phase = 0;
   elc_time_start = 0;
+  count_covdiv = 0;
   pstate = of_landing_ctrl.pgain;
   pused = pstate;
   istate = of_landing_ctrl.igain;
