@@ -30,6 +30,15 @@
  * de Croon, G.C.H.E. (2016). Monocular distance estimation with optical flow maneuvers and efference copies:
  * a stability-based strategy. Bioinspiration & biomimetics, 11(1), 016004.
  * <http://iopscience.iop.org/article/10.1088/1748-3190/11/1/016004>
+ *
+ * Based on the above theory, we have also developed a new strategy for landing that consists of two phases:
+ * (1) while hovering, the drone determines the optimal gain by increasing the gain until oscillation
+ * (2) the drone starts landing while exponentially decreasing the gain over time
+ *
+ * This strategy leads to smooth, high-performance constant divergence landings, as explained in the article:
+ * H.W. Ho, G.C.H.E. de Croon, E. van Kampen, Q.P. Chu, and M. Mulder (submitted)
+ * Adaptive Control Strategy for Constant Optical Flow Divergence Landing,
+ * <https://arxiv.org/abs/1609.06767>
  */
 
 #ifndef OPTICAL_FLOW_LANDING_H_
@@ -60,8 +69,11 @@ struct OpticalFlowLanding {
   float dgain_adaptive;         ///< D-gain for adaptive gain control
   int COV_METHOD;               ///< method to calculate the covariance: between thrust and div (0) or div and div past (1)
   int delay_steps;              ///< number of delay steps for div past
-  int window_size;				///< number of time steps in "window" used for getting the covariance
+  int window_size;              ///< number of time steps in "window" used for getting the covariance
   float reduction_factor_elc;   ///< reduction factor - after oscillation, how much to reduce the gain...
+  float lp_cov_div;             ///< low-pass factor for the covariance of divergence in order to trigger the second landing phase in the exponential strategy.
+  int count_transition;         ///< how many time steps the drone has to be oscillating in order to transition to the hover phase with reduced gain
+  float p_land_threshold;       ///< if during the exponential landing the gain reaches this value, the final landing procedure is triggered
 };
 
 extern struct OpticalFlowLanding of_landing_ctrl;
@@ -83,6 +95,8 @@ unsigned long ind_hist;
 // supporting functions for cov calculation:
 float get_cov(float *a, float *b, int n_elements);
 float get_mean_array(float *a, int n_elements);
+
+// resetting all variables to be called for instance when starting up / re-entering module
 void reset_all_vars(void);
 
 // Implement own Vertical loops
