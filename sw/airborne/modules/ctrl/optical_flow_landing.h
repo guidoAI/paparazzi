@@ -71,7 +71,7 @@ struct OpticalFlowLanding {
   int delay_steps;              ///< number of delay steps for div past
   int window_size;              ///< number of time steps in "window" used for getting the covariance
   float reduction_factor_elc;   ///< reduction factor - after oscillation, how much to reduce the gain...
-  float lp_cov_div;             ///< low-pass factor for the covariance of divergence in order to trigger the second landing phase in the exponential strategy.
+  float lp_cov_div_factor;      ///< low-pass factor for the covariance of divergence in order to trigger the second landing phase in the exponential strategy.
   int count_transition;         ///< how many time steps the drone has to be oscillating in order to transition to the hover phase with reduced gain
   float p_land_threshold;       ///< if during the exponential landing the gain reaches this value, the final landing procedure is triggered
 };
@@ -95,6 +95,13 @@ unsigned long ind_hist;
 // supporting functions for cov calculation:
 float get_cov(float *a, float *b, int n_elements);
 float get_mean_array(float *a, int n_elements);
+
+// common functions for different landing strategies:
+void set_cov_div(int32_t thrust);
+int32_t PID_divergence_control(float divergence_setpoint, float P, float I, float D, float* err);
+void update_errors(float error);
+void final_landing_procedure(void);
+
 
 // resetting all variables to be called for instance when starting up / re-entering module
 void reset_all_vars(void);
