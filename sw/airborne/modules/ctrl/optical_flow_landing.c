@@ -705,6 +705,93 @@ void vertical_ctrl_module_run(bool in_flight)
         update_errors(err);
 
       }
+      else  if (of_landing_ctrl.CONTROL_METHOD == 4) {
+
+        // SSL + EXPONENTIAL LANDING: use learned weights for setting the gain on the way down:
+
+        if (elc_phase == 0) {
+
+          float phase_0_set_point = 0.0f;
+          // adapt the p-gain with a low-pass filter to the gain predicted by image appearance:
+          // TODO: lp_factor is now the same as used for the divergence. This may not be appropriate
+          pstate = predict_gain(texton_distribution);
+          float lp_factor_prediction = 0.95;
+          // of_landing_ctrl.pgain = lp_factor_prediction * of_landing_ctrl.pgain + (1.0f - lp_factor_prediction) * of_landing_ctrl.stable_gain_factor * pstate;
+          of_landing_ctrl.pgain = lp_factor_prediction * of_landing_ctrl.pgain + (1.0f - lp_factor_prediction) * of_landing_ctrl.reduction_factor_elc * pstate;
+          pused = of_landing_ctrl.pgain;
+          // make sure pused does not become too small, nor grows too fast:
+          if (of_landing_ctrl.pgain < MINIMUM_GAIN) { of_landing_ctrl.pgain = MINIMUM_GAIN; }
+          // have the i and d gain depend on the p gain:
+          istate = 0.025 * of_landing_ctrl.pgain;
+          dstate = 0.0f;
+          printf("of_landing_ctrl.pgain = %f\n", of_landing_ctrl.pgain);
+
+          // use the divergence for control:
+          thrust = PID_divergence_control(phase_0_set_point, pused, istate, dstate, &err);
+          // keep track of histories and set the covariance
+          set_cov_div(thrust);
+          // update the controller errors:
+          update_errors(err);
+
+          // if the low-pass filter of the p-gain has settled and the drone is moving in the right direction:
+          if (module_active_time_sec >= 3.0f && divergence * of_landing_ctrl.divergence_setpoint >= 0.0f) {
+              // next phase:
+              elc_phase = 1;
+              clock_gettime(CLOCK_MONOTONIC, &spec);
+              elc_time_start = spec.tv_sec * 1E3 + spec.tv_nsec / 1E6;
+
+              // we don't have to reduce the gain, as this is done above for the p-gain already:
+              elc_p_gain_start = pused;
+              elc_i_gain_start = istate;
+              elc_d_gain_start = dstate;
+              count_covdiv = 0;
+              of_landing_ctrl.sum_err = 0.0f;
+          }
+        }
+        else if (elc_phase == 1) {
+
+          // land while exponentially decreasing the gain:
+          clock_gettime(CLOCK_MONOTONIC, &spec);
+          new_time = spec.tv_sec * 1E3 + spec.tv_nsec / 1E6;
+          float t_interval = (new_time - elc_time_start) / 1000.0f;
+
+          // this should not happen, but just to be sure to prevent too high gain values:
+          if (t_interval < 0) { t_interval = 0.0f; }
+
+          // determine the P-gain, weighing between an exponentially decaying one and the predicted one based on textons:
+          float gain_scaling = exp(of_landing_ctrl.divergence_setpoint * t_interval);
+          float prediction = predict_gain(texton_distribution); // low-pass it in of_landing_ctrl.pgain?
+          float weight_prediction = 0.5;
+
+          if (gain_scaling <= 1.0f) {
+           pstate = weight_prediction * of_landing_ctrl.reduction_factor_elc * prediction + (1-weight_prediction) * elc_p_gain_start * gain_scaling;
+           istate = 0.025 * weight_prediction * of_landing_ctrl.reduction_factor_elc * prediction + (1-weight_prediction) * elc_i_gain_start * gain_scaling;
+           dstate = 0.0f;
+          }
+          else {
+              // should never come here:
+              pstate = of_landing_ctrl.reduction_factor_elc * prediction;
+              istate = 0.025 * of_landing_ctrl.reduction_factor_elc * prediction;
+              dstate = 0.0f;
+          }
+          pused = pstate;
+
+          // use the divergence for control:
+          thrust = PID_divergence_control(of_landing_ctrl.divergence_setpoint, pused, istate, dstate, &err);
+          // keep track of histories and set the covariance
+          set_cov_div(thrust);
+          // update the controller errors:
+          update_errors(err);
+
+          // when to make the final landing:
+          if (pstate < of_landing_ctrl.p_land_threshold) {
+           elc_phase = 2;
+          }
+        }
+        else {
+          final_landing_procedure();
+        }
+      }
     } else {
       final_landing_procedure();
     }
