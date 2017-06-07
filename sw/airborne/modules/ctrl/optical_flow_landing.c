@@ -47,8 +47,6 @@ float divergence;
 float divergence_vision;
 float divergence_vision_dt;
 float normalized_thrust;
-float cov_div;
-float pstate;
 float pused;
 float istate;
 float dstate;
@@ -158,7 +156,7 @@ PRINT_CONFIG_VAR(OPTICAL_FLOW_LANDING_OPTICAL_FLOW_ID)
 #endif
 
 #ifndef OPTICAL_FLOW_LANDING_CONTROL_METHOD
-#define OPTICAL_FLOW_LANDING_CONTROL_METHOD 0
+#define OPTICAL_FLOW_LANDING_CONTROL_METHOD 1
 #endif
 
 #ifndef OPTICAL_FLOW_LANDING_COV_METHOD
@@ -555,7 +553,7 @@ void vertical_ctrl_module_run(bool in_flight)
         }
 
         // SSL: if close enough, store texton inputs:
-        if(ind_hist >= COV_WINDOW_SIZE && fabs(error_cov) < of_landing_ctrl.close_to_edge) {
+        if(ind_hist >= of_landing_ctrl.window_size && fabs(error_cov) < of_landing_ctrl.close_to_edge) {
           save_texton_distribution();
         }
 
@@ -911,30 +909,17 @@ void save_texton_distribution(void)
   // Since the control module runs faster than the texton vision process, we need to check that we are storing a recent vision result:
   int i, same;
   same = 1;
-  if(!TEXTONS_FROM_STEREO) {
-    for(i = 0; i < n_textons; i++)
+  for(i = 0; i < n_textons; i++)
+  {
+    // check if the texton distribution is the same as the previous one:
+    if(texton_distribution[i] != last_texton_distribution[i])
     {
-      // check if the texton distribution is the same as the previous one:
-      if(texton_distribution[i] != last_texton_distribution[i])
-      {
-        same = 0;
-      }
-      // update the last texton distribution:
-      last_texton_distribution[i] = texton_distribution[i];
+      same = 0;
     }
+    // update the last texton distribution:
+    last_texton_distribution[i] = texton_distribution[i];
   }
-  else {
-    for(i = 0; i < n_textons; i++)
-    {
-      // check if the texton distribution is the same as the previous one:
-      if(texton_distribution_stereoboard[i] != last_texton_distribution[i])
-      {
-        same = 0;
-      }
-      // update the last texton distribution:
-      last_texton_distribution[i] = texton_distribution_stereoboard[i];
-    }
-  }
+
   // don't save the texton distribution if it is the same as previous time step:
   /*if(same)
   {
@@ -960,20 +945,11 @@ void save_texton_distribution(void)
     fprintf(distribution_logger, "%f ", of_landing_ctrl.agl); // sonar measurement
     fprintf(distribution_logger, "%f ", pstate); // gain measurement
     fprintf(distribution_logger, "%f ", cov_div); // cov div measurement
-    if(!TEXTONS_FROM_STEREO) {
-      for(i = 0; i < n_textons-1; i++)
-      {
-        fprintf(distribution_logger, "%f ", texton_distribution[i]);
-      }
-      fprintf(distribution_logger, "%f\n", texton_distribution[n_textons-1]);
-    }
-    else {
     for(i = 0; i < n_textons-1; i++)
-      {
-        fprintf(distribution_logger, "%f ", texton_distribution_stereoboard[i]);
-      }
-      fprintf(distribution_logger, "%f\n", texton_distribution_stereoboard[n_textons-1]);
+    {
+      fprintf(distribution_logger, "%f ", texton_distribution[i]);
     }
+    fprintf(distribution_logger, "%f\n", texton_distribution[n_textons-1]);
     fclose(distribution_logger);
   }
 }

@@ -101,6 +101,10 @@ float gains[MAX_SAMPLES_LEARNING];
 float cov_divs_log[MAX_SAMPLES_LEARNING];
 float *weights;
 
+// for "communication" with file logger:
+float cov_div;
+float pstate;
+
 // Without optitrack set to: GUIDANCE_H_MODE_ATTITUDE
 // With optitrack set to: GUIDANCE_H_MODE_HOVER / NAV
 #define GUIDANCE_H_MODE_MODULE_SETTING GUIDANCE_H_MODE_NAV

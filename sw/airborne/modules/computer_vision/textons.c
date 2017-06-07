@@ -41,7 +41,7 @@ float *texton_distribution;
 
 // initial settings:
 #ifndef TEXTONS_RUN
-#define TEXTONS_RUN 0
+#define TEXTONS_RUN 1
 #endif
 PRINT_CONFIG_VAR(TEXTONS_RUN)
 
