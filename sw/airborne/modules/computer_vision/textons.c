@@ -126,8 +126,9 @@ uint8_t cycle = 0;
 
 // File pointer for saving the dictionary
 static FILE *dictionary_logger = NULL;
+
 #ifndef DICTIONARY_PATH
-#define DICTIONARY_PATH /data/ftp/internal000
+#define DICTIONARY_PATH /data/ftp/internal_000
 #endif
 
 /**
@@ -575,6 +576,7 @@ void save_texton_dictionary(void)
   dictionary_logger = fopen(filename, "w");
 
   if (dictionary_logger == NULL) {
+      printf("Filename: %s\n", filename);
     perror("Error while opening the file.\n");
   } else {
     // (over-)write dictionary

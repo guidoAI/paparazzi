@@ -112,7 +112,7 @@ float* last_texton_distribution; // used to check if a new texton distribution h
 float texton_distribution_stereoboard[n_ts];
 // #define TEXTON_DISTRIBUTION_PATH /data/video/
 // On Bebop 2:
-#define TEXTON_DISTRIBUTION_PATH /data/ftp/internal000
+#define TEXTON_DISTRIBUTION_PATH /data/ftp/internal_000
 // for RLS, recursive least squares:
 float** P_RLS;
 // forgetting factor:
