@@ -38,7 +38,7 @@
 
     <module name="pose_history"/>
 
-  <module name="cv_opticflow">
+    <module name="cv_opticflow">
       <define name="OPTICFLOW_CAMERA" value="bottom_camera"/>
       <define name="MAX_HORIZON" value="10"/>
       <define name="OPTICFLOW_FX" value="347.22222222"/> <!-- 2.5 / (3.6 * 2.0) * 1000 -->
@@ -53,6 +53,10 @@
       <define name="VIDEO_CAPTURE_CAMERA" value="bottom_camera"/>
       <!-- <define name="VIDEO_CAPTURE_CAMERA" value="front_camera"/> -->
       <define name="VIDEO_CAPTURE_PATH" value="/data/ftp/internal_000/images"/>
+    </module>
+
+    <module name="cv_textons.xml">
+      <define name="TEXTONS_CAMERA" value="bottom_camera"/>
     </module>
 
     <module name="optical_flow_landing.xml"/>
