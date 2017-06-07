@@ -687,7 +687,8 @@ void vertical_ctrl_module_run(bool in_flight)
         // TODO: lp_factor is now the same as used for the divergence. This may not be appropriate
         pstate = predict_gain(texton_distribution);
         float lp_factor_prediction = 0.95;
-        of_landing_ctrl.pgain = lp_factor_prediction * of_landing_ctrl.pgain + (1.0f - lp_factor_prediction) * of_landing_ctrl.stable_gain_factor * pstate;
+        // of_landing_ctrl.pgain = lp_factor_prediction * of_landing_ctrl.pgain + (1.0f - lp_factor_prediction) * of_landing_ctrl.stable_gain_factor * pstate;
+        of_landing_ctrl.pgain = lp_factor_prediction * of_landing_ctrl.pgain + (1.0f - lp_factor_prediction) * of_landing_ctrl.reduction_factor_elc * pstate;
         pused = of_landing_ctrl.pgain;
         // make sure pused does not become too small, nor grows too fast:
         if (of_landing_ctrl.pgain < MINIMUM_GAIN) { of_landing_ctrl.pgain = MINIMUM_GAIN; }

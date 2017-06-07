@@ -4,7 +4,9 @@ MAX_SAMPLES = 25000;
 start_sample = 1;
 
 BIAS = true;
-weights = true;
+PRIOR = true;
+
+weights = true; % whether we have onboard weights we want to compare to the current learning:
 if(weights)
     w = load('Weights_00000.dat');
 end
@@ -26,7 +28,12 @@ if(BIAS)
 else
     AA = f;
 end
-x = AA \ b;
+if(~PRIOR)
+    x = AA \ b;
+else
+   alpha = 1; %10;
+   x = inv(AA' * AA + alpha * eye(size(AA, 2))) * AA' * b; 
+end
 y = AA * x;
 fid = fopen('Weights_MATLAB.dat', 'w');
 for i = 1:length(x)-1
