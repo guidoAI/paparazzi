@@ -66,7 +66,7 @@ PRINT_CONFIG_VAR(TEXTONS_ALPHA)
 PRINT_CONFIG_VAR(TEXTONS_N_TEXTONS)
 
 #ifndef TEXTONS_N_SAMPLES
-#define TEXTONS_N_SAMPLES 50
+#define TEXTONS_N_SAMPLES 150
 #endif
 PRINT_CONFIG_VAR(TEXTONS_N_SAMPLES)
 
@@ -211,7 +211,8 @@ struct image_t *texton_func(struct image_t *img)
       DistributionExtraction(frame, img->w, img->h);
     }
 
-    printf("Entropy texton distribution = %f\n", get_entropy(texton_distribution, n_textons));
+    // printf("N textons = %d\n", n_samples_image);
+    // printf("Entropy texton distribution = %f\n", get_entropy(texton_distribution, n_textons));
 
     /*printf("Distribution = [");
     for (i = 0; i < n_textons-1; i++) {

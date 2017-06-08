@@ -79,11 +79,12 @@ struct OpticalFlowLanding {
   float p_land_threshold;       ///< if during the exponential landing the gain reaches this value, the final landing procedure is triggered
   // TODO: volatile bool?
   volatile bool learn_gains;    ///< set to true if the robot needs to learn a mapping from texton distributions to the p-gain
-  float stable_gain_factor;     ///< this factor is multiplied with the gain estimate from SSL, in interval [0,1]. If 1, the system will be unstable, if 0, there is no control (performance).
+  // float stable_gain_factor;     ///< this factor is multiplied with the gain estimate from SSL, in interval [0,1]. If 1, the system will be unstable, if 0, there is no control (performance).
   bool load_weights;            ///< load the weights that were learned before
   float close_to_edge;          ///< if abs(cov_div - reference cov_div) < close_to_edge, then texton distributions and gains are stored for learning
   bool use_bias;                ///< if true, a bias 1.0f will be added to the feature vector (texton distribution) - this typically leads to very large weights
   bool snapshot;                ///< if true, besides storing a texton distribution, an image will also be stored (when unstable)
+  float lp_factor_prediction;   ///< low-pass value for the predicted P-value
 };
 
 extern struct OpticalFlowLanding of_landing_ctrl;

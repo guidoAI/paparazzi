@@ -198,7 +198,7 @@ void vertical_ctrl_module_init(void)
   of_landing_ctrl.agl_lp = 0.0f;
   of_landing_ctrl.vel = 0.0f;
   of_landing_ctrl.divergence_setpoint = 0.0f; //-0.20f; // For exponential gain landing, pick a negative value
-  of_landing_ctrl.cov_set_point = -0.0075f; // for cov(uz, div), i.e., cov_method 0
+  of_landing_ctrl.cov_set_point = -0.010f; // for cov(uz, div), i.e., cov_method 0
   of_landing_ctrl.cov_limit =
     2.2f; // This high a value means that for a constant divergence landing no landing will be triggered
   // If you want to trigger a landing, set the limit to something like 0.025f; // limit for cov(uz,div) - used only for landing triggering
@@ -226,11 +226,12 @@ void vertical_ctrl_module_init(void)
   of_landing_ctrl.p_land_threshold =
     0.15f; // if the gain reaches this value during an exponential landing, the drone makes the final landing.
   of_landing_ctrl.learn_gains = false;
-  of_landing_ctrl.stable_gain_factor = STABLE_GAIN_FACTOR;
+  // of_landing_ctrl.stable_gain_factor = STABLE_GAIN_FACTOR;
   of_landing_ctrl.load_weights = false;
   of_landing_ctrl.close_to_edge = 0.005;
   of_landing_ctrl.use_bias = true; // true for recursive estimation
   of_landing_ctrl.snapshot = false;
+  of_landing_ctrl.lp_factor_prediction = 0.95;
 
   struct timespec spec;
   clock_gettime(CLOCK_MONOTONIC, &spec);
@@ -686,9 +687,7 @@ void vertical_ctrl_module_run(bool in_flight)
         // adapt the p-gain with a low-pass filter to the gain predicted by image appearance:
         // TODO: lp_factor is now the same as used for the divergence. This may not be appropriate
         pstate = predict_gain(texton_distribution);
-        float lp_factor_prediction = 0.95;
-        // of_landing_ctrl.pgain = lp_factor_prediction * of_landing_ctrl.pgain + (1.0f - lp_factor_prediction) * of_landing_ctrl.stable_gain_factor * pstate;
-        of_landing_ctrl.pgain = lp_factor_prediction * of_landing_ctrl.pgain + (1.0f - lp_factor_prediction) * of_landing_ctrl.reduction_factor_elc * pstate;
+        of_landing_ctrl.pgain = of_landing_ctrl.lp_factor_prediction * of_landing_ctrl.pgain + (1.0f - of_landing_ctrl.lp_factor_prediction) * of_landing_ctrl.reduction_factor_elc * pstate;
         pused = of_landing_ctrl.pgain;
         // make sure pused does not become too small, nor grows too fast:
         if (of_landing_ctrl.pgain < MINIMUM_GAIN) { of_landing_ctrl.pgain = MINIMUM_GAIN; }
@@ -704,6 +703,9 @@ void vertical_ctrl_module_run(bool in_flight)
         // update the controller errors:
         update_errors(err);
 
+        if (pused < of_landing_ctrl.p_land_threshold) {
+            final_landing_procedure();
+        }
       }
       else  if (of_landing_ctrl.CONTROL_METHOD == 4) {
 
