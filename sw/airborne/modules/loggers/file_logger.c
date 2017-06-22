@@ -35,10 +35,9 @@
 
 // #include "subsystems/electrical.h"
 #include "modules/computer_vision/video_capture.h"
-
-// will this work?
+// optical flow module and textons module:
 #include "modules/ctrl/optical_flow_landing.h"
-
+#include "modules/computer_vision/textons.h"
 // reading the pressuremeter:
 #include "subsystems/abi.h"
 #ifndef LOGGER_BARO_ID
@@ -109,11 +108,28 @@ void file_logger_start(void)
 
   file_logger = fopen(filename, "w");
 
+  /*char str[n_textons * 4];
+  char add_str[4];
+  for(int i = 0; i < n_textons-1; i++)
+  {
+      sprintf(add_str, "t%2d,", i);
+  }
+  sprintf(add_str, "t%2d", n_textons-1);
+  strcat(str, add_str);
+  printf("\n\n\nTexton entries: %s\n\n\n", str);
+  */
+
   if (file_logger != NULL) {
     fprintf(
           file_logger,
-          "counter,gyro_unscaled_p,gyro_unscaled_q,gyro_unscaled_r,accel_unscaled_x,accel_unscaled_y,accel_unscaled_z,mag_unscaled_x,mag_unscaled_y,mag_unscaled_z,COMMAND_THRUST,COMMAND_ROLL,COMMAND_PITCH,COMMAND_YAW,qi,qx,qy,qz,shot,pressure,sonar,phi_f,theta_f,psi_f,pstate,cov_div\n"
+          "counter,gyro_unscaled_p,gyro_unscaled_q,gyro_unscaled_r,accel_unscaled_x,accel_unscaled_y,accel_unscaled_z,mag_unscaled_x,"
+          "mag_unscaled_y,mag_unscaled_z,COMMAND_THRUST,COMMAND_ROLL,COMMAND_PITCH,COMMAND_YAW,qi,qx,qy,qz,"
+          "shot,pressure,sonar,phi_f,theta_f,psi_f,pstate,cov_div,"
         );
+    for(int i = 0; i < n_textons-1; i++) {
+          fprintf(file_logger, "texton_%d,", i);
+      }
+    fprintf(file_logger, "texton_%d\n", n_textons-1);
     logger_pressure = 0.0f;
     logger_sonar = 0.0f;
   }
@@ -159,7 +175,7 @@ void file_logger_periodic(void)
 
   struct FloatEulers *eulers = stateGetNedToBodyEulers_f();
 
-  fprintf(file_logger, "%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%f,%f,%f,%f,%f,%f,%f\n",
+  fprintf(file_logger, "%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%f,%f,%f,%f,%f,%f,%f,",
           counter,
           imu.gyro_unscaled.p,
           imu.gyro_unscaled.q,
@@ -187,5 +203,11 @@ void file_logger_periodic(void)
           pstate,
           cov_div
          );
+
+  for(int i = 0; i < n_textons-1; i++) {
+      fprintf(file_logger, "%f,", texton_distribution[i]);
+  }
+  fprintf(file_logger, "%f\n", texton_distribution[n_textons-1]);
+
   counter++;
 }

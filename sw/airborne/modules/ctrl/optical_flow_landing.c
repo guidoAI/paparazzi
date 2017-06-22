@@ -151,7 +151,8 @@ PRINT_CONFIG_VAR(OPTICAL_FLOW_LANDING_OPTICAL_FLOW_ID)
 #endif
 
 #ifndef OPTICAL_FLOW_LANDING_IGAIN
-#define OPTICAL_FLOW_LANDING_IGAIN 0.01
+// #define OPTICAL_FLOW_LANDING_IGAIN 0.01
+#define OPTICAL_FLOW_LANDING_IGAIN 0.0
 #endif
 
 #ifndef OPTICAL_FLOW_LANDING_DGAIN
@@ -163,7 +164,7 @@ PRINT_CONFIG_VAR(OPTICAL_FLOW_LANDING_OPTICAL_FLOW_ID)
 #endif
 
 #ifndef OPTICAL_FLOW_LANDING_CONTROL_METHOD
-#define OPTICAL_FLOW_LANDING_CONTROL_METHOD 1
+#define OPTICAL_FLOW_LANDING_CONTROL_METHOD 4
 #endif
 
 #ifndef OPTICAL_FLOW_LANDING_COV_METHOD
@@ -204,7 +205,7 @@ void vertical_ctrl_module_init(void)
   of_landing_ctrl.agl = 0.0f;
   of_landing_ctrl.agl_lp = 0.0f;
   of_landing_ctrl.vel = 0.0f;
-  of_landing_ctrl.divergence_setpoint = 0.0f; //-0.20f; // For exponential gain landing, pick a negative value
+  of_landing_ctrl.divergence_setpoint = -0.30f; //-0.20f; // For exponential gain landing, pick a negative value
   previous_divergence_setpoint = of_landing_ctrl.divergence_setpoint;
   of_landing_ctrl.cov_set_point = -0.010f; // for cov(uz, div), i.e., cov_method 0
   of_landing_ctrl.cov_limit =
@@ -239,8 +240,8 @@ void vertical_ctrl_module_init(void)
   of_landing_ctrl.close_to_edge = 0.005;
   of_landing_ctrl.use_bias = true; // true for recursive estimation
   of_landing_ctrl.snapshot = false;
-  of_landing_ctrl.lp_factor_prediction = 0.95;
-
+  of_landing_ctrl.lp_factor_prediction = 0.6; //0.95;
+  of_landing_ctrl.ramp_duration = 0.50f;
   // ramping:
   ramp = 0;
   delta_setpoint = 0.0f;
@@ -920,7 +921,7 @@ int32_t PID_divergence_control(float divergence_setpoint, float P, float I, floa
       struct timespec spec;
       clock_gettime(CLOCK_MONOTONIC, &spec);
       float ramp_time = spec.tv_sec * 1E3 + spec.tv_nsec / 1.0E6;
-      float rt = (ramp_time - ramp_start_time) / 1000.0f; // ramp lasts 500 ms (0.5 sec)
+      float rt = (ramp_time - ramp_start_time) / (of_landing_ctrl.ramp_duration*1000.0f); // ramp duration in ms
 
       // should not happen:
       // if(rt < 0.0f) rt = 0.0f;

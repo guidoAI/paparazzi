@@ -85,6 +85,7 @@ struct OpticalFlowLanding {
   bool use_bias;                ///< if true, a bias 1.0f will be added to the feature vector (texton distribution) - this typically leads to very large weights
   bool snapshot;                ///< if true, besides storing a texton distribution, an image will also be stored (when unstable)
   float lp_factor_prediction;   ///< low-pass value for the predicted P-value
+  float ramp_duration;          ///< ramp duration in seconds for when the divergence setpoint changes
 };
 
 extern struct OpticalFlowLanding of_landing_ctrl;
