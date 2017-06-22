@@ -586,8 +586,10 @@ void vertical_ctrl_module_run(bool in_flight)
         // EXPONENTIAL GAIN CONTROL:
 
         float phase_0_set_point = 0.0f;
-        previous_divergence_setpoint = 0.0f;
+
         if (elc_phase == 0) {
+          previous_divergence_setpoint = 0.0f;
+
           // increase the gain till you start oscillating:
 
           // if not yet oscillating, increase the gains:
