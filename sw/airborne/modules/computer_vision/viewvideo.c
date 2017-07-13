@@ -266,6 +266,7 @@ static struct image_t *viewvideo_function(struct UdpSocket *socket, struct image
 }
 #endif
 
+#if USE_H264
 static struct image_t *viewvideo_function_h264(struct UdpSocket *socket, struct image_t *img)
 {
   int32_t h264BufferIndex, size;
@@ -313,6 +314,8 @@ static struct image_t *viewvideo_function_h264(struct UdpSocket *socket, struct 
   }
   return NULL; // No new images were created
 }
+#endif
+
 
 #ifdef VIEWVIDEO_CAMERA
 #if USE_H264

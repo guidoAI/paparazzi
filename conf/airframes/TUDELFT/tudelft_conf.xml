@@ -418,6 +418,17 @@
    gui_color="#f6d5baaaffff"
   />
   <aircraft
+   name="bebop2_indoor_streaming"
+   ac_id="55"
+   airframe="airframes/TUDELFT/autoswarm/swarm_bebop2_inside_stream.xml"
+   radio="radios/dummy.xml"
+   telemetry="telemetry/default_rotorcraft.xml"
+   flight_plan="flight_plans/TUDELFT/tudelft_delft_basic.xml"
+   settings="settings/rotorcraft_basic.xml"
+   settings_modules="modules/video_rtp_stream.xml modules/cv_frame_plotter.xml modules/cv_active_random_filter.xml modules/cv_bebop_camera_stabilization.xml modules/cv_ae_awb.xml modules/autoswarm.xml modules/bebop_accel_calib_flat.xml modules/ins_extended.xml modules/ahrs_int_cmpl_quat.xml modules/stabilization_indi.xml modules/nav_basic_rotorcraft.xml modules/guidance_rotorcraft.xml modules/gps.xml modules/imu_bebop.xml modules/imu_common.xml"
+   gui_color="#ffffbf17bf17"
+  />
+  <aircraft
    name="bebop2_no_dampers"
    ac_id="26"
    airframe="airframes/TUDELFT/tudelft_bebop2_no_damping.xml"
@@ -436,7 +447,7 @@
    telemetry="telemetry/default_rotorcraft.xml"
    flight_plan="flight_plans/TUDELFT/tudelft_delft_basic.xml"
    settings="settings/rotorcraft_basic.xml"
-   settings_modules="modules/gps_ubx_ucenter.xml modules/air_data.xml modules/geo_mag.xml modules/ins_extended.xml modules/ahrs_int_cmpl_quat.xml modules/stabilization_indi_simple.xml modules/nav_basic_rotorcraft.xml modules/guidance_rotorcraft.xml modules/gps.xml modules/imu_common.xml"
+   settings_modules="modules/gps_ubx_ucenter.xml modules/air_data.xml modules/geo_mag.xml modules/ins_extended.xml modules/ahrs_int_cmpl_quat.xml modules/stabilization_indi_simple.xml modules/nav_basic_rotorcraft.xml modules/guidance_rotorcraft.xml modules/gps.xml modules/imu_bebop.xml modules/imu_common.xml"
    gui_color="#ffffbf17bf17"
   />
   <aircraft

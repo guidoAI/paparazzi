@@ -35,6 +35,7 @@
 #include "state.h"
 #include "subsystems/actuators.h"
 #include "generated/modules.h"
+// #include "modules/calibration/mag_calib_ukf.c"
 
 /** Set the default File logger path to the USB drive */
 #ifndef FILE_LOGGER_PATH
@@ -203,23 +204,23 @@ void file_logger_periodic(void)
           MAG_FLOAT_OF_BFP(imu.mag.x),
           MAG_FLOAT_OF_BFP(imu.mag.y),
           MAG_FLOAT_OF_BFP(imu.mag.z),
-          magneto_psi_f,
+          0.0f,
           eulerAngles->psi,
-          mag_calib.state[0],
-          mag_calib.state[1],
-          mag_calib.state[2],
-          mag_calib.state[3],
-          mag_calib.state[4],
-          mag_calib.state[5],
-          mag_calib.state[6],
-          mag_calib.state[7],
-          mag_calib.state[8],
+          0.0f,
+          0.0f,
+          0.0f,
+          0.0f,
+          0.0f,
+          0.0f,
+          0.0f,
+          0.0f,
+          0.0f,
           //mag_calib.state[9],
           //mag_calib.state[10],
           //mag_calib.state[11],
-          sp_accel.x,
-          sp_accel.y,
-          sp_accel.z
+          0.0f,
+          0.0f,
+          0.0f
          );
   counter++;
 }

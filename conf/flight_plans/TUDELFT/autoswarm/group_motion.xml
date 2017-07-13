@@ -47,15 +47,6 @@
   </exceptions>
   <blocks>
     <block name="Wait GPS">
-    	<call_once fun="setSwarmMode(2)"/> <!--  Look towards global -->
-    	<set var="settings_as_extended" value="1"/>
-    	<set var="settings_as_loglo" value="1.0"/>
-    	<set var="settings_as_vmax" value="3.0"/>
-    	<set var="settings_as_circle_radius" value="1.25"/>
-    	<set var="settings_as_e" value="0.06"/> 
-    	<set var="settings_as_separation" value="1.0"/> <!--  2.0m separation -->
-    	<set var="settings_as_global_strength" value="1.0"/> <!--  100% global strength -->
-    	<call_once fun="setGlobalMode(2)"/> <!--  CW global field -->
       <call_once fun="NavKillThrottle()"/>
       <while cond="!GpsFixValid()"/>
     </block>
@@ -82,17 +73,18 @@
     </block>
     <block name="Swarm" strip_button="Swarm" strip_icon="lookfore.png">
     	<set var="viewvideo_recording" value="TRUE"/>
-		<call_once fun="setSwarmMode(2)"/>
-		<call_once fun="nav_set_heading_towards_waypoint(WP__CAM)"/>
+		<!--<call_once fun="setSwarmMode(2)"/> 
+		<call_once fun="nav_set_heading_towards_waypoint(WP__CAM)"/> -->
     	<stay wp="_GOAL"/>
-    </block>
+    </block>    
     <block name="Swarm Home">
+<!--
     	<set var="viewvideo_recording" value="FALSE"/>
     	<exception cond="amIhome()" deroute="Land"/>
 		<call_once fun="NavCopyWaypointPositionOnly(WP_GLOBAL, WP__TD)"/>
 		<call_once fun="setGlobalMode(0)"/>
 		<call_once fun="setSwarmMode(1)"/>
-		<call_once fun="nav_set_heading_towards_waypoint(WP__CAM)"/>
+		<call_once fun="nav_set_heading_towards_waypoint(WP__CAM)"/> -->
     	<stay wp="_GOAL"/>
     </block>
     <block key="l" name="land here" strip_button="Land Here" strip_icon="land-right.png">
@@ -122,7 +114,7 @@
     	<exception cond="!nav_is_in_flight()" 	deroute="Landed"/>
     	<exception cond="GpsFixValid()" 	deroute="Standby" />
     </block>
-    <block name="circle_cw">
+<!--    <block name="circle_cw">
       <set var="settings_as_attractor" value="2"/>
       <deroute block="Swarm"/>
     </block>
@@ -149,6 +141,6 @@
     <block name="dec_circle">
       <set var="settings_as_circle_radius" value="settings_as_circle_radius-0.125"/>
       <deroute block="Swarm"/>
-    </block>
+    </block> -->
   </blocks>
 </flight_plan>

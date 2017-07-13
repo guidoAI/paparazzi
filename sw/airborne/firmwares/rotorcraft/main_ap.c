@@ -124,6 +124,8 @@ tid_t baro_tid;          ///< id for baro_periodic() timer
 
 void main_init(void)
 {
+  printf("He!\n");
+
   mcu_init();
 
 #if defined(PPRZ_TRIG_INT_COMPR_FLASH)

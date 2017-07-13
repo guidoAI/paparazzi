@@ -39,6 +39,8 @@
 #ifndef SITL
 int main(void)
 {
+  printf("Hoi!\n");
+
   main_init();
 
 #if LIMIT_EVENT_POLLING

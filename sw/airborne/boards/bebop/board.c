@@ -118,13 +118,17 @@ void board_init(void)
    * This to make sure OEM program does not get re-started
    *
   */
+  printf("0");
   int ret __attribute__((unused)) = system("killall -q -15 DragonStarter.sh");
   usleep(50000); /* Give DragonStarter 50ms time to end on a busy system */
   kill_gracefull("dragon-prog");
+  printf("1");
 }
 
 void board_init2(void)
 {
+  printf("A\n");
+
   /* Initialize MT9V117 chipset (Bottom camera) */
   struct mt9v117_t mt9v117 = {
     // Initial values
@@ -133,6 +137,7 @@ void board_init2(void)
     .i2c_periph = &i2c0
   };
   mt9v117_init(&mt9v117);
-
+  printf("B\n");
   mt9f002_init(&mt9f002);
+  printf("C\n");
 }

@@ -81,6 +81,7 @@ void mcu_init(void)
    * For example the ARDrone2 has this implemented to prevent stray data of IMU
    * from OEM program still running and also accessing AC sensors
    */
+
   board_init();
 
   mcu_arch_init();

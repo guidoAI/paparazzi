@@ -7,8 +7,9 @@
       <define name="STABILIZATION_INDI_G2_R" value="0.20"/>
     </target>
     
-	<configure name="HOST" value="192.168.0.$(AC_ID)" />
-	<configure name="MODEM_HOST" value="192.168.0.255" />
+	<!-- <configure name="HOST" value="192.168.0.$(AC_ID)" />
+	<configure name="MODEM_HOST" value="192.168.0.255" /> -->
+
 
     <target name="nps" board="pc">
       <module name="fdm" type="jsbsim"/>
@@ -17,9 +18,10 @@
       <define name="STABILIZATION_INDI_G2_R" value="0.0"/>
     </target>
 	<!-- Camera parameters -->
-	<define name="USE_H264" value="TRUE" />
-	<define name="H264_ROTATE" value="TRUE" />
-	
+	<define name="USE_H264" value="FALSE" />
+	<define name="H264_ROTATE" value="FALSE" />
+  <define name="VIEWVIDEO_STREAM" value="TRUE" />
+
 	<define name="MT9F002_SENSOR_HEIGHT" value="3312-800" />
 	<define name="MT9F002_OUTPUT_HEIGHT" value="1656-400" /> <!-- 414 / 828 / 1656 / 3312 -->
 	<define name="MT9F002_INITIAL_OFFSET_Y" value="400" /> <!-- 0 min-offset -->

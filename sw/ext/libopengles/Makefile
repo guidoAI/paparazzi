@@ -31,7 +31,7 @@ ifeq ($(OS),Windows_NT)
 else
   UNAME_S := $(shell uname -s)
   ifeq ($(UNAME_S),Linux)
-    PREFIX    ?= /opt/arm-2012.03/bin/arm-none-linux-gnueabi
+    PREFIX    ?= /usr/bin/arm-linux-gnueabi
   else
     ifeq ($(UNAME_S),Darwin)
       PREFIX    ?= /usr/local/carlson-minot/crosscompilers/bin/arm-none-linux-gnueabi

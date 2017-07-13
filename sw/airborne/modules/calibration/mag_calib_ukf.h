@@ -31,7 +31,7 @@
 #define MAG_CALIB_UKF_H
 
 #include "std.h"
-#include "TRICAL.h"
+#include "../../../ext/TRICAL/include/TRICAL.h"
 
 // Used for magneto calibration block
 #include "firmwares/rotorcraft/stabilization.h"
