@@ -18,8 +18,8 @@
       <define name="STABILIZATION_INDI_G2_R" value="0.0"/>
     </target>
 	<!-- Camera parameters -->
-	<define name="USE_H264" value="FALSE" />
-	<define name="H264_ROTATE" value="FALSE" />
+	<define name="USE_H264" value="TRUE" />
+	<define name="H264_ROTATE" value="TRUE" />
   <define name="VIEWVIDEO_STREAM" value="TRUE" />
 
 	<define name="MT9F002_SENSOR_HEIGHT" value="3312-800" />
@@ -80,7 +80,7 @@
 	</module>
 	<!-- <module name="cv_active_random_filter" /> -->
 	<module name="video_rtp_stream">
-		<configure name="VIEWVIDEO_BROADCAST" value="FALSE" />
+		<configure name="VIEWVIDEO_BROADCAST" value="TRUE" />
 		<define name="VIEWVIDEO_CAMERA" value="front_camera" />
 		<define name="VIEWVIDEO_CAMERA2" value="bottom_camera" />
 		<define name="VIEWVIDEO_SHOT_PATH" value="/data/ftp/internal_000" />

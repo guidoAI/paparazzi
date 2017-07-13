@@ -192,7 +192,7 @@ bool viewvideo_recording = FALSE;
  * Handles all the video streaming and saving of the image shots
  * This is a separate thread, so it needs to be thread safe!
  */
-#if !USE_H264 || VIEWVIDEO_CAMERA2
+// #if !USE_H264 || VIEWVIDEO_CAMERA2
 static struct image_t *viewvideo_function(struct UdpSocket *socket, struct image_t *img, uint32_t *rtp_frame_nr)
 {
   // Resize image if needed
@@ -264,7 +264,7 @@ static struct image_t *viewvideo_function(struct UdpSocket *socket, struct image
   image_free(&img_small);
   return NULL; // No new images were created
 }
-#endif
+// #endif
 
 #if USE_H264
 static struct image_t *viewvideo_function_h264(struct UdpSocket *socket, struct image_t *img)
