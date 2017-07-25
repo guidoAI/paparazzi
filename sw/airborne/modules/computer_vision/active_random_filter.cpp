@@ -62,7 +62,7 @@ using namespace cv;
 
 #define xSign(x) ( ( x ) >= ( 0 ) ? ( 1 ) : ( -1 ) )
 
-#define ARF_MARK_CONTOURS   0                       ///< Mark all contour pixels green on sourceframe
+#define ARF_MARK_CONTOURS   1                       ///< Mark all contour pixels green on sourceframe
 
 #define ARF_MEASURE_FPS     1                       ///< Measure average FPS
 #define ARF_TIMEOUT         150                      ///< Frames from start

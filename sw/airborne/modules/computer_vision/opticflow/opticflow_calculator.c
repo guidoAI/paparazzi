@@ -32,6 +32,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+#include "mcu_periph/sys_time.h"
 
 // Own Header
 #include "opticflow_calculator.h"
@@ -51,7 +52,7 @@
 
 // whether to show the flow and corners:
 #define OPTICFLOW_SHOW_FLOW 0
-#define OPTICFLOW_SHOW_CORNERS 0
+#define OPTICFLOW_SHOW_CORNERS 1
 
 // What methods are run to determine divergence, lateral flow, etc.
 // SIZE_DIV looks at line sizes and only calculates divergence
@@ -275,7 +276,9 @@ void calc_fast9_lukas_kanade(struct opticflow_t *opticflow, struct opticflow_sta
   // *************************************************************************************
   // Corner detection
   // *************************************************************************************
-
+  int start_t = get_sys_time_msec();
+  printf("Height = %d, width = %d\n", img->h, img->w);
+  printf("time before corner:%d\n",start_t);
   // FAST corner detection
   // TODO: There is something wrong with fast9_detect destabilizing FPS. This problem is reduced with putting min_distance
   // to 0 (see defines), however a more permanent solution should be considered
@@ -306,7 +309,7 @@ void calc_fast9_lukas_kanade(struct opticflow_t *opticflow, struct opticflow_sta
     image_copy(&opticflow->img_gray, &opticflow->prev_img_gray);
     return;
   }
-
+  printf("time after corner:%d\n",get_sys_time_msec()-start_t);
   // *************************************************************************************
   // Corner Tracking
   // *************************************************************************************
@@ -322,7 +325,7 @@ void calc_fast9_lukas_kanade(struct opticflow_t *opticflow, struct opticflow_sta
   printf("show: n tracked = %d\n", result->tracked_cnt);
   image_show_flow(img, vectors, result->tracked_cnt, opticflow->subpixel_factor);
 #endif
-
+  printf("time after LK:%d\n",get_sys_time_msec()-start_t);
   // Estimate size divergence:
   if (SIZE_DIV) {
     n_samples = 100;
