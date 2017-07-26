@@ -46,6 +46,11 @@
 
 #include "std.h"
 
+#define MAX_COV_WINDOW_SIZE 100
+
+// maximum number of samples to learn from for SSL:
+#define MAX_SAMPLES_LEARNING 25000
+
 struct OpticalFlowLanding {
   float agl;                    ///< agl = height from sonar (only used when using "fake" divergence)
   float agl_lp;                 ///< low-pass version of agl
@@ -72,10 +77,34 @@ struct OpticalFlowLanding {
   float lp_cov_div_factor;      ///< low-pass factor for the covariance of divergence in order to trigger the second landing phase in the exponential strategy.
   int count_transition;         ///< how many time steps the drone has to be oscillating in order to transition to the hover phase with reduced gain
   float p_land_threshold;       ///< if during the exponential landing the gain reaches this value, the final landing procedure is triggered
-  float div_factor;             ///< Number that transforms the divergence in pixels per frame from the camera to (1 / frame) - taking into account field of view, etc.
+  // TODO: volatile bool?
+  volatile bool learn_gains;    ///< set to true if the robot needs to learn a mapping from texton distributions to the p-gain
+  // float stable_gain_factor;     ///< this factor is multiplied with the gain estimate from SSL, in interval [0,1]. If 1, the system will be unstable, if 0, there is no control (performance).
+  bool load_weights;            ///< load the weights that were learned before
+  float close_to_edge;          ///< if abs(cov_div - reference cov_div) < close_to_edge, then texton distributions and gains are stored for learning
+  bool use_bias;                ///< if true, a bias 1.0f will be added to the feature vector (texton distribution) - this typically leads to very large weights
+  bool snapshot;                ///< if true, besides storing a texton distribution, an image will also be stored (when unstable)
+  float lp_factor_prediction;   ///< low-pass value for the predicted P-value
 };
 
 extern struct OpticalFlowLanding of_landing_ctrl;
+
+// arrays containing histories for determining covariance
+float thrust_history[MAX_COV_WINDOW_SIZE];
+float divergence_history[MAX_COV_WINDOW_SIZE];
+float past_divergence_history[MAX_COV_WINDOW_SIZE];
+float dt_history[MAX_COV_WINDOW_SIZE];
+unsigned long ind_hist;
+// SSL:
+float *text_dists[MAX_SAMPLES_LEARNING];
+float sonar[MAX_SAMPLES_LEARNING];
+float gains[MAX_SAMPLES_LEARNING];
+float cov_divs_log[MAX_SAMPLES_LEARNING];
+float *weights;
+
+// for "communication" with file logger:
+float cov_div;
+float pstate;
 
 // Without optitrack set to: GUIDANCE_H_MODE_ATTITUDE
 // With optitrack set to: GUIDANCE_H_MODE_HOVER / NAV
@@ -84,9 +113,33 @@ extern struct OpticalFlowLanding of_landing_ctrl;
 // Own guidance_v
 #define GUIDANCE_V_MODE_MODULE_SETTING GUIDANCE_V_MODE_MODULE
 
+// supporting functions for cov calculation:
+float get_cov(float *a, float *b, int n_elements);
+float get_mean_array(float *a, int n_elements);
+
+// common functions for different landing strategies:
+void set_cov_div(int32_t thrust);
+int32_t PID_divergence_control(float divergence_setpoint, float P, float I, float D, float *err);
+void update_errors(float error);
+void final_landing_procedure(void);
+
+// resetting all variables to be called for instance when starting up / re-entering module
+void reset_all_vars(void);
+
 // Implement own Vertical loops
 extern void guidance_v_module_init(void);
 extern void guidance_v_module_enter(void);
 extern void guidance_v_module_run(bool in_flight);
+
+// SSL functions:
+void save_texton_distribution(void);
+void load_texton_distribution(void);
+void fit_linear_model(float* targets, float** samples, uint8_t D, uint16_t count, float* parameters, float* fit_error);
+void learn_from_file(void);
+float predict_gain(float* distribution);
+void save_weights(void);
+void load_weights(void);
+void recursive_least_squares_batch(float* targets, float** samples, uint8_t D, uint16_t count, float* params, float* fit_error);
+void recursive_least_squares(float target, float* sample, uint8_t length_sample, float* params);
 
 #endif /* OPTICAL_FLOW_LANDING_H_ */
