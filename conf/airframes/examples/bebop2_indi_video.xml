@@ -23,16 +23,16 @@
   <define name="VIEWVIDEO_STREAM" value="TRUE" />
 
 	<define name="MT9F002_SENSOR_HEIGHT" value="3312-800" />
-	<define name="MT9F002_OUTPUT_HEIGHT" value="1656-400" /> <!-- 414 / 828 / 1656 / 3312 -->
-	<define name="MT9F002_INITIAL_OFFSET_Y" value="400" /> <!-- 0 min-offset -->
-	<!-- <define name="MT9F002_OUTPUT_HEIGHT" value="240" /> 
-	<define name="MT9F002_INITIAL_OFFSET_Y" value="0" /> -->
+	<!-- <define name="MT9F002_OUTPUT_HEIGHT" value="828-400" /> --> <!-- 414 / 828 / 1656 / 3312 -->
+	<!-- <define name="MT9F002_INITIAL_OFFSET_Y" value="400" /> --> <!-- 0 min-offset -->
+	<define name="MT9F002_OUTPUT_HEIGHT" value="240" /> 
+	<define name="MT9F002_INITIAL_OFFSET_Y" value="0" />
 	
 	<define name="MT9F002_SENSOR_WIDTH" value="1920" />
-  <define name="MT9F002_OUTPUT_WIDTH" value="960" /> <!-- 240 / 480 / 960 / 1920 / 3840 -->
-	<define name="MT9F002_INITIAL_OFFSET_X" value="960+384" /> <!-- 384 min-offset -->
-	<!-- <define name="MT9F002_OUTPUT_WIDTH" value="240" /> 
-	<define name="MT9F002_INITIAL_OFFSET_X" value="240+384" /> -->
+  <!-- <define name="MT9F002_OUTPUT_WIDTH" value="480" /> --> <!-- 240 / 480 / 960 / 1920 / 3840 -->
+	<!-- <define name="MT9F002_INITIAL_OFFSET_X" value="480+384" /> --> <!-- 384 min-offset -->
+	<define name="MT9F002_OUTPUT_WIDTH" value="240" /> 
+	<define name="MT9F002_INITIAL_OFFSET_X" value="240+384" /> 
 	
 	<define name="MT9F002_TARGET_FPS" value="25" />
 	<define name="MT9F002_TARGET_EXPOSURE" value="30" />
@@ -83,10 +83,10 @@
 		<define name="CAM_STAB_FOVY" value="60.0"/>
 	</module>
 	<!-- <module name="cv_active_random_filter" /> -->
- <!--  <module name="cv_opticflow">
+   <module name="cv_opticflow">
       <define name="OPTICFLOW_CAMERA" value="front_camera"/>
     </module>
--->
+
 	<!-- <module name="cv_active_random_filter" /> -->
 	<!-- <module name="cv_frame_plotter" /> -->
 	<module name="video_rtp_stream">
