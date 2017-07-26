@@ -86,7 +86,12 @@
    <module name="cv_opticflow">
       <define name="OPTICFLOW_CAMERA" value="front_camera"/>
     </module>
-
+  <module name="logger_file">
+    <!-- <define name="FILE_LOGGER_PATH" value="/data/ftp/internal_000/"/> -->
+  </module>
+  <module name="video_capture">
+    <define name="VIDEO_CAPTURE_CAMERA" value="front_camera"/>
+  </module>
 	<!-- <module name="cv_active_random_filter" /> -->
 	<!-- <module name="cv_frame_plotter" /> -->
 	<module name="video_rtp_stream">
