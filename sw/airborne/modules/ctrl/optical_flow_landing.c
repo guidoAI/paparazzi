@@ -41,6 +41,7 @@
  * <https://arxiv.org/abs/1609.06767>
  */
 
+#define FORWARD 1
 
 // variables retained between module calls
 float divergence;
@@ -1021,7 +1022,14 @@ static void vertical_ctrl_agl_cb(uint8_t sender_id, float distance)
 static void vertical_ctrl_optical_flow_cb(uint8_t sender_id, uint32_t stamp, int16_t flow_x, int16_t flow_y,
     int16_t flow_der_x, int16_t flow_der_y, float quality, float size_divergence, float dist)
 {
-  divergence_vision = size_divergence;
+  if(FORWARD)
+  {
+    divergence_vision = flow_y;
+  }
+  else
+  {
+    divergence_vision = size_divergence;
+  }
   vision_message_nr++;
   if (vision_message_nr > 10) { vision_message_nr = 0; }
 }

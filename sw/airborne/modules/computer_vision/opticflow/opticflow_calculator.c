@@ -51,7 +51,7 @@
 
 
 // whether to show the flow and corners:
-#define OPTICFLOW_SHOW_FLOW 0
+#define OPTICFLOW_SHOW_FLOW 1
 #define OPTICFLOW_SHOW_CORNERS 1
 
 // What methods are run to determine divergence, lateral flow, etc.
