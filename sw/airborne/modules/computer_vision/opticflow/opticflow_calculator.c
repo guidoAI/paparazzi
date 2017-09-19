@@ -305,7 +305,7 @@ void calc_fast9_lukas_kanade(struct opticflow_t *opticflow, struct opticflow_sta
                    &opticflow->fast9_ret_corners,
                    NULL);
     } else {
-      // allocating memory and initializing the 2d array that holds the number of corners per region and its index (for the sorting)
+      // allocating memory and initializing the 2nd array that holds the number of corners per region and its index (for the sorting)
       uint16_t **region_count = malloc(opticflow->fast9_num_regions * sizeof(uint16_t *));
       for (uint16_t i = 0; i < opticflow->fast9_num_regions ; i++) {
         region_count[i] = malloc(sizeof(uint16_t) * 2);
@@ -372,8 +372,10 @@ void calc_fast9_lukas_kanade(struct opticflow_t *opticflow, struct opticflow_sta
 
   // Check if we found some corners to track
   if (result->corner_cnt < 1) {
+      // TODO: gives problems in subsequent filtering:!!!
     // Clear the result otherwise the previous values will be returned for this frame too
     memset(result, 0, sizeof(struct opticflow_result_t));
+    // TODO: set noise measurement not to 0?
     image_copy(&opticflow->img_gray, &opticflow->prev_img_gray);
     return;
   }
@@ -383,7 +385,8 @@ void calc_fast9_lukas_kanade(struct opticflow_t *opticflow, struct opticflow_sta
   // *************************************************************************************
 
   // Execute a Lucas Kanade optical flow
-  result->tracked_cnt = result->corner_cnt;
+  result->tracked_cnt = result->corner_cnt; // TODO: does this make sense? it is replaced in the next line.
+  // You should determine the number of corners here before tracking
   struct flow_t *vectors = opticFlowLK(&opticflow->img_gray, &opticflow->prev_img_gray, opticflow->fast9_ret_corners,
                                        &result->tracked_cnt,
                                        opticflow->window_size / 2, opticflow->subpixel_factor, opticflow->max_iterations,
