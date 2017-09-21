@@ -209,8 +209,8 @@
     <define name="REF_MAX_SPEED" value="2" unit="m/s"/>
     <define name="MAX_BANK" value="35" unit="deg"/>
     <define name="PGAIN" value="100"/>
-    <define name="DGAIN" value="100"/>
-    <define name="IGAIN" value="10"/>
+    <define name="DGAIN" value="400"/>
+    <define name="IGAIN" value="0"/>
   </section>
 
   <section name="NAVIGATION" prefix="NAV_">

@@ -49,7 +49,7 @@ uint8_t cv_blob_locator_type;
 int geofilter_length = 5;
 int marker_size = 18;
 int record_video = 0;
-int min_blob_size = 100;
+int min_blob_size = 200;
 int blob_found = 0;
 
 volatile uint32_t blob_locator = 0;

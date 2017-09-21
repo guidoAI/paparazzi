@@ -29,7 +29,7 @@
     <waypoint x="2.0" y="1.0" name="CAM"/>
   </waypoints>
   <variables>
-    <variable var="forward_vel" init="0.2f" type="float" min="0." max="2" step="0.1"/>
+    <variable var="forward_vel" init="0.3f" type="float" min="0." max="2" step="0.1"/>
 	  <variable var="nominal_alt" init="NAV_DEFAULT_ALT" type="float" min="0." max="10." step="0.1"/>
     <abi_binding name="OBSTACLE_DETECTION" vars="distance_obstacle_FP, heading_obstacle_FP"/>
     <abi_binding name="RANGE_FORCEFIELD" vars="vel_body_x_FF, vel_body_y_FF, vel_body_z_FF"/>
@@ -58,6 +58,7 @@
     </block>
     
     <block name="Hover here">
+      <while cond="!(autopilot_get_mode() == AP_MODE_GUIDED)"/>
       <call_once fun="autopilot_guided_update(GUIDED_FLAG_XY_OFFSET_YAW_OFFSET,0.,0.,-nominal_alt,DegOfRad(0))"/> 
       <while cond="1"/>
     </block>
@@ -71,7 +72,7 @@
     <block name="Go Forward Drop Zone">
       <call_once fun="autopilot_guided_update(GUIDED_FLAG_XY_VEL_BODY_YAW_RATE,forward_vel,0,-nominal_alt,0)"/>
       <while cond="1"/>
-      <exception cond="blob_found > 5" deroute="Hover here"/>
+      <exception cond="blob_found > 5" deroute="drop_medicine"/>
     </block>
     
     <block name="reset_drop_pin">
@@ -81,7 +82,7 @@
 
     <block name="drop_medicine">
       <call fun="drop_ball(4)"/>
-      <while cond="1"/>
+      <deroute block="Hover here"/>
     </block>
 
     <block name="Land">
