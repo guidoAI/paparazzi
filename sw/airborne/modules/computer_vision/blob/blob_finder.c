@@ -67,7 +67,7 @@ void image_labeling(struct image_t *input, struct image_t *output, struct image_
       }
 
       // Check if this pixel belongs to a filter else goto next
-      if (f >= filters_cnt) {
+      if (f >= filters_cnt) { // TODO: is this sensible? The intersection of two filters will also be a square...
         output_buf[y * output->w + x] = 0xFFFF;
         continue;
       }

@@ -58,7 +58,7 @@ struct point_t {
   uint32_t x;             ///< The x coordinate of the point
   uint32_t y;             ///< The y coordinate of the point
   uint16_t count;         ///< Number of times the point has been tracked successfully
-  uint16_t x_sub;     ///< The x subpixel coordinate of the point
+  uint16_t x_sub;         ///< The x subpixel coordinate of the point
   uint16_t y_sub;         ///< The y subpixel coordinate of the point
 };
 

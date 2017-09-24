@@ -227,7 +227,9 @@ void opticflow_calc_init(struct opticflow_t *opticflow)
   opticflow->derotation_correction_factor_y = OPTICFLOW_DEROTATION_CORRECTION_FACTOR_Y;
 
   opticflow->max_track_corners = OPTICFLOW_MAX_TRACK_CORNERS;
-  opticflow->subpixel_factor = OPTICFLOW_SUBPIXEL_FACTOR;
+  if(OPTICFLOW_SUBPIXEL_FACTOR >= 1) {
+    opticflow->subpixel_factor = OPTICFLOW_SUBPIXEL_FACTOR;
+  }
   opticflow->resolution_factor = OPTICFLOW_RESOLUTION_FACTOR;
   opticflow->max_iterations = OPTICFLOW_MAX_ITERATIONS;
   opticflow->threshold_vec = OPTICFLOW_THRESHOLD_VEC;
@@ -330,13 +332,39 @@ void calc_fast9_lukas_kanade(struct opticflow_t *opticflow, struct opticflow_sta
         roi[2] = roi[0] + (img->w / (uint8_t)sqrt(opticflow->fast9_num_regions));
         roi[3] = roi[1] + (img->h / (uint8_t)sqrt(opticflow->fast9_num_regions));
 
+        struct point_t* new_corners = malloc(sizeof(struct point_t) * opticflow->fast9_rsize);
+        uint16_t new_count;
+
         fast9_detect(&opticflow->prev_img_gray, opticflow->fast9_threshold, opticflow->fast9_min_distance,
-                     opticflow->fast9_padding, opticflow->fast9_padding, &result->corner_cnt,
+                     opticflow->fast9_padding, opticflow->fast9_padding, &new_count,
                      &opticflow->fast9_rsize,
-                     &opticflow->fast9_ret_corners,
+                     new_corners,
                      roi);
+
+        for(uint16_t i = 0; i < new_count; i++) {
+            bool exists = false;
+            for(uint16_t j = 0; j < result->corner_cnt; j++) {
+                if(abs((int16_t)new_corners[i].x - (int16_t)opticflow->fast9_ret_corners[j].x) < (int16_t)opticflow->fast9_min_distance
+                    && abs((int16_t)new_corners[i].y - (int16_t)opticflow->fast9_ret_corners[j].y) < (int16_t)opticflow->fast9_min_distance )
+                {
+                    exists = true;
+                    break;
+                }
+            }
+            if(!exists) {
+                opticflow->fast9_ret_corners[result->corner_cnt].x = new_corners[i].x;
+                opticflow->fast9_ret_corners[result->corner_cnt].y = new_corners[i].y;
+                opticflow->fast9_ret_corners[result->corner_cnt].count = 0;
+                opticflow->fast9_ret_corners[result->corner_cnt].x_sub = 0;
+                opticflow->fast9_ret_corners[result->corner_cnt].y_sub = 0;
+                result->corner_cnt++;
+            }
+        }
+
         free(roi);
+        free(new_corners);
       }
+
       for (uint16_t i = 0; i < opticflow->fast9_num_regions; i++) {
         free(region_count[i]);
       }
