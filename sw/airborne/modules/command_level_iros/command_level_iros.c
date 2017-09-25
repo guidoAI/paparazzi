@@ -64,17 +64,17 @@ enum states_lower_level state_lower_level ;
 enum states_upper_level state_upper_level ;
 
 // enum maneuver maneuvers[] = {ARC_L,TWO_ARCS_R,ZIGZAG_R,TWO_ARCS_L};
-enum maneuver maneuvers[] = {ZIGZAG_L,TWO_ARCS_R,ZIGZAG_R,TWO_ARCS_L};
+enum maneuver maneuvers[] = {STOP_AND_TURN,ZIGZAG_R,ZIGZAG_L,ZIGZAG_R,ARC_L};
 
-float gate_initial_position_y[] = {3.0,3.0,4.0,4.0};
-float turn_point[] = {3.65,5.5,4.5,4.5};
-float gate_initial_heading[] = {0, 0.0/180*3.14,90.0/180*3.14,90.0/180*3.14};
+float gate_initial_position_y[] = {3.0,2.0,2.0,4.0};
+float turn_point[] = {5.0,2.5,2.5,4.5};
+float gate_initial_heading[] = {00.0/PI*180, 180.0/180*3.14,180.0/180*3.14,90.0/180*3.14};
 
-float gate_altitude[] = {-1.8,-2.0,-1.5,-1.5};
-float open_loop_altitude[] = {-1.8,-2.0,-1.5,-1.5};
+float gate_altitude[] = {-2.0,-2.3,-2.0,-1.5};
+float open_loop_altitude[] = {-2.0,-2.0,-2.0,-1.5};
 
 
-float break_time[] = {0.0,0.5,0.0,0.0};
+float break_time[] = {0.0,0.0,0.0,0.0};
 
 /*int   flag_arc_right[] = {1,              -0,           -0,     0};*/
 float arc_radius[] =     {1.5,             1.5,           1.0};
@@ -86,11 +86,14 @@ float two_arc_radius[] =     { 1.0,          1.5,           0.75};
 float delta_2_arc_angle[] = {180.0/180*3.14,     180.0/180*3.14, 180.0/180*3.14, 180.0/180*3.14};
 
 
-int   flag_zig_zag_right[] = {0,0,0};
-int   flag_zig_zag_break[] = {1,0,0};
-float zig_zag_desired_y[] = {-6.9,0,0};
+int   flag_zig_zag_right[] = {1,0,0};
+int   flag_zig_zag_break[] = {1,1,0};
+float zig_zag_desired_y[] = {6.0,6.0,0};
 float zig_zag_break_time[] = {1.0,0,0};
 float zig_zag_max_roll[] = {10.0/180*3.14,20.0/180*3.14,0};
+
+
+float stop_and_turn_break_time = 1.0;
 
 struct race_states race_state;
 
@@ -114,7 +117,10 @@ void command_run() {
         counter_autopilot_mode = 0;
         time_autopilot_mode = 0;
         primitive_in_use = NO_PRIMITIVE;
-        state_lower_level = PREPARE_CM; //PREPARE_CM;
+		// !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+		/*state_lower_level = PREPARE_CM; //PREPARE_CM;*/
+		state_lower_level = FAST_TAKE_OFF_CM; //PREPARE_CM;
+		// !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 		state_upper_level = FIRST_PART;
 		/*state_upper_level = FOURTH_PART;*/
         init_heading = stateGetNedToBodyEulers_f()->psi;
@@ -189,9 +195,20 @@ void first_part_logic()
 			{
 				previous_lower_level = TAKE_OFF_OPEN_LOOP_CM;
 				state_lower_level =  GO_STRAIGHT_CM;
-				/*state_upper_level =  SECOND_PART;*/
-				/*state_upper_level =  THIRD_PART;*/
-				state_upper_level =  FOURTH_PART;
+				state_upper_level =  THIRD_PART;
+
+
+				// !!--------------------------------------------------------
+				race_state.gate_counter = 0;
+				// !!--------------------------------------------------------
+			}
+			break;
+		case FAST_TAKE_OFF_CM:
+			if(take_off_fast())
+			{
+				previous_lower_level = FAST_TAKE_OFF_CM;
+				state_lower_level =  GO_STRAIGHT_CM;
+				state_upper_level =  SECOND_PART;
 			}
 			break;
 		default:
@@ -215,11 +232,12 @@ void second_part_logic()
 					}
 					break;
 			case TURN_CM:
-			  printf("The arc in first strech is executed__________________!!!!!!!!!!!!!!!!!\n");
+			  /*printf("The arc in first strech is executed__________________!!!!!!!!!!!!!!!!!\n");*/
 					if(arc_open_loop(2.0,-5.0/180*3.14,90.0/180*PI,0,0))
 					{
 							race_state.gate_counter = 0; // clear gate counter since in arc_open_loop gate_counter++
 							state_upper_level = THIRD_PART;
+							/*state_upper_level = SECOND_PART;*/
 							state_lower_level = GO_STRAIGHT_CM;
 					}
 
@@ -267,6 +285,11 @@ void third_part_logic()
 									race_state.current_zigzag_desired_y= zig_zag_desired_y[race_state.gate_counter];
 									race_state.current_zigzag_max_roll= zig_zag_max_roll[race_state.gate_counter];
 							}	
+							else if(maneuvers[race_state.gate_counter] == STOP_AND_TURN) 
+							{
+									state_lower_level =  STOP_TURN_CM;
+									race_state.flag_in_open_loop = TRUE;
+							}
 					}
 					break;
 			case ARC_CM:
@@ -278,7 +301,7 @@ void third_part_logic()
 				}
 				break;
 			case ZIGZAG_CM:
-				printf("zigzag mode\n");
+				/*printf("zigzag mode\n");*/
 				if(zigzag_2(race_state.current_zigzag_break_time,race_state.current_zigzag_max_roll,race_state.current_zigzag_desired_y))
 				{
 							previous_mode = ZIGZAG_CM;
@@ -287,12 +310,21 @@ void third_part_logic()
 				}
 				break;
 			case TWO_ARCS_CM:
-				printf("TWO arc mode \n");
+				/*printf("TWO arc mode \n");*/
 				if(two_arcs_open_loop(race_state.current_2_arcs_radius,-5.0/180*3.14,race_state.current_2_arcs_flag_right,race_state.current_2_arcs_delta_heading))
 				{
 						previous_mode = TWO_ARCS_CM;
 						race_state.flag_in_open_loop = FALSE;
 						state_lower_level = GO_STRAIGHT_CM;
+				}
+				break;
+			case STOP_TURN_CM:
+				if(stop_turn(stop_and_turn_break_time,90.0/180.0*PI))
+				{
+						previous_mode = STOP_TURN_CM;
+						race_state.flag_in_open_loop = FALSE;
+						state_lower_level = GO_STRAIGHT_CM;
+
 				}
 				break;
 			default:
@@ -317,10 +349,8 @@ void fourth_part_logic() {
 						break;
 
 				case ARC_CM:
-						printf("ascending in arc of three gates\n");
 				if(	arc_open_loop(race_state.current_arc_radius,-5.0/180*3.14,race_state.current_arc_delta_psi,race_state.current_arc_flag_right,1))
 				{
-
 						state_lower_level = ARC_CM;
 						state_upper_level = FIFTH_PART;
 				}

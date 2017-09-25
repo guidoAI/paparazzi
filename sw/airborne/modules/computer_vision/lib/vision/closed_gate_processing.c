@@ -346,7 +346,7 @@ int closed_gate_processing(struct image_t *img){
 //     image_yuv422_set_color(img,img,x,y);
 
     if(check_color(img, x, y)){ 
-      image_yuv422_set_color(img,img,x,y);;
+      //image_yuv422_set_color(img,img,x,y);;
     //check_color(img, 1, 1);
     // check if it has the right color
       

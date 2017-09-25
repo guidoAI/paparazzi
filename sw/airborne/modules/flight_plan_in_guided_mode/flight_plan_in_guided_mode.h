@@ -58,6 +58,8 @@
 #define GO_STRAIGHT_TEST         26
 #define ZIGZAG_2                 27
 #define GO_THROUGH_OPEN_GATE     28
+#define STOP_TURN                29
+#define TAKE_OFF_FAST            30
 
 #ifndef PREPARE_TIME
 #define PREPARE_TIME 1
@@ -68,7 +70,7 @@
 #endif
 
 #ifndef TAKE_OFF_ALTITUDE 
-#define TAKE_OFF_ALTITUDE -1.8
+#define TAKE_OFF_ALTITUDE -2.0
 #endif
 struct acceleration{
 		double ax;
@@ -208,6 +210,8 @@ extern bool two_arcs_open_loop(float radius,float desired_theta, int flag_right,
 extern bool zigzag_2(float break_time,float max_roll,float distance_y);
 extern bool go_through_open_gate(double desired_theta, double desired_x);
 extern void set_altitude(float altitude);
+extern bool stop_turn(float break_time, float delta_psi);
+extern bool take_off_fast(void);
 
 #endif
 
