@@ -26,6 +26,7 @@
 
 #define REFINEMENT 0
 #define COLOR_FILTER 0
+#define N_MISSING 3
 
 // Gate detection settings:
 int n_samples = 10000;//10000;//2000;//1000;//500;
@@ -58,9 +59,6 @@ float princ_y = 32.0f;
 int f_fisheye = 168;
 float k_fisheye = 1.150;
 float k_fisheye_2 = 1.085;
-
-
-
 
 // Result
 #define MAX_GATES 50
@@ -359,7 +357,7 @@ int closed_gate_processing(struct image_t *img){
       
       // snake up and down:
 
-	   snake_up_and_down(img, x, y, &y_low, &y_high);
+      snake_up_and_down(img, x, y, &y_low, &y_high);
       /*snake_up_and_down_new(img, x, y, &y_low, &y_high);*/
 
       sz = y_high - y_low;
@@ -1528,19 +1526,28 @@ void snake_up_and_down(struct image_t *im, int x, int y, int *y_low, int *y_high
   int x_initial = x;
   (*y_low) = y;
 
+  int missing = 0;
   // snake towards negative y (down?)
   while ((*y_low) > 0 && !done) {
     if (check_color(im, x, (*y_low) - 1)) {
       (*y_low)--;
+      missing = 0;
 
     } else if (x+1 < im->h && check_color(im, x + 1, (*y_low) - 1)) {
       x++;
       (*y_low)--;
+      missing = 0;
     } else if (x-1 >= 0 && check_color(im, x - 1, (*y_low) - 1)) {
       x--;
       (*y_low)--;
+      missing = 0;
     } else {
-      done = 1;
+        missing++;
+        (*y_low)--;
+        if(missing >= N_MISSING) {
+            done = 1;
+            (*y_low) += missing;
+        }
     }
   }
 
@@ -1549,19 +1556,28 @@ void snake_up_and_down(struct image_t *im, int x, int y, int *y_low, int *y_high
   done = 0;
   // snake towards positive y (up?)
   // while ((*y_high) < im->h - 1 && !done) {
+  missing = 0;
   while ((*y_high) < im->w - 1 && !done) {
 
     if (check_color(im, x, (*y_high) + 1)) {
-      (*y_high)++;
+        missing = 0;
+        (*y_high)++;
     //    } else if (x < im->w - 1 && check_color(im, x + 1, (*y_high) + 1)) {
     } else if (x < im->h - 1 && check_color(im, x + 1, (*y_high) + 1)) {
-      x++;
-      (*y_high)++;
+        missing = 0;
+        x++;
+        (*y_high)++;
     } else if (x > 0 && check_color(im, x - 1, (*y_high) + 1)) {
-      x--;
+        missing = 0;
+        x--;
       (*y_high)++;
     } else {
-      done = 1;
+        missing++;
+        (*y_high)++;
+        if(missing >= N_MISSING) {
+            done = 1;
+            (*y_high) -= missing;
+        }
     }
   }
 }
@@ -1572,19 +1588,29 @@ void snake_left_and_right(struct image_t *im, int x, int y, int *x_low, int *x_h
   int y_initial = y;
   (*x_low) = x;
 
+  int missing = 0;
+
   // snake towards negative x (left)
   while ((*x_low) > 0 && !done) {
     if (check_color(im, (*x_low) - 1, y)) {
-      (*x_low)--;  
+      (*x_low)--;
+      missing = 0;
     // } else if (y < im->h - 1 && check_color(im, (*x_low) - 1, y + 1)) {
     } else if (y < im->w - 1 && check_color(im, (*x_low) - 1, y + 1)) {
       y++;
       (*x_low)--;
+      missing = 0;
     } else if (y > 0 && check_color(im, (*x_low) - 1, y - 1)) {
       y--;
       (*x_low)--;
+      missing = 0;
     } else {
-      done = 1;
+        missing++;
+        (*x_low)--;
+        if(missing >= N_MISSING) {
+            done = 1;
+            (*x_low)+=missing;
+        }
     }
   }
 
@@ -1593,19 +1619,28 @@ void snake_left_and_right(struct image_t *im, int x, int y, int *x_low, int *x_h
   done = 0;
   // snake towards positive x (right)
   // while ((*x_high) < im->w - 1 && !done) {
+  missing = 0;
   while ((*x_high) < im->h - 1 && !done) {
 
     if (check_color(im, (*x_high) + 1, y)) {
       (*x_high)++;
+      missing = 0;
     // } else if (y < im->h - 1 && check_color(im, (*x_high) + 1, y++)) {
     } else if (y < im->w - 1 && check_color(im, (*x_high) + 1, y++)) {
       y++;
+      missing = 0;
       (*x_high)++;
     } else if (y > 0 && check_color(im, (*x_high) + 1, y - 1)) {
       y--;
       (*x_high)++;
+      missing = 0;
     } else {
-      done = 1;
+        missing++;
+        (*x_high)++;
+        if(missing >= N_MISSING) {
+            done = 1;
+            (*x_high) -= missing;
+        }
     }
   }
 }
