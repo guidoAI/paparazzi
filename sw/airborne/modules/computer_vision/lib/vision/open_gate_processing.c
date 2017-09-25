@@ -88,8 +88,8 @@ float ogate_dist_x = 3.50;
 // my modification
 
 //camera parameters
-#define radians_per_pix_w 0.006666667//2.1 rad(60deg)/315
-#define radians_per_pix_h 0.0065625 //1.05rad / 160
+#define radians_per_pix_w 0.006666667//2.1 rad(60deg)/SNAKE_GATE_HEIGHT
+#define radians_per_pix_h 0.0065625 //1.05rad / SNAKE_GATE_WIDTH
 
 //Debug messages
 
@@ -112,8 +112,8 @@ int cmp_i_o(const void *a, const void *b){
 }
 
 float detect_gate_side_o(int *hist_raw, int *side){
-  int hist_peeks[315];//max nr of peeks, for sure
-  int hist_smooth[315];
+  int hist_peeks[SNAKE_GATE_HEIGHT];//max nr of peeks, for sure
+  int hist_smooth[SNAKE_GATE_HEIGHT];
   smooth_hist(hist_smooth, hist_raw, 4);//was 10
   int peek_count = find_hist_peeks_flat(hist_smooth,hist_peeks);
   int max_peek = find_max_hist(hist_raw);
@@ -132,20 +132,20 @@ float detect_gate_side_o(int *hist_raw, int *side){
   //     }
     
  
-      *side = index[314];
+      *side = index[SNAKE_GATE_HEIGHT-1];
   
     //avarage peek height
    
     //debug_5 = peek_value;
   
-//     for(int i = 0;i<315;i++){
+//     for(int i = 0;i<SNAKE_GATE_HEIGHT;i++){
 //     printf("hist_peeks[%d]:%d\n",i,hist_peeks[i]);
 //     }
  
-//     for(int i = 0;i<315;i++){
+//     for(int i = 0;i<SNAKE_GATE_HEIGHT;i++){
 //       printf("hist_raw[%d]:%d hist_smooth[%d]:%d hist_peeks[%d]:%d\n",i,hist_raw[i],i,hist_smooth[i],i,hist_peeks[i]);
 //     }
-    return hist_peeks[index[314]];
+    return hist_peeks[index[SNAKE_GATE_HEIGHT-1]];
 
 }
 
@@ -155,7 +155,7 @@ void print_side(struct image_t *im, int side){
     from.x = side;
     from.y = 0;
     to.x = side;
-    to.y = 160;
+    to.y = SNAKE_GATE_WIDTH;
     image_draw_line(im, &from, &to);
   
 }
@@ -194,7 +194,7 @@ int open_gate_processing(struct image_t *img,float *o_pos_x, float *o_pos_y, flo
   int size_factor = 1.5;
   int best_loc[2];
   
-  int histogram_c[315] = {0};
+  int histogram_c[SNAKE_GATE_HEIGHT] = {0};
   
   struct opengate_img temp_best_opengate;
   for (i = 0; i < n_op_samples; i++) {
@@ -295,8 +295,8 @@ int open_gate_processing(struct image_t *img,float *o_pos_x, float *o_pos_y, flo
                       best_op_quality = quality;
                       best_bars = opengates[n_opengates].n_bars;
                       //printf("ogate %d: n_bars = %d, quality = %f\n", n_opengates, opengates[n_opengates].n_bars, quality);
-                      //printf("img-h%"PRIu16"\n", img->h);//img-h315
-                      //printf("img-w%"PRIu16"\n", img->w);//img-w160
+                      //printf("img-h%"PRIu16"\n", img->h);//img-hSNAKE_GATE_HEIGHT
+                      //printf("img-w%"PRIu16"\n", img->w);//img-wSNAKE_GATE_WIDTH
                       n_opengates++;
             	  }
               }

@@ -274,18 +274,20 @@ void print_sides(struct image_t *im, int side_1, int side_2){
   
 }
 
-float detect_gate_sides(int *hist_raw, int *side_1, int *side_2){
+float detect_gate_sides(int *hist_raw, int *side_1, int *side_2, int* n_high_peaks){
+  float high_peak_ratio = 0.5; // if a peak is higher than 50% of the highest one, it is considered a high peak
   int hist_peeks[SNAKE_GATE_HEIGHT];//max nr of peeks, for sure
   int hist_smooth[SNAKE_GATE_HEIGHT];
   smooth_hist(hist_smooth, hist_raw, 4);//was 10
   int peek_count = find_hist_peeks_flat(hist_smooth,hist_peeks);
   int max_peek = find_max_hist(hist_raw);
   
-  int size = sizeof(hist_peeks)/sizeof(*hist_peeks);
+  int size = sizeof(hist_peeks)/sizeof(*hist_peeks); // TODO: is this right?
   int index[size];
   for(int i=0;i<size;i++){
         index[i] = i;
     }
+  // array is used by qsort;
   array = hist_peeks;
   qsort(index, size, sizeof(*index), cmp_i);
   //printf("p1:%d p2:%d p3:%d p4:%d p5:%d p6:%d\n",hist_raw[index[0]],hist_raw[index[1]],hist_raw[index[2]],hist_raw[index[3]],hist_raw[index[4]],hist_raw[index[5]]);
@@ -295,6 +297,14 @@ float detect_gate_sides(int *hist_raw, int *side_1, int *side_2){
   //         printf("%d\t%d,i:%d\n", hist_peeks[index[i]], index[i],i);
   //     }
     
+  // only interested if the number of high peaks is 0 - 4
+  (*n_high_peaks) = 0;
+  for(int i = 1; i < 5; i++){
+      if(index[SNAKE_GATE_HEIGHT-i] >= (int)(0.5 * index[SNAKE_GATE_HEIGHT-1])) {
+          (*n_high_peaks)++;
+      }
+  }
+
   //side 1 is left side
     if(index[SNAKE_GATE_HEIGHT-2] < index[SNAKE_GATE_HEIGHT-1]){
       *side_1 = index[SNAKE_GATE_HEIGHT-2];//313
@@ -307,6 +317,8 @@ float detect_gate_sides(int *hist_raw, int *side_1, int *side_2){
     //avarage peek height
     float peek_value = (hist_peeks[index[SNAKE_GATE_HEIGHT-2]] + hist_peeks[index[SNAKE_GATE_HEIGHT-1]])/2;
     //debug_5 = peek_value;
+
+    // TODO: add peak ratio!!!
   
     return peek_value;
 
@@ -650,8 +662,8 @@ int closed_gate_processing(struct image_t *img){
 
   int side_1;
   int side_2;
-  
-  float hist_peek_value = detect_gate_sides(histogram,&side_1, &side_2);
+  int n_high_peaks;
+  float hist_peek_value = detect_gate_sides(histogram,&side_1, &side_2, &n_high_peaks);
   
   //printf("side_1[%d] side_2[%d]\n",side_1,side_2);
   
@@ -677,7 +689,8 @@ int closed_gate_processing(struct image_t *img){
   
   float max_dist_h = 1.8;
   float min_dist_h = 0.3;
-  if(hist_peek_value > 7 && x_pos_hist < max_dist_h && x_pos_hist > min_dist_h){
+  float vertical_ratio =  0.04375; // * 160 = 7
+  if(hist_peek_value > vertical_ratio * (float) SNAKE_GATE_WIDTH && x_pos_hist < max_dist_h && x_pos_hist > min_dist_h){
     hist_sample = 1;
     print_sides(img,side_1,side_2);
   }else{

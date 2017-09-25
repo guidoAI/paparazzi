@@ -66,7 +66,7 @@ int find_hist_peeks(float *hist,int *peeks);
 int find_hist_peeks_flat(int *hist,int *peeks);
 void print_hist(struct image_t *img,int *hist);
 void print_sides(struct image_t *im, int side_1, int side_2);
-float detect_gate_sides(int *hist_raw, int *side_1, int *side_2);
+float detect_gate_sides(int *hist_raw, int *side_1, int *side_2, int* n_high_peaks);
 
 void print_matrix(struct FloatMat33 mat);
 void print_vector(struct FloatVect3 vec);
