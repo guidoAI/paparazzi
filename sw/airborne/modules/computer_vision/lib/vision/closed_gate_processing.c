@@ -27,6 +27,7 @@
 #define REFINEMENT 0
 #define COLOR_FILTER 0
 #define N_MISSING 3
+#define STICK 1
 
 // Gate detection settings:
 int n_samples = 10000;//10000;//2000;//1000;//500;
@@ -1128,6 +1129,16 @@ void draw_gate(struct image_t *im, struct gate_img gate)
     to.x = (gate.x - gate.sz);
     to.y = gate.y - gate.sz;
     image_draw_line(im, &from, &to);
+
+
+    if(STICK) {
+       from.x = (gate.x_corners[2] + gate.x_corners[3]) / 2;
+       from.y = gate.y_corners[3];
+       to.x = (gate.x_corners[2] + gate.x_corners[3]) / 2;
+       to.y = gate.y_corners[3] + (uint32_t) (gate.sz / 2);
+       image_draw_line(im, &from, &to);
+    }
+
   } else {
     // polygon
     from.x = (gate.x - gate.sz);
@@ -1291,6 +1302,16 @@ void check_gate_free(struct image_t *im, struct gate_img gate, float *quality, i
   float min_ratio_side = 0.30;
   (*n_sides) = 0;
 
+  // TODO: is it like this?
+  // 0 ----- 1
+  // |       |
+  // |       |
+  // |       |
+  // 3 ----- 2
+  //     |
+  //     |
+  //     |
+
   // check the four lines of which the gate consists:
   struct point_t from, to;
   
@@ -1335,6 +1356,20 @@ void check_gate_free(struct image_t *im, struct gate_img gate, float *quality, i
     if ((float) nc / (float) np >= min_ratio_side) {
       (*n_sides)++;
     }
+
+
+    if(STICK) {
+       from.x = (gate.x_corners[2] + gate.x_corners[3]) / 2;
+       from.y = gate.y_corners[3];
+       to.x = (gate.x_corners[2] + gate.x_corners[3]) / 2;
+       to.y = gate.y_corners[3] + (uint32_t) (gate.sz / 2);
+       check_line(im, from, to, &np, &nc);
+       if ((float) nc / (float) np >= min_ratio_side) {
+           (*n_sides)++;
+       }
+    }
+
+
     /*else{
         (*n_sides) = 0;
     }*/
