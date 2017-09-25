@@ -28,6 +28,7 @@
 #define COLOR_FILTER 0
 #define N_MISSING 3
 #define STICK 1
+#define SMART_SAMPLING 1
 
 // Gate detection settings:
 int n_samples = 10000;//10000;//2000;//1000;//500;
@@ -338,11 +339,34 @@ int closed_gate_processing(struct image_t *img){
   
   //histogram for final approach gate detection
   int histogram[SNAKE_GATE_HEIGHT] = {0};
+
+  int smart_histogram[SNAKE_GATE_HEIGHT] = {0};
+  float smart_cumulative_histogram[SNAKE_GATE_HEIGHT] = {0.0f};
+  if(SMART_SAMPLING) {
+      int step_y = 10;
+      // get a histogram of orange pixels with a step size of step_y:
+      get_hist_sub_sampling(img, smart_histogram, step_y);
+      // add a number of pixels as a "prior"
+      // else there will be no sampling if the smart_histogram is empty in an index
+      int n_prior_pixels = 5;
+      for(int i = 0; i < img->h; i++) {
+          smart_histogram[i] += n_prior_pixels;
+      }
+      // get a normalized cumulative histogram:
+      get_cumulative_hist(smart_histogram, smart_cumulative_histogram, (int) img->h);
+  }
   
   for (int i = 0; i < n_samples; i++) {
-    // get a random coordinate:
-    x = rand() % img->h;
-    y = rand() % img->w;
+
+      if(!SMART_SAMPLING) {
+          // get a random coordinate:
+          x = rand() % img->h;
+          y = rand() % img->w;
+      }
+      else {
+          x = get_coord_from_cumulative(smart_cumulative_histogram, img->h);
+          y = rand() % img->w;
+      }
     
 //     image_yuv422_set_color(img,img,x,y);
 
@@ -1678,4 +1702,47 @@ void snake_left_and_right(struct image_t *im, int x, int y, int *x_low, int *x_h
         }
     }
   }
+}
+
+
+void get_hist_sub_sampling(struct image_t *im, int* raw_hist, int step_y)
+{
+  for(int x = 0; x < im->h; x++) {
+      raw_hist[x] = 0;
+  }
+
+  for(int x = 0; x < im->h; x++) {
+      for(int y = 0; y < im->w; y+= step_y) {
+          if(check_color(im, x, y)) {
+              raw_hist[x]++;
+          }
+      }
+  }
+}
+
+void get_cumulative_hist(int* smart_histogram, float* smart_cumulative_histogram, int n_elements) {
+
+  smart_cumulative_histogram[0] = (float) smart_histogram[0];
+
+  for(int x = 1; x < n_elements; x++) {
+      smart_cumulative_histogram[x] = smart_cumulative_histogram[x-1] + (float) smart_histogram[x];
+  }
+
+  for(int x = 1; x < n_elements; x++) {
+      smart_cumulative_histogram[x] /= smart_cumulative_histogram[n_elements-1];
+  }
+
+}
+
+int get_coord_from_cumulative(int* smart_cumulative_histogram, int n_elements) {
+  uint16_t resolution = 10000;
+  float x = ((float) rand() % resolution) / (float) resolution;
+  int coord;
+  for(int i = 0; i < n_elements; i++) {
+      if(smart_cumulative_histogram[i] >= x) {
+          coord = i;
+          break;
+      }
+  }
+  return coord;
 }
