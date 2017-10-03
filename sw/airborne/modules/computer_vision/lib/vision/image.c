@@ -438,7 +438,7 @@ void image_gradients(struct image_t *input, struct image_t *dx, struct image_t *
 /* Integer implementation of square root using Netwon's method
  * Can only compute squares of numbers below 65536, ie result is always uint8_t
  */
-uint8_t sqrti(int32_t num)
+static uint8_t sqrti(int32_t num)
 {
 #ifdef LINUX
   uint32_t root = (uint32_t)sqrtf(float(num));

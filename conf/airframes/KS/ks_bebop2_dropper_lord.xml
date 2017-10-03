@@ -57,7 +57,7 @@
     <module name="imav2017"/>
     <module name="uart_drop">
       <configure name="UART_DROP_PORT" value="uart2"/>
-      </module>
+    </module>
   </firmware>
 
   <commands>

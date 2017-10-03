@@ -837,15 +837,12 @@ static void gazebo_read_stereo_camera(void)
 
 /******************************************EDGEFLOW*******************************/
     // set angles for derotation 
-    // TODO: is this done in stereoboa
     float_rmat_mult(&cam_angles, &body_to_cam, stateGetNedToBodyEulers_f());
-    img.eulerAngles = &cam_angles;
+    img.eulers = cam_angles;
 
     //////RUN EDGEFLOW//////
     edgeflow_total(&img, 0); //TODO: check if timing is going okay
     /////////////////////////
-
-
 
     static struct FloatVect3 camera_vel, camera_dist;
 
@@ -866,7 +863,6 @@ static void gazebo_read_stereo_camera(void)
 
     stereocam_parse_vel(camera_vel, R2,camera_dist,distance_R2);
 
-
     //////Gate Detector//////
     struct image_t left_img, gradient;
     image_create(&left_img, img.w, img.h, IMAGE_GRAYSCALE);
@@ -875,33 +871,35 @@ static void gazebo_read_stereo_camera(void)
     getLeftFromStereo(&left_img, &img);
     image_2d_gradients(&left_img, &gradient);
     //image_2d_sobel(&left_img, &gradient);
-    struct point_t roi[2];
-    roi[0].x=0; roi[0].y=0; roi[1].x=IMAGE_WIDTH; roi[1].y=IMAGE_HEIGHT;
+    struct roi_t roi;
+    roi.tl.x = 0; roi.tl.y = 0; roi.br.x = IMAGE_WIDTH; roi.br.y = IMAGE_HEIGHT;
 
     gate_set_intensity(50,250);
     static struct gate_t gate;
     bool gate_detected = false;
 
- //For debugging gate detection
-    gate_detected = snake_gate_detection(&gradient, &gate, false, NULL, roi, NULL);
+    //For debugging gate detection
+    gate_detected = snake_gate_detection(&gradient, &gate, false, NULL, &roi, NULL);
 /*    cv::Mat gradient_cv(96,128,CV_8UC1,(uint8_t *)gradient.buf);
     cv::imshow("gradient", gradient_cv);
     cv::waitKey(1);*/
 
-    float w = 2.f * gate.sz * FOVX / IMAGE_WIDTH;
-    float h = 2.f * (float)(gate.sz_left > gate.sz_right ? gate.sz_left : gate.sz_right)
-        * FOVY / IMAGE_HEIGHT;
+    if (gate.q > 15)
+    {
+      float w = 2.f * gate.sz * FOVX / IMAGE_WIDTH;
+      float h = 2.f * (float)(gate.sz_left > gate.sz_right ? gate.sz_left : gate.sz_right)
+          * FOVY / IMAGE_HEIGHT;
 
-    static struct FloatEulers camera_bearing;
-    camera_bearing.theta = pix2angle((gate.x - IMAGE_WIDTH/2), 0);
-    camera_bearing.phi = -pix2angle((gate.y - IMAGE_HEIGHT/2), 1); // positive y, causes negative phi
-    camera_bearing.psi = 0;
+      static struct FloatEulers camera_bearing;
+      camera_bearing.theta = pix2angle((gate.x - IMAGE_WIDTH/2), 0);
+      camera_bearing.phi = -pix2angle((gate.y - IMAGE_HEIGHT/2), 1); // positive y, causes negative phi
+      camera_bearing.psi = 0;
 
-    static struct FloatEulers body_bearing;
-    float_rmat_transp_mult(&body_bearing, &body_to_cam, &camera_bearing);
+      static struct FloatEulers body_bearing;
+      float_rmat_transp_mult(&body_bearing, &body_to_cam, &camera_bearing);
 
-    imav2017_set_gate(gate.q, w, h, body_bearing.psi, body_bearing.theta, 0,(uint8_t)gate_detected);
-
+      imav2017_set_gate(gate.q, w, h, body_bearing.psi, body_bearing.theta, 0,(uint8_t)gate_detected);
+    }
 
     // GET obstacle
     /////////////////////////////////

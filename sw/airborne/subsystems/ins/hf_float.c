@@ -56,6 +56,8 @@
 #define HFF_PRESCALER 16
 #elif AHRS_PROPAGATE_FREQUENCY == 500
 #define HFF_PRESCALER 10
+#elif AHRS_PROPAGATE_FREQUENCY == 200
+#define HFF_PRESCALER 6
 #else
 #error "HFF_PRESCALER not set, needs to be a divisor of AHRS_PROPAGATE_FREQUENCY"
 #endif
