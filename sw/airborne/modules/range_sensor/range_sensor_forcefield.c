@@ -26,6 +26,7 @@
 
 #include "modules/range_sensor/range_sensor_forcefield.h"
 #include "subsystems/abi.h"
+#include "include/std.h"
 
 
 float inner_border_FF;
@@ -41,11 +42,9 @@ float vel_body_y_guided;
 #endif
 
 static abi_event range_sensors_ev;
-static void range_sensors_cb(uint8_t sender_id,
-                             int16_t range_front, int16_t range_right, int16_t range_back, int16_t range_left, int16_t range_bottom, int16_t range_top);
 struct range_finders_ range_finders;
-static void range_sensors_cb(uint8_t UNUSED(sender_id),
-                             int16_t range_front, int16_t range_right, int16_t range_back, int16_t range_left, int16_t range_bottom, int16_t range_top)
+static void range_sensors_cb(uint8_t UNUSED sender_id,
+    int16_t range_front, int16_t range_right, int16_t range_back, int16_t range_left, int16_t range_bottom, int16_t range_top)
 {
   range_finders.front = (float)range_front / 1000;
   range_finders.right = (float)range_right / 1000;
@@ -53,8 +52,6 @@ static void range_sensors_cb(uint8_t UNUSED(sender_id),
   range_finders.left = (float)range_left / 1000;
   range_finders.top = (float)range_top / 1000;
   range_finders.bottom = (float)range_bottom / 1000;
-
-
 }
 
 void range_init(void)
@@ -67,7 +64,6 @@ void range_init(void)
   vel_body_y_guided = 0.0f;
 
   AbiBindMsgRANGE_SENSORS(RANGE_MODULE_RECIEVE_ID, &range_sensors_ev, range_sensors_cb);
-
 }
 
 void range_run(void)
@@ -102,7 +98,7 @@ void range_run(void)
  * */
 
 void range_sensor_horizontal_velocity_force_field(float *vel_body_x, float *vel_body_y, float avoid_inner_border, float avoid_outer_border,
-     float min_vel_command_lc, float max_vel_command_lc)
+    float min_vel_command_lc, float max_vel_command_lc)
 {
   static const float max_sensor_range = 2;
 

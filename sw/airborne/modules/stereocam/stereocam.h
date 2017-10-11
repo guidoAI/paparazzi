@@ -42,7 +42,7 @@ extern void stereocam_init(void);
 extern void stereocam_event(void);
 extern void state2stereocam(void);
 
-extern void stereocam_parse_vel(struct FloatVect3 camera_vel, float R2, struct FloatVect3 camera_dist, float distance_R2);
-
+extern void stereocam_parse_vel(struct FloatVect3 vel_camera, float R2);
+extern void stereocam_parse_pos(struct FloatVect3 pos_camera, float R2, bool new_keyframe);
 
 #endif /* STEREOCAM_H_ */

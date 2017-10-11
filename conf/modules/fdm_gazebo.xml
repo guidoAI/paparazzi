@@ -93,6 +93,7 @@
     <define name="COMPILE_ON_LINUX"/>
     <include name="$(STEREO_PATH)/common"/>
     <include name="$(STEREO_PATH)/stereoboard"/>
+    <include name="$(STEREO_PATH)"/>
     <file name="edgeflow.c" dir="$(STEREO_PATH)/stereoboard"/>
     <file name="gate_detection.c" dir="$(STEREO_PATH)/stereoboard"/>
     <define name="GATE_DETECTION_GRAPHICS" value="1"/>
@@ -100,7 +101,7 @@
     <file name="filter.c" dir="$(STEREO_PATH)/stereoboard/math"/>
     <file name="stats.c" dir="$(STEREO_PATH)/stereoboard/math"/>
     <file name="geometry.c" dir="$(STEREO_PATH)/stereoboard/math"/>
-    <include name="$(STEREO_PATH)/ext/drone_vision/cv"/>
+    <include name="$(STEREO_PATH)/ext/drone_vision"/>
     <include name="modules/computer_vision"/>
 <!--Other image libs-->
     <file name="image.c" dir="modules/computer_vision/lib/vision"/>

@@ -2860,14 +2860,10 @@
       <field name="resolution" type="uint8">Resolution of the vel and pos messages</field>
       <field name="dt_frame"   type="uint8">Time difference to previous frame</field>
       <field name="dt"         type="uint8">Time difference to previous message, not strictly required</field>
-      <field name="velx"       type="int16" unit="m/s">Velocity estimaed using stereo edgeflow</field>
-      <field name="vely"       type="int16" unit="m/s"/>
-      <field name="velz"       type="int16" unit="m/s"/>
-      <field name="dposx"      type="int16" unit="m">Distance traveled since the last message</field>
-      <field name="dposy"      type="int16" unit="m"/>
-      <field name="dposz"      type="int16" unit="m"/>
-      <field name="vRMS"       type="uint8">RMS of the velocity estimate</field>
-      <field name="posRMS"     type="uint8">RMS of the position</field>
+      <field name="vx"         type="int16" unit="m/s">Velocity estimaed using stereo edgeflow</field>
+      <field name="vy"         type="int16" unit="m/s"/>
+      <field name="vz"         type="int16" unit="m/s"/>
+      <field name="RMS"        type="uint8">RMS of the velocity estimate</field>
       <field name="avg_dist"   type="uint16">Average distance to scene</field>
     </message>
     
@@ -2893,6 +2889,16 @@
       <field name="phi"     type="float" unit="rad">Bearing of the gate in the camera frame</field>
       <field name="theta"   type="float" unit="rad"/>
       <field name="depth"   type="float" unit="m">Set to 0 is not known</field>
+    </message>
+    
+  <message name="STEREOCAM_SNAPSHOT_DIST" id="85">
+      <description>Metric displacement of camera relative to a keyframe. All parameters are in the camera frame</description>
+      <field name="resolution" type="uint8">Resolution of the vel and pos messages</field>
+      <field name="dx"      type="int16" unit="m">Distance traveled since the last keyframe</field>
+      <field name="dy"      type="int16" unit="m"/>
+      <field name="dz"      type="int16" unit="m"/>
+      <field name="RMS"     type="uint8">RMS of the relative position estimate</field>
+      <field name="newKeyframe"     type="uint8">New keyframe taken</field>
     </message>
 
     <message name="IMCU_DATALINK" id="113">

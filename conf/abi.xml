@@ -72,10 +72,6 @@
       <field name="y" type="float" unit="m/s"/>
       <field name="z" type="float" unit="m/s"/>
       <field name="noise" type="float"/>
-      <field name="distance_x" type="float" unit="m"/>
-      <field name="distance_y" type="float" unit="m"/>
-      <field name="distance_z" type="float" unit="m"/>
-      <field name="distance_noise" type="float"/>
     </message>
 
     <message name="RSSI" id="13">
@@ -134,6 +130,14 @@
       <field name="vel_body_x_FF_stereo" type="float" unit="m/s"/>
       <field name="vel_body_y_FF_stereo" type="float" unit="m/s"/>
       <field name="vel_body_z_FF_stereo" type="float" unit="m/s"/>
+    </message>
+    
+    <message name="POSITION_ESTIMATE" id="23">
+      <field name="stamp" type="uint32_t" unit="us"/>
+      <field name="x" type="float" unit="m"/>
+      <field name="y" type="float" unit="m"/>
+      <field name="z" type="float" unit="m"/>
+      <field name="noise" type="float"/>
     </message>
 
   </msg_class>

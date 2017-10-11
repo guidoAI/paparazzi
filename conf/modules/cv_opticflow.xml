@@ -101,7 +101,7 @@
   <init fun="opticflow_module_init()"/>
   <periodic fun="opticflow_module_run()" autorun="TRUE"/>
 
-  <makefile target="ap">
+  <makefile target="ap|nps">
     <!-- Include the needed Computer Vision files -->
     <include name="modules/computer_vision"/>
     <file name="image.c" dir="modules/computer_vision/lib/vision"/>

@@ -147,12 +147,19 @@ static void gps_cb(uint8_t sender_id, uint32_t stamp, struct GpsState *gps_s);
 #define INS_INT_VEL_ID ABI_BROADCAST
 #endif
 static abi_event vel_est_ev;
-static void vel_est_cb(uint8_t sender_id __attribute__((unused)),
+static void vel_est_cb(uint8_t __attribute__((unused)) sender_id,
                        uint32_t stamp,
                        float x, float y, float z,
-                       float noise __attribute__((unused)),
-					   float dx, float dy, float dz
-					   ,float dnoise);
+                       float noise);
+#ifndef INS_INT_POS_ID
+#define INS_INT_POS_ID ABI_BROADCAST
+#endif
+static abi_event pos_est_ev;
+static void pos_est_cb(uint8_t __attribute__((unused)) sender_id,
+                       uint32_t stamp,
+                       float x, float y, float z,
+                       float noise);
+
 struct InsInt ins_int;
 
 #if PERIODIC_TELEMETRY
@@ -238,6 +245,7 @@ void ins_int_init(void)
   AbiBindMsgIMU_ACCEL_INT32(INS_INT_IMU_ID, &accel_ev, accel_cb);
   AbiBindMsgGPS(INS_INT_GPS_ID, &gps_ev, gps_cb);
   AbiBindMsgVELOCITY_ESTIMATE(INS_INT_VEL_ID, &vel_est_ev, vel_est_cb);
+  AbiBindMsgPOSITION_ESTIMATE(INS_INT_POS_ID, &pos_est_ev, pos_est_cb);
 }
 
 void ins_reset_local_origin(void)
@@ -527,45 +535,28 @@ static void gps_cb(uint8_t sender_id __attribute__((unused)),
   ins_int_update_gps(gps_s);
 }
 
+/* body relative velocity estimate
+ *
+ */
 static void vel_est_cb(uint8_t sender_id __attribute__((unused)),
                        uint32_t stamp,
                        float x, float y, float z,
-                       float noise __attribute__((unused)),
-					   float dx, float dy, float dz
-					   ,float dnoise)
+                       float noise)
 {
   struct FloatVect3 vel_body = {x, y, z};
-  struct FloatVect3 dist_body = {dx, dy, dz};
 
   /* rotate velocity estimate to nav/ltp frame */
   struct FloatQuat q_b2n = *stateGetNedToBodyQuat_f();
   QUAT_INVERT(q_b2n, q_b2n);
-  struct FloatVect3 vel_ned, dist_ned;
+  struct FloatVect3 vel_ned;
   float_quat_vmult(&vel_ned, &q_b2n, &vel_body);
-  float_quat_vmult(&dist_ned, &q_b2n, &dist_body);
 
 #if USE_HFF
-    struct FloatVect2 vel = {vel_ned.x, vel_ned.y};
-    struct FloatVect2 Rvel = {noise, noise};
+  struct FloatVect2 vel = {vel_ned.x, vel_ned.y};
+  struct FloatVect2 Rvel = {noise, noise};
 
-    hff_update_vel(vel,  Rvel);
-#if HFF_UPDATE_SNAPSHOT_POS
-  static struct EnuCoor_f prev_pos = {0};
-
-  struct FloatVect2 dist = {dist_ned.x, dist_ned.y};
-  struct FloatVect2 Rdist = {dnoise, dnoise};
-
-  // add position increment to prev position est
-  dist.x += prev_pos.x;
-  dist.y += prev_pos.y;
-  dist.z += prev_pos.z;
-  hff_update_pos(dist,Rdist);
-#endif
+  hff_update_vel(vel,  Rvel);
   ins_update_from_hff();
-#if HFF_UPDATE_SNAPSHOT_POS
-  // get current filtered position for next pass
-  prevPos = *stateGetPositionEnu_f();
-#endif
 #else
   ins_int.ltp_speed.x = SPEED_BFP_OF_REAL(vel_ned.x);
   ins_int.ltp_speed.y = SPEED_BFP_OF_REAL(vel_ned.y);
@@ -578,6 +569,34 @@ static void vel_est_cb(uint8_t sender_id __attribute__((unused)),
   }
   last_stamp = stamp;
 #endif
+
+  vff_update_vz_conf(vel_ned.z, noise);
+
+  ins_ned_to_state();
+
+  /* reset the counter to indicate we just had a measurement update */
+  ins_int.propagation_cnt = 0;
+}
+
+/* NED position estimate relative to ltp origin
+ */
+static void pos_est_cb(uint8_t sender_id __attribute__((unused)),
+                       uint32_t stamp,
+                       float x, float y, float z,
+                       float noise)
+{
+#if USE_HFF
+  struct FloatVect2 pos = {x, y};
+  struct FloatVect2 Rpos = {noise, noise};
+
+  hff_update_pos(pos, Rpos);
+  ins_update_from_hff();
+#else
+  ins_int.ltp_pos.x = POS_BFP_OF_REAL(x);
+  ins_int.ltp_pos.y = POS_BFP_OF_REAL(y);
+#endif
+
+  vff_update_z_conf(z, noise);
 
   ins_ned_to_state();
 

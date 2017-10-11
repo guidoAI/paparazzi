@@ -106,17 +106,7 @@ struct MedianFilterFloat medianfilter_noise;
 
 void stereocam_init(void)
 {
-  struct FloatEulers euler;
-  if (STEREO_BODY_TO_STEREO_PHI > 4)
-  {
-    euler.phi = RadOfDeg(STEREO_BODY_TO_STEREO_PHI);
-    euler.theta = RadOfDeg(STEREO_BODY_TO_STEREO_THETA);
-    euler.psi = RadOfDeg(STEREO_BODY_TO_STEREO_PSI);
-  } else {
-    euler.phi = STEREO_BODY_TO_STEREO_PHI;
-    euler.theta = STEREO_BODY_TO_STEREO_THETA;
-    euler.psi = STEREO_BODY_TO_STEREO_PSI;
-  }
+  struct FloatEulers euler = {STEREO_BODY_TO_STEREO_PHI, STEREO_BODY_TO_STEREO_THETA, STEREO_BODY_TO_STEREO_PSI};
 
   float_rmat_of_eulers(&stereocam.body_to_cam, &euler);
 
@@ -127,63 +117,73 @@ void stereocam_init(void)
   init_median_filter_f(&medianfilter_noise, MEDIAN_DEFAULT_SIZE);
 }
 
-void stereocam_parse_vel(struct FloatVect3 camera_vel, float R2, struct FloatVect3 camera_dist, float distance_R2)
+void stereocam_parse_vel(struct FloatVect3 vel_camera, float R2)
 {
-  uint32_t now_ts = get_sys_time_usec();
-  float noise = 0.5*(1.1 - R2);
-  float distance_noise = 1.5*(1.1 - distance_R2);
+  // filter out large outliers and it too close to the ground
+  if(vel_camera.x > 2.f || vel_camera.y > 2.f || vel_camera.z > 2.f)
+  {
+    return;
+  }
 
-  // Rotate camera frame to body frame
-  static struct FloatVect3 body_vel,body_dist;
-  float_rmat_transp_vmult(&body_vel, &stereocam.body_to_cam, &camera_vel);
-  float_rmat_transp_vmult(&body_dist, &stereocam.body_to_cam, &camera_dist);
+  float noise = 0.5*(1.1 - R2);
 
   //todo make setting
   if (STEREOCAM_USE_MEDIAN_FILTER) {
     // Use a slight median filter to filter out the large outliers before sending it to state
-    UpdateMedianFilterVect3Float(medianfilter_vel, body_vel);
+    UpdateMedianFilterVect3Float(medianfilter_vel, vel_camera);
     update_median_filter_f(&medianfilter_noise, noise);
   }
 
-  DOWNLINK_SEND_IMU_MAG(DOWNLINK_TRANSPORT, DOWNLINK_DEVICE, &body_vel.x, &body_vel.y, &body_vel.z);
+  // Rotate camera frame to body frame
+  static struct FloatVect3 vel_body;
+  float_rmat_transp_vmult(&vel_body, &stereocam.body_to_cam, &vel_camera);
 
-  if(stateGetPositionEnu_f()->z > 0.4 && body_vel.x < 2.f && body_vel.y < 2.f)
+  //Send velocities to state
+  AbiSendMsgVELOCITY_ESTIMATE(STEREOCAM2STATE_SENDER_ID, get_sys_time_usec(),
+              vel_body.x,
+              vel_body.y,
+              vel_body.z,
+              noise);
+}
+
+
+static struct NedCoor_f prevPos = {0};
+void stereocam_parse_pos(struct FloatVect3 pos_camera, float R2, bool new_keyframe)
+{
+  if (!stateIsLocalCoordinateValid)
   {
-    //Send velocities to state
-    AbiSendMsgVELOCITY_ESTIMATE(STEREOCAM2STATE_SENDER_ID, now_ts,
-                body_vel.x,
-                body_vel.y,
-                body_vel.z,
-                noise,
-								body_dist.x,
-								body_dist.y,
-								body_dist.z,
-								distance_noise
-                               );
+    return;
   }
 
-  // todo activate this after changing optical flow message to be dimentionless instead of in pixels
-  /*
-  static struct FloatVect3 camera_flow;
+  // what happens before first new keyframe
+  if(new_keyframe)
+  {
+    prevPos = *stateGetPositionNed_f();
+  }
 
-  float avg_dist = (float)DL_STEREOCAM_VELOCITY_avg_dist(stereocam_msg_buf)/res;
+  float noise = 1.5*(1.1 - R2);
 
-  camera_flow.x = (float)DL_STEREOCAM_VELOCITY_velx(stereocam_msg_buf)/DL_STEREOCAM_VELOCITY_avg_dist(stereocam_msg_buf);
-  camera_flow.y = (float)DL_STEREOCAM_VELOCITY_vely(stereocam_msg_buf)/DL_STEREOCAM_VELOCITY_avg_dist(stereocam_msg_buf);
-  camera_flow.z = (float)DL_STEREOCAM_VELOCITY_velz(stereocam_msg_buf)/DL_STEREOCAM_VELOCITY_avg_dist(stereocam_msg_buf);
+  // Rotate camera frame to body frame
+  static struct FloatVect3 pos_body;
+  float_rmat_transp_vmult(&pos_body, &stereocam.body_to_cam, &pos_camera);
 
-  struct FloatVect3 body_flow;
-  float_rmat_transp_vmult(&body_flow, &body_to_stereocam, &camera_flow);
+  // filter pos est?
 
-  AbiSendMsgOPTICAL_FLOW(STEREOCAM2STATE_SENDER_ID, now_ts,
-                              body_flow.x,
-                              body_flow.y,
-                              body_flow.z,
-                              quality,
-                              body_flow.z,
-                              avg_dist
-                             );
-  */
+  // rotate estimate to NED
+  struct FloatQuat q_b2n = *stateGetNedToBodyQuat_f();
+  QUAT_INVERT(q_b2n, q_b2n);
+  struct FloatVect3 pos_ned;
+  float_quat_vmult(&pos_ned, &q_b2n, &pos_body);
+
+  // add position increment to previous pos estimate
+  VECT3_ADD(pos_ned, prevPos);
+
+  //Send velocities to state
+  AbiSendMsgPOSITION_ESTIMATE(STEREOCAM2STATE_SENDER_ID, get_sys_time_usec(),
+              pos_ned.x,
+              pos_ned.y,
+              pos_ned.z,
+              noise);
 }
 
 /* Parse the InterMCU message */
@@ -196,24 +196,55 @@ static void stereocam_parse_msg(void)
   switch (msg_id) {
 
   case DL_STEREOCAM_VELOCITY: {
-    static struct FloatVect3 camera_vel;
-    static struct FloatVect3 camera_dist;
-
+    static struct FloatVect3 vel;
 
     float res = (float)DL_STEREOCAM_VELOCITY_resolution(stereocam_msg_buf);
 
-    camera_vel.x = (float)DL_STEREOCAM_VELOCITY_velx(stereocam_msg_buf)/res;
-    camera_vel.y = (float)DL_STEREOCAM_VELOCITY_vely(stereocam_msg_buf)/res;
-    camera_vel.z = (float)DL_STEREOCAM_VELOCITY_velz(stereocam_msg_buf)/res;
+    vel.x = (float)DL_STEREOCAM_VELOCITY_vx(stereocam_msg_buf)/res;
+    vel.y = (float)DL_STEREOCAM_VELOCITY_vy(stereocam_msg_buf)/res;
+    vel.z = (float)DL_STEREOCAM_VELOCITY_vz(stereocam_msg_buf)/res;
 
-    camera_dist.x = (float)DL_STEREOCAM_VELOCITY_dposx(stereocam_msg_buf)/res;
-    camera_dist.y = (float)DL_STEREOCAM_VELOCITY_dposy(stereocam_msg_buf)/res;
-    camera_dist.z = (float)DL_STEREOCAM_VELOCITY_dposz(stereocam_msg_buf)/res;
+    float R2 = (float)DL_STEREOCAM_VELOCITY_RMS(stereocam_msg_buf)/res;
 
-    float R2 = (float)DL_STEREOCAM_VELOCITY_vRMS(stereocam_msg_buf)/res;
-    float distance_R2 = (float)DL_STEREOCAM_VELOCITY_posRMS(stereocam_msg_buf)/res;
+    stereocam_parse_vel(vel, R2);
 
-    stereocam_parse_vel(camera_vel, R2,camera_dist,distance_R2);
+    // todo activate this after changing optical flow message to be dimentionless instead of in pixels
+    /*
+    static struct FloatVect3 camera_flow;
+
+    flow_camera.x = (float)DL_STEREOCAM_VELOCITY_velx(stereocam_msg_buf)/DL_STEREOCAM_VELOCITY_avg_dist(stereocam_msg_buf);
+    flow_camera.y = (float)DL_STEREOCAM_VELOCITY_vely(stereocam_msg_buf)/DL_STEREOCAM_VELOCITY_avg_dist(stereocam_msg_buf);
+    flow_camera.z = (float)DL_STEREOCAM_VELOCITY_velz(stereocam_msg_buf)/DL_STEREOCAM_VELOCITY_avg_dist(stereocam_msg_buf);
+
+    struct FloatVect3 flow_body;
+    float_rmat_transp_vmult(&flow_body, &body_to_stereocam, &flow_camera);
+
+    AbiSendMsgOPTICAL_FLOW(STEREOCAM2STATE_SENDER_ID, now_ts,
+                                body_flow.x,
+                                body_flow.y,
+                                body_flow.z,
+                                quality,
+                                body_flow.z,
+                                (float)DL_STEREOCAM_VELOCITY_avg_dist(stereocam_msg_buf)/res
+                               );
+    */
+
+    break;
+  }
+
+  case DL_STEREOCAM_SNAPSHOT_DIST: {
+    static struct FloatVect3 dist;
+
+    float res = (float)DL_STEREOCAM_SNAPSHOT_DIST_resolution(stereocam_msg_buf);
+
+    dist.x = (float)DL_STEREOCAM_SNAPSHOT_DIST_dx(stereocam_msg_buf)/res;
+    dist.y = (float)DL_STEREOCAM_SNAPSHOT_DIST_dy(stereocam_msg_buf)/res;
+    dist.z = (float)DL_STEREOCAM_SNAPSHOT_DIST_dz(stereocam_msg_buf)/res;
+
+    float R2 = (float)DL_STEREOCAM_SNAPSHOT_DIST_RMS(stereocam_msg_buf)/res;
+
+    stereocam_parse_pos(dist, R2, DL_STEREOCAM_SNAPSHOT_DIST_newKeyframe(stereocam_msg_buf));
+
     break;
   }
 

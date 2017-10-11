@@ -162,11 +162,7 @@ void opticflow_module_run(void)
                                   opticflow_result.vel_body_x,
                                   opticflow_result.vel_body_y,
                                   0.0f, // WHY?!
-                                  opticflow_result.noise_measurement,
-                                  0.0f,
-                                  0.0f,
-                                  0.0f,
-                                  0.0f
+                                  opticflow_result.noise_measurement
                                  );
     }
     opticflow_got_result = false;
