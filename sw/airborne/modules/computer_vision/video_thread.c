@@ -143,13 +143,14 @@ static void *video_thread_function(void *data)
       if (dt_us < fps_period_us) {
         usleep(fps_period_us - dt_us);
       } else {
-        //fprintf(stderr, "[%s] desired %i fps, only managing %.1f fps\n", print_tag, vid->fps, 1000000.f / dt_us);
+        fprintf(stderr, "[%s] desired %i fps, only managing %.1f fps\n", print_tag, vid->fps, 1000000.f / dt_us);
       }
     }
 
     // Wait for a new frame (blocking)
     struct image_t img;
     v4l2_image_get(vid->thread.dev, &img);
+    printf("width = %d, height = %d\n", img.w, img.h);
     // Run processing if required
     cv_run_device(vid, &img);
 

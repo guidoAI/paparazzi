@@ -48,10 +48,9 @@
 #include "lib/filters/kalman_filter_vision.h"
 #include "subsystems/imu.h"
 
-
 // whether to show the flow and corners:
-#define OPTICFLOW_SHOW_FLOW 0
-#define OPTICFLOW_SHOW_CORNERS 0
+#define OPTICFLOW_SHOW_FLOW 1
+#define OPTICFLOW_SHOW_CORNERS 1
 
 // What methods are run to determine divergence, lateral flow, etc.
 // SIZE_DIV looks at line sizes and only calculates divergence

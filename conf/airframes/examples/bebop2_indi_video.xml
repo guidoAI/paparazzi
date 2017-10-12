@@ -21,14 +21,22 @@
 	<define name="USE_H264" value="TRUE" />
 	<define name="H264_ROTATE" value="TRUE" />
   <define name="VIEWVIDEO_STREAM" value="TRUE" />
-
-	<define name="MT9F002_SENSOR_HEIGHT" value="3312-800" />
-	<define name="MT9F002_OUTPUT_HEIGHT" value="1656-400" /> <!-- 414 / 828 / 1656 / 3312 -->
-	<define name="MT9F002_INITIAL_OFFSET_Y" value="400" /> <!-- 0 min-offset -->
+  <!-- What is the sensor height? It seems not to do much... However, the image stops short on the left if you make it too small... -->
+  <!-- output_height is probably width. 1256 works, 828 works, but cuts image short... so just cropping by counting from the left -->
+  <!-- offset is really an offset from the left -->
+	<define name="MT9F002_SENSOR_HEIGHT" value="2512" />
+  <define name="MT9F002_OUTPUT_HEIGHT" value="1256" />
+  <define name="MT9F002_INITIAL_OFFSET_Y" value="400" />
+<!-- <define name="MT9F002_SENSOR_HEIGHT" value="3312-800" /> --> <!-- 2512 -->
+<!--	<define name="MT9F002_OUTPUT_HEIGHT" value="1656-400" /> <!-- 414 / 828 / 1656 / 3312 -->
+<!--	<define name="MT9F002_INITIAL_OFFSET_Y" value="400" /> <!-- 0 min-offset -->
 	
 	<define name="MT9F002_SENSOR_WIDTH" value="1920" />
-	<define name="MT9F002_OUTPUT_WIDTH" value="960" /> <!-- 480 / 960 / 1920 / 3840 -->
-	<define name="MT9F002_INITIAL_OFFSET_X" value="960+384" /> <!-- 384 min-offset -->
+  <define name="MT9F002_OUTPUT_WIDTH" value="960" />
+  <define name="MT9F002_INITIAL_OFFSET_X" value="1344" />
+<!--	<define name="MT9F002_SENSOR_WIDTH" value="1920" /> -->
+<!--	<define name="MT9F002_OUTPUT_WIDTH" value="960" /> <!-- 480 / 960 / 1920 / 3840 -->
+<!--	<define name="MT9F002_INITIAL_OFFSET_X" value="960+384" /> <!-- 384 min-offset -->
 	
 	<define name="MT9F002_TARGET_FPS" value="25" />
 	<define name="MT9F002_TARGET_EXPOSURE" value="30" />
@@ -64,6 +72,11 @@
 		<define name="POSE_HISTORY_SIZE" value="128" />
 	</module>
 	<module name="video_thread" />
+<!--
+    <module name="cv_opticflow">
+      <define name="OPTICFLOW_CAMERA" value="front_camera"/>
+    </module>
+-->
 	<module name="cv_image_pose" />
 	<module name="cv_ae_awb">
 		<define name="CV_AE_AWB_VERBOSE" value="FALSE" />
@@ -75,9 +88,11 @@
 		<define name="CV_AE_BRIGHT_BINS" value="45" />
 		<define name="CV_AE_AWB_GAIN_SCHEDULING" value="0" />
 	</module>
+<!-- 
 	<module name="cv_bebop_camera_stabilization">
 		<define name="CAM_STAB_FOVY" value="60.0"/>
 	</module>
+-->
 	<!-- <module name="cv_active_random_filter" /> -->
 	<module name="video_rtp_stream">
 		<configure name="VIEWVIDEO_BROADCAST" value="TRUE" />
