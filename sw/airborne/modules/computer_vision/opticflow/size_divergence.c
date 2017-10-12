@@ -71,6 +71,9 @@ float get_size_divergence(struct flow_t *vectors, int count, int n_samples)
         dx = (float)vectors[i].pos.x - (float)vectors[j].pos.x;
         dy = (float)vectors[i].pos.y - (float)vectors[j].pos.y;
         distance_1 = sqrtf(dx * dx + dy * dy);
+        /*if(distance_1 <= 1E-5) {
+            printf("dx1 = %f, dy1 = %f\n", dx, dy);
+        }*/
 
         // distance in current image:
         dx = (float)vectors[i].pos.x + (float)vectors[i].flow_x - (float)vectors[j].pos.x - (float)vectors[j].flow_x;
@@ -78,10 +81,10 @@ float get_size_divergence(struct flow_t *vectors, int count, int n_samples)
         distance_2 = sqrtf(dx * dx + dy * dy);
 
         // calculate divergence for this sample:
-        //if(distance_1 > 1E-5) {
+        if(distance_1 > 1E-5) {
           divs[sample] = (distance_2 - distance_1) / distance_1;
           sample++;
-        //}
+        }
       }
     }
 
@@ -109,6 +112,10 @@ float get_size_divergence(struct flow_t *vectors, int count, int n_samples)
       dx = (float)vectors[i].pos.x - (float)vectors[j].pos.x;
       dy = (float)vectors[i].pos.y - (float)vectors[j].pos.y;
       distance_1 = sqrt(dx * dx + dy * dy);
+      /*
+      if(distance_1 <= 1E-5) {
+          printf("i = %d, j = %d, dx1 = %f, dy1 = %f\n", i, j, dx, dy);
+      }*/
 
       // distance in current image:
       dx = (float)vectors[i].pos.x + (float)vectors[i].flow_x - (float)vectors[j].pos.x - (float)vectors[j].flow_x;
@@ -117,10 +124,10 @@ float get_size_divergence(struct flow_t *vectors, int count, int n_samples)
 
 
       // calculate divergence for this sample:
-      //if(distance_1 > 1E-5) {
+      if(distance_1 > 1E-5) {
         divs[used_samples] = (distance_2 - distance_1) / distance_1;
         used_samples++;
-     // }
+      }
     }
 
     // calculate the mean divergence:

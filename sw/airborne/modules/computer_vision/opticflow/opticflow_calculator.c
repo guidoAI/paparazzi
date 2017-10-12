@@ -211,7 +211,6 @@ static int cmp_flow(const void *a, const void *b);
 static int cmp_array(const void *a, const void *b);
 
 
-
 /**
  * Initialize the opticflow calculator
  * @param[out] *opticflow The new optical flow calculator
@@ -303,6 +302,33 @@ bool calc_fast9_lukas_kanade(struct opticflow_t *opticflow, struct image_t *img,
 
   // if feature_management is selected and tracked corners drop below a threshold, redetect
   if ((opticflow->feature_management) && (result->corner_cnt < opticflow->max_track_corners / 2)) {
+
+      // first check if corners have not moved too close together due to flow:
+      uint16_t c1 = 0;
+      while(c1 < result->corner_cnt) {
+        int exists = 0;
+        for(uint16_t k = c1+1; k < result->corner_cnt; k++) {
+          if(abs((int16_t)opticflow->fast9_ret_corners[c1].x - (int16_t)opticflow->fast9_ret_corners[k].x) <= 1
+              && abs((int16_t)opticflow->fast9_ret_corners[c1].y - (int16_t)opticflow->fast9_ret_corners[k].y) <= 1 )
+          {
+              // if too close, replace the corner with the last one in the list:
+              opticflow->fast9_ret_corners[c1].x = opticflow->fast9_ret_corners[result->corner_cnt-1].x;
+              opticflow->fast9_ret_corners[c1].y = opticflow->fast9_ret_corners[result->corner_cnt-1].y;
+              opticflow->fast9_ret_corners[c1].count = opticflow->fast9_ret_corners[result->corner_cnt-1].count;
+              opticflow->fast9_ret_corners[c1].x_sub = opticflow->fast9_ret_corners[result->corner_cnt-1].x_sub;
+              opticflow->fast9_ret_corners[c1].y_sub = opticflow->fast9_ret_corners[result->corner_cnt-1].y_sub;
+
+              // decrease the number of corners:
+              result->corner_cnt--;
+              exists = 1;
+              // no further checking required for the removed corner
+              break;
+          }
+        }
+        // if the corner has been replaced, the new corner in position c1 has to be checked again:
+        if(!exists) c1++;
+      }
+
     // no need for "per region" re-detection when there are no previous corners
     if ((!opticflow->fast9_region_detect) || (result->corner_cnt == 0)) {
       fast9_detect(&opticflow->prev_img_gray, opticflow->fast9_threshold, opticflow->fast9_min_distance,
@@ -417,6 +443,7 @@ bool calc_fast9_lukas_kanade(struct opticflow_t *opticflow, struct image_t *img,
     return false;
   }
 
+
   // *************************************************************************************
   // Corner Tracking
   // *************************************************************************************
@@ -435,7 +462,33 @@ bool calc_fast9_lukas_kanade(struct opticflow_t *opticflow, struct image_t *img,
   // Estimate size divergence:
     n_samples = 100;
   if (SIZE_DIV) {
+      // check for doubles:
+      /*printf("post-flow check:\n");
+      for(uint16_t j = 0; j < result->corner_cnt; j++) {
+        int exists = 0;
+        //printf("Corner count = %d\n", result->corner_cnt);
+        for(uint16_t k = j+1; k < result->corner_cnt; k++) {
+          if(abs((int16_t)opticflow->fast9_ret_corners[j].x - (int16_t)opticflow->fast9_ret_corners[k].x) <= 1
+              && abs((int16_t)opticflow->fast9_ret_corners[j].y - (int16_t)opticflow->fast9_ret_corners[k].y) <= 1 )
+          {
+             printf("Exists: nx = %d, ny = %d, x = %d, y = %d\n", opticflow->fast9_ret_corners[j].x, opticflow->fast9_ret_corners[j].y,
+                     opticflow->fast9_ret_corners[k].x, opticflow->fast9_ret_corners[k].y);
+            exists = 1;
+            break;
+          }
+        }
+      }
+      */
+
     size_divergence = get_size_divergence(vectors, result->tracked_cnt, n_samples);
+
+    /*
+    if(isnan(size_divergence)) {
+      for(int i = 0; i < result->corner_cnt; i++) {
+          printf("%d: (%d, %d)\n", i, opticflow->fast9_ret_corners[i].x, opticflow->fast9_ret_corners[i].y);
+      }
+    }*/
+
     result->div_size = size_divergence * result->fps;
   } else {
     result->div_size = 0.0f;
