@@ -70,23 +70,23 @@ float get_size_divergence(struct flow_t *vectors, int count, int n_samples)
         // distance in previous image:
         dx = (float)vectors[i].pos.x - (float)vectors[j].pos.x;
         dy = (float)vectors[i].pos.y - (float)vectors[j].pos.y;
-        distance_1 = sqrt(dx * dx + dy * dy);
+        distance_1 = sqrtf(dx * dx + dy * dy);
 
         // distance in current image:
         dx = (float)vectors[i].pos.x + (float)vectors[i].flow_x - (float)vectors[j].pos.x - (float)vectors[j].flow_x;
         dy = (float)vectors[i].pos.y + (float)vectors[i].flow_y - (float)vectors[j].pos.y - (float)vectors[j].flow_y;
-        distance_2 = sqrt(dx * dx + dy * dy);
+        distance_2 = sqrtf(dx * dx + dy * dy);
 
         // calculate divergence for this sample:
-        if(distance_1 > 1E-5) {
+        //if(distance_1 > 1E-5) {
           divs[sample] = (distance_2 - distance_1) / distance_1;
           sample++;
-        }
+        //}
       }
     }
 
     // calculate the mean divergence:
-    mean_divergence = get_mean(divs, n_elements);
+    mean_divergence = get_mean(divs, sample);
 
     // free the memory of divs:
     free(divs);
@@ -95,6 +95,7 @@ float get_size_divergence(struct flow_t *vectors, int count, int n_samples)
     divs = (float *) malloc(sizeof(float) * n_samples);
 
     // take random samples:
+    int used_samples = 0;
     for (sample = 0; sample < n_samples; sample++) {
       // take two random indices:
       i = rand() % count;
@@ -116,17 +117,14 @@ float get_size_divergence(struct flow_t *vectors, int count, int n_samples)
 
 
       // calculate divergence for this sample:
-      if(distance_1 > 1E-5) {
-        divs[sample] = (distance_2 - distance_1) / distance_1;
-      }
-      else {
-        // TODO: fix properly:
-        divs[sample] = 0.0f;
-      }
+      //if(distance_1 > 1E-5) {
+        divs[used_samples] = (distance_2 - distance_1) / distance_1;
+        used_samples++;
+     // }
     }
 
     // calculate the mean divergence:
-    mean_divergence = get_mean(divs, n_samples);
+    mean_divergence = get_mean(divs, used_samples);
     // free the memory of divs:
     free(divs);
   }

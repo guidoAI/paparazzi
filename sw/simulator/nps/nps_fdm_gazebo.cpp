@@ -618,6 +618,15 @@ static void gazebo_read_video(void)
     // Grab image, convert and send to video thread
     struct image_t img;
     read_image(&img, cam);
+
+#ifdef NPS_DEBUG_VIDEO
+    cv::Mat RGB_cam(cam->ImageHeight(),cam->ImageWidth(),CV_8UC3,(uint8_t *)cam->ImageData());
+    cv::cvtColor(RGB_cam, RGB_cam, cv::COLOR_RGB2BGR);
+    cv::namedWindow(cameras[i]->dev_name, cv::WINDOW_AUTOSIZE);  // Create a window for display.
+    cv::imshow(cameras[i]->dev_name, RGB_cam);
+    cv::waitKey(1);
+#endif
+
     cv_run_device(cameras[i], &img);
     // Free image buffer after use.
     image_free(&img);
@@ -727,7 +736,7 @@ static void gazebo_read_range_sensors(void)
 }
 #endif
 
-#if NPS_SIMULATE_EXTERNAL_STEREO_CAMERA
+#ifdef NPS_SIMULATE_EXTERNAL_STEREO_CAMERA
 /******************************EDGEFLOW****************************/
 
 struct FloatRMat body_to_cam;
@@ -768,7 +777,7 @@ static void gazebo_init_stereo_camera(void)
   gazebo_stereocam.last_measurement_time = gazebo_stereocam.stereocam->LastMeasurementTime();
 
   /******************************EDGEFLOW  INIT****************************/
-  edgeflow_init(128, 96, 0);
+  edgeflow_init(cam->ImageWidth(), cam->ImageHeight(), 0);
 
 #ifdef STEREO_BODY_TO_STEREO_PHI
   struct FloatEulers euler = {STEREO_BODY_TO_STEREO_PHI, STEREO_BODY_TO_STEREO_THETA, STEREO_BODY_TO_STEREO_PSI};
@@ -790,9 +799,9 @@ static void gazebo_read_stereo_camera(void)
   struct image_t img;
   read_stereoimage(&img, stereocam);
 
-#ifdef STEREOCAM_DEBUG
-  cv::Mat RGB_left(96,128,CV_8UC3,(uint8_t *)stereocam->ImageData(0));
-  cv::Mat RGB_right(96,128,CV_8UC3,(uint8_t *)stereocam->ImageData(1));
+#ifdef NPS_DEBUG_STEREOCAM
+  cv::Mat RGB_left(cam->ImageHeight(),cam->ImageWidth(),CV_8UC3,(uint8_t *)stereocam->ImageData(0));
+  cv::Mat RGB_right(cam->ImageHeight(),cam->ImageWidth(),CV_8UC3,(uint8_t *)stereocam->ImageData(1));
 
   cv::cvtColor(RGB_left, RGB_left, cv::COLOR_RGB2BGR);
   cv::cvtColor(RGB_right, RGB_right, cv::COLOR_RGB2BGR);
@@ -847,9 +856,11 @@ static void gazebo_read_stereo_camera(void)
   //For debugging gate detection
   gate_detected = snake_gate_detection(&gradient, &gate, false, NULL, NULL, NULL);
 
-/*    cv::Mat gradient_cv(96,128,CV_8UC1,(uint8_t *)gradient.buf);
+#ifdef NPS_DEBUG_STEREOCAM
+  cv::Mat gradient_cv(cam->ImageHeight(),cam->ImageWidth(),CV_8UC1,(uint8_t *)gradient.buf);
   cv::imshow("gradient", gradient_cv);
-  cv::waitKey(1);*/
+  cv::waitKey(1);
+#endif
 
   if (gate.q > 15)
   {

@@ -6,10 +6,7 @@
     <target name="ap" board="ardrone2"/>
 
     <target name="nps" board="pc">
-      <module name="fdm" type="gazebo">
-        <define name="NPS_NO_GPS"/>
-        <define name="NPS_GAZEBO_WORLD" value="\\\"imav_indoor.world\\\""/>
-      </module>
+      <module name="fdm" type="gazebo"/>
     </target>
 
     <define name="USE_SONAR" value="TRUE"/>
@@ -33,9 +30,11 @@
 
     <module name="bat_voltage_ardrone2"/>
 	
-    <module name="stereocam">
+    <!--module name="stereocam">
      <configure name="STEREO_UART" value="UART2"/>
-    </module>
+    </module-->
+    
+    <module name="video_thread"/>
 
     <module name="cv_opticflow">
       <define name="OPTICFLOW_CAMERA" value="bottom_camera"/>
@@ -48,13 +47,10 @@
       <define name="OPTICFLOW_DEROTATION_CORRECTION_FACTOR_Y" value="0.9"/> <!--Obtained from a linefit--> 
     </module>
     
-    <module name="cv_qrcode">
+    <!--module name="cv_qrcode">
       <define name="QRCODE_CAMERA" value="bottom_camera"/>
       <define name="QRCODE_DRAW_RECTANGLE" value="TRUE"/>
     </module>
-    <!--module name="cv_colorfilter">
-      <define name="COLORFILTER_CAMERA" value="bottom_camera"/>
-    </module-->
     <module name="cv_blob_locator">
       <define name="BLOB_LOCATOR_CAMERA" value="bottom_camera"/>
       <define name="DETECT_WINDOW_CAMERA" value="bottom_camera"/>
@@ -64,7 +60,7 @@
       <define name="VIEWVIDEO_CAMERA" value="bottom_camera"/>
       <define name="VIEWVIDEO_DOWNSIZE_FACTOR" value="2"/>
       <define name="VIEWVIDEO_QUALITY_FACTOR" value="50"/>
-    </module>
+    </module-->
     <module name="imav2017"/>
     <!--module name="range_sensor_forcefield"/-->
   </firmware>
@@ -257,7 +253,10 @@
     <define name="BYPASS_AHRS" value="1"/>
     <define name="SIMULATE_VIDEO" value="1"/>
     <define name="SIMULATE_RANGE_SENSORS" value="1"/>
-    <define name="SIMULATE_EXTERNAL_STEREO_CAMERA" value="1"/>
+    <!--define name="SIMULATE_EXTERNAL_STEREO_CAMERA" value="0"/-->
+    <define name="GAZEBO_WORLD" value="imav_indoor.world" type="string"/>
+    <define name="DEBUG_VIDEO" value="1"/>
+    <define name="NO_GPS" value="1"/>
   </section>
 
   <section name="AUTOPILOT">
