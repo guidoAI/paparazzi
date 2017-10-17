@@ -72,11 +72,11 @@
 		<define name="POSE_HISTORY_SIZE" value="128" />
 	</module>
 	<module name="video_thread" />
-<!--
+
     <module name="cv_opticflow">
       <define name="OPTICFLOW_CAMERA" value="front_camera"/>
     </module>
--->
+
 	<module name="cv_image_pose" />
 	<module name="cv_ae_awb">
 		<define name="CV_AE_AWB_VERBOSE" value="FALSE" />
