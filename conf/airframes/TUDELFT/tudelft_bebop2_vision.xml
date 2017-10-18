@@ -17,6 +17,19 @@
       <define name="AHRS_USE_GPS_HEADING" value="FALSE"/>
     </module>
     <module name="ins" type="extended"/>
+
+
+    <define name="MT9F002_OUTPUT_HEIGHT" value="640" />
+    <define name="MT9F002_OUTPUT_WIDTH" value="640" />
+    <define name="MT9F002_TARGET_EXPOSURE" value="30" />
+    <define name="MT9F002_GAIN_GREEN1" value="4"/>
+    <define name="MT9F002_GAIN_GREEN2" value="4"/>
+    <define name="MT9F002_GAIN_RED" value="5"/>
+    <define name="MT9F002_GAIN_BLUE" value="5"/>
+    <define name="MT9F002_OUTPUT_SCALER" value="0.25"/>
+    <define name="MT9F002_X_ODD_INC_VAL" value="1"/>
+    <define name="MT9F002_Y_ODD_INC_VAL" value="1"/>
+
   </firmware>
 
   <modules main_freq="512">
@@ -30,12 +43,27 @@
 
     <module name="video_thread"/>
 
-    <!--<module name="video_rtp_stream">-->
-      <!--<define name="VIEWVIDEO_CAMERA" value="bottom_camera"/>-->
+    <module name="pose_history">
+		  <define name="POSE_HISTORY_SIZE" value="128" />
+	  </module>
+    <module name="cv_opticflow">
+      <define name="OPTICFLOW_CAMERA" value="front_camera"/>
+      <define name="MAX_HORIZON" value="10"/>
+      <define name="OPTICFLOW_FX" value="347.22222222"/> <!-- 2.5 / (3.6 * 2.0) * 1000 -->
+      <define name="OPTICFLOW_FY" value="347.22222222"/> <!-- 2.5 / (3.6 * 2.0) * 1000 -->
+      <define name="OPTICFLOW_FOV_W" value="0.665499265"/> <!-- 2 * arctan(240 / (2*347.22222222)) -->
+      <define name="OPTICFLOW_FOV_H" value="0.665499265"/> <!-- 2 * arctan(240 / (2*347.22222222)) -->
+      <define name="OPTICFLOW_DEROTATION_CORRECTION_FACTOR_X" value="0.8"/> <!--Obtained from a linefit--> 
+      <define name="OPTICFLOW_DEROTATION_CORRECTION_FACTOR_Y" value="0.85"/> <!--Obtained from a linefit--> 
+    </module>
+
+    <module name="video_rtp_stream">
+      <define name="VIEWVIDEO_CAMERA" value="front_camera"/>
       <!--<define name="VIEWVIDEO_CAMERA2" value="front_camera"/>-->
-      <!--<define name="VIEWVIDEO_DOWNSIZE_FACTOR" value="2"/>-->
-      <!--<define name="VIEWVIDEO_QUALITY_FACTOR" value="40"/>-->
-    <!--</module>-->
+      <define name="VIEWVIDEO_DOWNSIZE_FACTOR" value="1"/>
+      <define name="VIEWVIDEO_QUALITY_FACTOR" value="40"/>
+    </module>
+
 
     <!--<module name="bebop_ae_awb"/>-->
 
