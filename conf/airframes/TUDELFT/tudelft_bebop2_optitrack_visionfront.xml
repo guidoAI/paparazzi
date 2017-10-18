@@ -1,6 +1,6 @@
 <!DOCTYPE airframe SYSTEM "../airframe.dtd">
 
-<airframe name="bebop2_vision">
+<airframe name="bebop2_optitrack_visionfront">
 
   <firmware name="rotorcraft">
     <target name="ap" board="bebop2"/>
@@ -10,14 +10,14 @@
     <module name="motor_mixing"/>
     <module name="actuators" type="bebop"/>
     <module name="imu" type="bebop"/>
-    <module name="gps" type="ublox"/>
+    <module name="gps" type="datalink"/>
     <module name="stabilization" type="indi_simple"/>
     <module name="ahrs" type="int_cmpl_quat">
-      <configure name="USE_MAGNETOMETER" value="TRUE"/>
-      <define name="AHRS_USE_GPS_HEADING" value="FALSE"/>
+      <configure name="USE_MAGNETOMETER" value="FALSE"/>
+      <!-- <define name="AHRS_USE_GPS_HEADING" value="TRUE"/> -->
     </module>
+    <define name="USE_SONAR" value="0"/>
     <module name="ins" type="extended"/>
-
 
     <define name="MT9F002_OUTPUT_HEIGHT" value="640" />
     <define name="MT9F002_OUTPUT_WIDTH" value="640" />
@@ -29,14 +29,12 @@
     <define name="MT9F002_OUTPUT_SCALER" value="0.25"/>
     <define name="MT9F002_X_ODD_INC_VAL" value="1"/>
     <define name="MT9F002_Y_ODD_INC_VAL" value="1"/>
-
   </firmware>
 
   <modules main_freq="512">
     <module name="geo_mag"/>
     <module name="air_data"/>
     <module name="send_imu_mag_current"/>
-    <module name="gps" type="ubx_ucenter"/>
     <module name="logger_file">
       <define name="FILE_LOGGER_PATH" value="/data/ftp/internal_000"/>
     </module>
@@ -58,12 +56,15 @@
       <define name="OPTICFLOW_DEROTATION_CORRECTION_FACTOR_Y" value="0.85"/> <!--Obtained from a linefit--> 
     </module>
 
+    <module name="optical_flow_landing"/>
+
+<!--
     <module name="video_rtp_stream">
       <define name="VIEWVIDEO_CAMERA" value="front_camera"/>
-      <!--<define name="VIEWVIDEO_CAMERA2" value="front_camera"/>-->
+      <define name="VIEWVIDEO_CAMERA2" value="front_camera"/>
       <define name="VIEWVIDEO_DOWNSIZE_FACTOR" value="1"/>
       <define name="VIEWVIDEO_QUALITY_FACTOR" value="40"/>
-    </module>
+    </module>-->
 
 
     <!--<module name="bebop_ae_awb"/>-->
@@ -124,11 +125,17 @@
     <define name="H_X" value="0.3892503"/>
     <define name="H_Y" value="0.0017972"/>
     <define name="H_Z" value="0.9211303"/>
+    <!-- Use GPS heading instead of magneto -->
+    <define name="USE_GPS_HEADING" value="1"/>
+    <define name="HEADING_UPDATE_GPS_MIN_SPEED" value="0"/>
   </section>
 
   <section name="INS" prefix="INS_">
-    <define name="SONAR_MAX_RANGE" value="2.2"/>
-    <define name="SONAR_UPDATE_ON_AGL" value="TRUE"/>
+    <!--<define name="SONAR_MAX_RANGE" value="2.2"/>
+    <define name="SONAR_UPDATE_ON_AGL" value="TRUE"/> -->
+    <!-- Use GPS altitude measurments and set the R gain -->
+    <define name="USE_GPS_ALT" value="1"/>
+    <define name="VFF_R_GPS" value="0.01"/>
   </section>
 
 
@@ -162,10 +169,10 @@
 
   <section name="STABILIZATION_ATTITUDE_INDI" prefix="STABILIZATION_INDI_">
     <!-- control effectiveness -->
-    <define name="G1_P" value="0.05"/>
-    <define name="G1_Q" value="0.04"/>
-    <define name="G1_R" value="0.0022"/>
-    <define name="G2_R" value="0.20"/>
+    <define name="G1_P" value="0.052"/>
+    <define name="G1_Q" value="0.044"/>
+    <define name="G1_R" value="0.0015"/>
+    <define name="G2_R" value="0.26"/>
 
     <!-- Here it is assumed that your removed the damping from your bebop2!
          The dampers do not really damp, but cause oscillation. By removing/
@@ -213,7 +220,7 @@
   </section>
 
   <section name="NAVIGATION" prefix="NAV_">
-    <define name="CLIMB_VSPEED" value="4.5"/>
+    <define name="CLIMB_VSPEED" value="1.0"/>
     <define name="DESCEND_VSPEED" value="-1.0"/>
   </section>
 
