@@ -597,11 +597,12 @@ void vertical_ctrl_agl_cb(uint8_t sender_id UNUSED, float distance)
   of_landing_ctrl.agl = distance;
 }
 
-void vertical_ctrl_optical_flow_cb(uint8_t sender_id UNUSED, uint32_t stamp, int16_t flow_x UNUSED,
+void vertical_ctrl_optical_flow_cb(uint8_t sender_id UNUSED, uint32_t stamp, int16_t flow_x,
                                    int16_t flow_y UNUSED,
-                                   int16_t flow_der_x UNUSED, int16_t flow_der_y UNUSED, float quality UNUSED, float size_divergence, float dist UNUSED)
+                                   int16_t flow_der_x UNUSED, int16_t flow_der_y UNUSED, float quality UNUSED, float size_divergence UNUSED, float dist UNUSED)
 {
-  divergence_vision = size_divergence;
+  // ugly hack: when front vision, use flow_x
+  divergence_vision = (float) flow_x / 1000.0f; // size_divergence;
   vision_time = ((float)stamp) / 1e6;
 }
 
