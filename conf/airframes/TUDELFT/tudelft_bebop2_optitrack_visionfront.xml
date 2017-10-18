@@ -169,10 +169,10 @@
 
   <section name="STABILIZATION_ATTITUDE_INDI" prefix="STABILIZATION_INDI_">
     <!-- control effectiveness -->
-    <define name="G1_P" value="0.052"/>
-    <define name="G1_Q" value="0.044"/>
-    <define name="G1_R" value="0.0015"/>
-    <define name="G2_R" value="0.26"/>
+    <define name="G1_P" value="0.094"/>
+    <define name="G1_Q" value="0.094"/>
+    <define name="G1_R" value="0.0025"/>
+    <define name="G2_R" value="0.36"/>
 
     <!-- Here it is assumed that your removed the damping from your bebop2!
          The dampers do not really damp, but cause oscillation. By removing/
@@ -214,9 +214,9 @@
   <section name="GUIDANCE_H" prefix="GUIDANCE_H_">
     <define name="REF_MAX_SPEED" value="2" unit="m/s"/>
     <define name="MAX_BANK" value="32" unit="deg"/>
-    <define name="PGAIN" value="120"/>
-    <define name="DGAIN" value="100"/>
-    <define name="IGAIN" value="30"/>
+    <define name="PGAIN" value="220"/>
+    <define name="DGAIN" value="160"/>
+    <define name="IGAIN" value="15"/>
   </section>
 
   <section name="NAVIGATION" prefix="NAV_">
@@ -232,7 +232,8 @@
 
   <section name="AUTOPILOT">
     <define name="MODE_STARTUP" value="AP_MODE_NAV"/>
-    <define name="MODE_MANUAL" value="AP_MODE_ATTITUDE_DIRECT"/>
+    <define name="MODE_MANUAL" value="AP_MODE_MODULE"/>
+    <!-- <define name="MODE_MANUAL" value="AP_MODE_ATTITUDE_DIRECT"/> -->
     <define name="MODE_AUTO1" value="AP_MODE_ATTITUDE_Z_HOLD"/>
     <define name="MODE_AUTO2" value="AP_MODE_NAV"/>
 
