@@ -107,5 +107,6 @@ void image_draw_line_color(struct image_t *img, struct point_t *from, struct poi
 void image_draw_crosshair(struct image_t *img, struct point_t *loc, uint8_t *color, int size_crosshair);
 void pyramid_next_level(struct image_t *input, struct image_t *output, uint8_t border_size);
 void pyramid_build(struct image_t *input, struct image_t *output_array, uint8_t pyr_level, uint8_t border_size);
+int image_gradient_pixel(struct image_t *img, struct point_t *loc, int method);
 
 #endif

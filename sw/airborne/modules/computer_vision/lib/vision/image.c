@@ -633,6 +633,52 @@ void image_draw_square(struct image_t *img, int x_min, int x_max, int y_min, int
 }
 
 /**
+ * Get the gradient at a pixel location
+ * @param[in,out] *img The image
+ * @param[in] loc The location at which to get the gradient
+ * @param[in] method 0 = {-1, 0, 1}, 1 = Sobel {-1, 0, 1; -2, 0, 2; -1, 0, 1}
+ */
+int image_gradient_pixel(struct image_t *img, struct point_t *loc, int method) {
+  // create the simple and sobel filter only once:
+  static int Sobel[9] = {-1, 0, 1, -2, 0, 2, -1, 0, 1};
+  static int total_sobel = 8;
+  int gradient, index;
+  uint8_t *img_buf = (uint8_t *)img->buf;
+  uint8_t pixel_width = (img->type == IMAGE_YUV422) ? 2 : 1;
+  uint8_t add_ind = pixel_width - 1;
+  // check if all pixels will fall in the image:
+  if(loc->x >= 1 && loc->x < img->w-1 && loc->y >= 1 && loc->y < img->h - 1) {
+    gradient = 0;
+    if(method == 0) {
+        // simple method
+        index = loc->y * img->w * pixel_width + (loc->x-1) * pixel_width;
+        gradient -= (int) img_buf[index+add_ind];
+        index = loc->y * img->w * pixel_width + (loc->x+1) * pixel_width;
+        gradient += (int) img_buf[index+add_ind];
+    }
+    else {
+        // Sobel:
+        int filt_ind = 0;
+        for (int x = -1; x <= 1; x++) {
+            for (int y = -1; y <= 1; y++) {
+                if(x!=0) {
+                    index = (loc->y + y) * img->w * pixel_width + (loc->x+x) * pixel_width;
+                    gradient += Sobel[filt_ind] * (int) img_buf[index+add_ind];
+                }
+                filt_ind++;
+            }
+        }
+        gradient /= total_sobel;
+    }
+
+    return gradient;
+  }
+  else {
+      return 0;
+  }
+}
+
+/**
  * Draw a cross-hair on the image
  * @param[in,out] *img The image to show the line on
  * @param[in] loc The location of the cross-hair
