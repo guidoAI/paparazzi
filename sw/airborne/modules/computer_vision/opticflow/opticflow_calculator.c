@@ -52,7 +52,7 @@
 // whether to show the flow and corners:
 #define OPTICFLOW_SHOW_FLOW 0
 #define OPTICFLOW_SHOW_CORNERS 0
-#define OPTICFLOW_SHOW_INLIERS 1
+#define OPTICFLOW_SHOW_INLIERS 0
 
 // YUV histograms, number of bins:
 #define DOWNSELECT_VECTORS 1
@@ -1016,7 +1016,7 @@ void get_YUV_histogram(struct image_t *img, int x_min, int x_max, int y_min, int
   uint16_t index;
   uint16_t row_stride = img->w * 2;
   uint16_t pixel_step = 2;
-  uint8_t U,V; //,Y;
+  uint8_t U,V,Y;
   for(int s = 0; s < n_samples; s++) {
       // generate random coordinates:
       x = rand() % x_range + x_min;
@@ -1027,12 +1027,21 @@ void get_YUV_histogram(struct image_t *img, int x_min, int x_max, int y_min, int
       // determine the index of the pixel in the UYVY image and get the values:
       index = y * row_stride + x * pixel_step;
       U = source[index];
-      // Y = source[index+1]; // source[index+3]
+      Y = source[index+1]; // source[index+3]
       V = source[index+2];
 
       // determine the corresponding bins and place in the array:
-      bin_U = U / bin_size;
-      bin_V = V / bin_size;
+      if(Y >= 127) {
+          // if bright enough, bin the color:
+          bin_U = U / bin_size;
+          bin_V = V / bin_size;
+      }
+      else {
+          // if too dark, put it as grey:
+          bin_U = n_bins_UV / 2;
+          bin_V = n_bins_UV / 2;
+      }
+
       histogram[bin_U * n_bins_UV + bin_V]++;
   }
 
