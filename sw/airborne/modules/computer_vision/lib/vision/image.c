@@ -160,7 +160,7 @@ uint16_t image_yuv422_colorfilt(struct image_t *input, struct image_t *output, u
   for (uint16_t y = 0; y < output->h; y++) {
     for (uint16_t x = 0; x < output->w; x += 2) {
       // Check if the color is inside the specified values
-      if (
+      if ( // TODO: shouldn't this be source? Probably it does not matter for the result, but it will if filtering is done twice.
         (dest[1] >= y_m)
         && (dest[1] <= y_M)
         && (dest[0] >= u_m)
@@ -592,6 +592,76 @@ void image_show_flow(struct image_t *img, struct flow_t *vectors, uint16_t point
 }
 
 /**
+ * Draw a pink square on the image
+ * @param[in,out] *img The image to show the line on
+ * @param[in] x_min start in x
+ * @param[in] x_max end of x
+ * @param[in] y_min start in y
+ * @param[in] y_max end of y
+ */
+void image_draw_square(struct image_t *img, int x_min, int x_max, int y_min, int y_max) {
+  struct point_t from, to;
+
+  // bottom from left to right:
+  from.x = x_min;
+  from.y = y_min;
+  to.x = x_max;
+  to.y = y_min;
+  image_draw_line(img, &from, &to);
+
+  // from bottom right to top right:
+  from.x = x_max;
+  from.y = y_min;
+  to.x = x_max;
+  to.y = y_max;
+  image_draw_line(img, &from, &to);
+
+  // from top right to top left:
+  from.x = x_max;
+  from.y = y_max;
+  to.x = x_min;
+  to.y = y_max;
+  image_draw_line(img, &from, &to);
+
+  // from top left to bottom left:
+  from.x = x_min;
+  from.y = y_max;
+  to.x = x_min;
+  to.y = y_min;
+  image_draw_line(img, &from, &to);
+
+}
+
+/**
+ * Draw a cross-hair on the image
+ * @param[in,out] *img The image to show the line on
+ * @param[in] loc The location of the cross-hair
+ * @param[in] color The line color as a [U, Y1, V, Y2] uint8_t array, or a uint8_t value pointer for grayscale images.
+ *                   Example colors: white = {127, 255, 127, 255}, green = {0, 127, 0, 127};
+ * @param[in] size_crosshair Actually the half size of the cross hair
+ */
+void image_draw_crosshair(struct image_t *img, struct point_t *loc, uint8_t *color, int size_crosshair) {
+  struct point_t from, to;
+
+  if(loc->x >= size_crosshair && loc->x < img->w - size_crosshair
+      && loc->y >= size_crosshair && loc->y < img->h - size_crosshair) {
+      // draw the lines:
+      from.x = loc->x - size_crosshair;
+      from.y = loc->y;
+      to.x = loc->x + size_crosshair;
+      to.y = loc->y;
+      image_draw_line_color(img, &from, &to, color);
+      from.x = loc->x;
+      from.y = loc->y - size_crosshair;
+      to.x = loc->x;
+      to.y = loc->y + size_crosshair;
+      image_draw_line_color(img, &from, &to, color);
+  }
+}
+
+
+
+/**
  * Draw a pink line on the image
  * @param[in,out] *img The image to show the line on
  * @param[in] *from The point to draw from
@@ -612,6 +682,7 @@ void image_draw_line(struct image_t *img, struct point_t *from, struct point_t *
  */
 void image_draw_line_color(struct image_t *img, struct point_t *from, struct point_t *to, uint8_t *color)
 {
+  // TODO: is there any check on the coordinates?
   int xerr = 0, yerr = 0;
   uint8_t *img_buf = (uint8_t *)img->buf;
   uint8_t pixel_width = (img->type == IMAGE_YUV422) ? 2 : 1;

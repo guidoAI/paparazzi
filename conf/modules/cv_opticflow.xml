@@ -51,6 +51,11 @@
       <define name="FAST9_PADDING" value="20" description="The outer border in which no corners will be searched"/>
       <define name="FAST9_REGION_DETECT" value="1" description="Whether to detect fast9 corners in regions of interest or the whole image (only works with feature management)"/>
       <define name="FAST9_NUM_REGIONS" value="9" description="The number of regions of interest to split the image into"/>
+
+      <!-- Color histogram similarity threshold -->
+      <define name="COL_SAMPLES" value="100" description="The number of samples used to make a color histogram"/>
+      <define name="COL_THRESH" value="40" description="The color histogram distance that is used as a threshold for similarity - max is the number of samples"/>
+
     </section>
   </doc>
 
@@ -85,6 +90,10 @@
 
 	<!-- Changes pyramid level of lucas kanade optical flow. -->
         <dl_setting var="opticflow.pyramid_level" module="computer_vision/opticflow_module" min="0" step="1" max="10" shortname="pyramid_level" param="OPTICFLOW_PYRAMID_LEVEL"/>
+
+  <!-- For color histograms used in flow vector selection -->
+        <dl_setting var="opticflow.n_samples_color_histogram" module="computer_vision/opticflow_module" min="25" step="5" max="1000" shortname="col_samples" param="OPTICFLOW_COL_SAMPLES"/>
+        <dl_setting var="opticflow.color_similarity_threshold" module="computer_vision/opticflow_module" min="0" step="1" max="1000" shortname="col_thresh" param="OPTICFLOW_COL_THRESH"/>
 
       </dl_settings>
     </dl_settings>

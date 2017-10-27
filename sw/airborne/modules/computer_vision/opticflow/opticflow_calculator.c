@@ -50,8 +50,15 @@
 
 
 // whether to show the flow and corners:
-#define OPTICFLOW_SHOW_FLOW 1
-#define OPTICFLOW_SHOW_CORNERS 1
+#define OPTICFLOW_SHOW_FLOW 0
+#define OPTICFLOW_SHOW_CORNERS 0
+#define OPTICFLOW_SHOW_INLIERS 0
+
+// YUV histograms, number of bins:
+#define DOWNSELECT_VECTORS 1
+#define N_BINS_UV 5
+// Number of cells in image:
+#define N_CELLS 5
 
 // What methods are run to determine divergence, lateral flow, etc.
 // SIZE_DIV looks at line sizes and only calculates divergence
@@ -200,6 +207,18 @@ PRINT_CONFIG_VAR(OPTICFLOW_FAST9_REGION_DETECT)
 #endif
 PRINT_CONFIG_VAR(OPTICFLOW_FAST9_NUM_REGIONS)
 
+#ifndef OPTICFLOW_COL_SAMPLES
+#define OPTICFLOW_COL_SAMPLES 250
+#endif
+PRINT_CONFIG_VAR(OPTICFLOW_COL_SAMPLES)
+
+#ifndef OPTICFLOW_COL_THRESH
+#define OPTICFLOW_COL_THRESH 40
+#endif
+PRINT_CONFIG_VAR(OPTICFLOW_COL_THRESH)
+
+
+
 //Include median filter
 #include "filters/median_filter.h"
 struct MedianFilterInt vel_x_filt, vel_y_filt;
@@ -245,6 +264,9 @@ void opticflow_calc_init(struct opticflow_t *opticflow)
   opticflow->fast9_padding = OPTICFLOW_FAST9_PADDING;
   opticflow->fast9_rsize = 512;
   opticflow->fast9_ret_corners = malloc(sizeof(struct point_t) * opticflow->fast9_rsize);
+
+  opticflow->n_samples_color_histogram = OPTICFLOW_COL_SAMPLES;
+  opticflow->color_similarity_threshold = OPTICFLOW_COL_THRESH;
 }
 /**
  * Run the optical flow with fast9 and lukaskanade on a new image frame
@@ -393,6 +415,123 @@ void calc_fast9_lukas_kanade(struct opticflow_t *opticflow, struct opticflow_sta
   image_show_flow(img, vectors, result->tracked_cnt, opticflow->subpixel_factor);
 #endif
 
+  if(DOWNSELECT_VECTORS) {
+
+    // Now we only take vectors into account when they are similar to the colors in the center of the view
+    // TODO: take the color there were vectors are largest
+    // get color histogram in the center.
+    int UV_histogram[N_BINS_UV*N_BINS_UV];
+    int histogram[N_BINS_UV*N_BINS_UV];
+    int hist_distance;
+    int cell_size = img->h / N_CELLS;
+    int n_y_cells = img->h / cell_size;
+    int n_x_cells = img->w / cell_size;
+    int c, r;
+    int c_center = n_x_cells / 2;
+    int r_center = n_y_cells / 2;
+    int x_min = c_center * cell_size;
+    int x_max = (c_center+1) * cell_size;
+    int y_min = r_center * cell_size;
+    int y_max = (r_center+1) * cell_size;
+    // printf("ROI UV histogram = %d, %d, %d, %d\n", x_min, x_max, y_min, y_max);
+    // TODO: img may have changed by drawing on it!!!!!!! if OPTICFLOW_SHOW_FLOW is true for example.
+    get_YUV_histogram(img, x_min, x_max, y_min, y_max, opticflow->n_samples_color_histogram, UV_histogram, N_BINS_UV);
+
+    int cell_ind = 0;
+    //int distances_histograms[n_x_cells*n_y_cells];
+    int similarity_histograms[n_x_cells*n_y_cells];
+    for(c = 0; c < n_x_cells; c++) {
+        for(r = 0; r < n_y_cells; r++) {
+            x_min = c * cell_size;
+            x_max = (c+1) * cell_size;
+            y_min = r * cell_size;
+            y_max = (r+1) * cell_size;
+
+            if(c == c_center && r == r_center) {
+                // the center is what we sampled from, so it is always "in the game"
+              hist_distance = 0;
+            }
+            else {
+              get_YUV_histogram(img, x_min, x_max, y_min, y_max, opticflow->n_samples_color_histogram, histogram, N_BINS_UV);
+              hist_distance = get_hist_distance(histogram, UV_histogram);
+            }
+            //distances_histograms[cell_ind] = hist_distance;
+            similarity_histograms[cell_ind] = hist_distance <= opticflow->color_similarity_threshold;
+            cell_ind++;
+        }
+    }
+
+    for(c = 0; c < n_x_cells; c++) {
+          for(r = 0; r < n_y_cells; r++) {
+              x_min = c * cell_size;
+              x_max = (c+1) * cell_size;
+              y_min = r * cell_size;
+              y_max = (r+1) * cell_size;
+
+              image_draw_square(img, x_min, x_max, y_min, y_max);
+
+          }
+    }
+
+    // down-select the vectors:
+    int x_cell, y_cell, index, n_inliers;
+    int inliers[result->tracked_cnt];
+    n_inliers = 0;
+    for(int i = 0; i < result->tracked_cnt; i++) {
+        // is the vector in a cell that is similar to the color model?
+        x_cell = (vectors[i].pos.x / opticflow->subpixel_factor) / cell_size;
+        y_cell = (vectors[i].pos.y / opticflow->subpixel_factor) / cell_size;
+        index = x_cell * n_y_cells + y_cell;
+        if(similarity_histograms[index]) {
+          inliers[i] = 1;
+          n_inliers++;
+        }
+        else {
+            inliers[i] = 0;
+        }
+    }
+    // replace vectors with only the inliers:
+    //down_select_inlier_flow_vectors(inliers, vectors, result->tracked_cnt, n_inliers);
+    //result->tracked_cnt = n_inliers;
+
+#if OPTICFLOW_SHOW_INLIERS
+    struct point_t loc;
+    uint8_t color[4];
+    color[0] = 255;
+    color[1] = 255;
+    color[2] = 255;
+    color[3] = 255;
+    int size_crosshair = 5;
+    for(int i = 0; i < result->tracked_cnt; i++) {
+        // cross-hair, only draw if far enough from the border:
+        if(inliers[i]) {
+            color[0] = 0; color[2] = 0;
+        }
+        else {
+            color[0] = 255; color[2] = 255;
+        }
+        loc.x = vectors[i].pos.x / opticflow->subpixel_factor;
+        loc.y = vectors[i].pos.y / opticflow->subpixel_factor;
+        image_draw_crosshair(img, &loc, color, size_crosshair);
+
+        /*
+        if(vectors[i].pos.x / opticflow->subpixel_factor >= size_crosshair && vectors[i].pos.x / opticflow->subpixel_factor < img->w - size_crosshair
+            && vectors[i].pos.y / opticflow->subpixel_factor >= size_crosshair && vectors[i].pos.y / opticflow->subpixel_factor < img->h - size_crosshair) {
+           // printf("Inlier!\n");
+          from.x = vectors[i].pos.x / opticflow->subpixel_factor - size_crosshair;
+          from.y = vectors[i].pos.y / opticflow->subpixel_factor;
+          to.x = vectors[i].pos.x / opticflow->subpixel_factor + size_crosshair;
+          to.y = vectors[i].pos.y / opticflow->subpixel_factor;
+          image_draw_line_color(img, &from, &to, color);
+          from.x = vectors[i].pos.x / opticflow->subpixel_factor;
+          from.y = vectors[i].pos.y / opticflow->subpixel_factor -size_crosshair;
+          to.x = vectors[i].pos.x / opticflow->subpixel_factor;
+          to.y = vectors[i].pos.y / opticflow->subpixel_factor +size_crosshair;
+          image_draw_line_color(img, &from, &to, color);
+        }*/
+    }
+#endif
+  }
   // Estimate size divergence:
   if (SIZE_DIV) {
     n_samples = 100;
@@ -860,3 +999,92 @@ static int cmp_array(const void *a, const void *b)
   return pa[0] - pb[0];
 }
 
+void get_YUV_histogram(struct image_t *img, int x_min, int x_max, int y_min, int y_max, int n_samples, int* histogram, int n_bins_UV) {
+  // get a UV histogram for now (Y to be added later):
+  // sample pixels at random from the given region of interest
+
+  // empty the histogram
+  for(int i = 0; i < n_bins_UV * n_bins_UV; i++) {
+      histogram[i] = 0;
+  }
+  uint8_t *source = img->buf;
+  int bin_size = 255 / n_bins_UV;
+  int x, y, bin_U, bin_V;
+  int x_range = x_max - x_min;
+  int y_range = y_max - y_min;
+  uint16_t index;
+  uint16_t row_stride = img->w * 2;
+  uint16_t pixel_step = 2;
+  uint8_t U,V; //,Y;
+  for(int s = 0; s < n_samples; s++) {
+      // generate random coordinates:
+      x = rand() % x_range + x_min;
+      // only accept even x due to UYVY format
+      x = (x % 2 == 0) ? x : x-1;
+      y = rand() % y_range + y_min;
+
+      // determine the index of the pixel in the UYVY image and get the values:
+      index = y * row_stride + x * pixel_step;
+      U = source[index];
+      // Y = source[index+1]; // source[index+3]
+      V = source[index+2];
+
+      // determine the corresponding bins and place in the array:
+      bin_U = U / bin_size;
+      bin_V = V / bin_size;
+      histogram[bin_U * n_bins_UV + bin_V]++;
+  }
+
+  /*for(int i = 0; i < N_BINS_UV * N_BINS_UV; i++) {
+    printf("%d ", histogram[i]);
+  }
+  printf("\n");*/
+}
+
+int get_hist_distance(int* hist, int* model_hist)
+{
+/*
+  printf("\n\nHistogram: ");
+  for(int i = 0; i < N_BINS_UV * N_BINS_UV; i++) {
+    printf("%d ", hist[i]);
+  }
+  printf("\n");
+  printf("Model: ");
+    for(int i = 0; i < N_BINS_UV * N_BINS_UV; i++) {
+      printf("%d ", model_hist[i]);
+    }
+    printf("\n");
+*/
+
+        int dist = 0;
+        int add_dist;
+        for (int i = 0; i < N_BINS_UV * N_BINS_UV; i++)
+        {
+          add_dist = abs(hist[i] - model_hist[i]);
+          //printf("add_dist = %d ", add_dist);
+          dist += add_dist;
+        }
+        //printf("\nTotal dist = %d\n", dist);
+        return dist;
+}
+
+/*
+void down_select_inlier_flow_vectors(int* inliers, struct flow_t* vectors, int n_vectors, int n_inliers) {
+  // only retain vectors when they are inliers:
+  struct flow_t *new_vectors = malloc(sizeof(struct flow_t) * n_inliers);
+  int i_inlier = 0;
+  for(int i = 0; i < n_vectors; i++) {
+      if(inliers[i]) {
+        new_vectors[i_inlier].flow_x = vectors[i].flow_x;
+        new_vectors[i_inlier].flow_y = vectors[i].flow_y;
+        // TODO: check if this does not give problems when freeing:
+        new_vectors[i_inlier].pos = vectors[i].pos;
+        i_inlier++;
+      }
+  }
+  // free the previously assigned memory in vectors
+  free(vectors);
+  // set the vectors reference to the new vector array, only filled with inliers:
+  vectors = new_vectors;
+}
+*/

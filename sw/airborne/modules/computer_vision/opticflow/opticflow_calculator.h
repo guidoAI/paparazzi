@@ -73,6 +73,9 @@ struct opticflow_t {
   bool feature_management;        ///< Decides whether to keep track corners in memory for the next frame instead of re-detecting every time
   bool fast9_region_detect;       ///< Decides whether to detect fast9 corners in specific regions of interest or the whole image (only for feature management)
   uint8_t fast9_num_regions;      ///< The number of regions of interest the image is split into
+
+  int n_samples_color_histogram;        ///< The number of samples used to make a color histogram
+  int color_similarity_threshold;             ///< The threshold to determine whether two color histograms are similar
 };
 
 
@@ -88,6 +91,9 @@ void calc_edgeflow_tot(struct opticflow_t *opticflow, struct opticflow_state_t *
 void kalman_filter_opticflow_velocity(float *velocity_x, float *velocity_y, float *acceleration_measurement, float fps,
                                       float *measurement_noise, float process_noise, bool reinitialize_kalman);
 
+void get_YUV_histogram(struct image_t *img, int x_min, int x_max, int y_min, int y_max, int n_samples, int* histogram, int n_bins_UV);
+int get_hist_distance(int* hist, int* model_hist);
+//void down_select_inlier_flow_vectors(int* inliers, struct flow_t* vectors, int n_vectors, int n_inliers);
 #endif /* OPTICFLOW_CALCULATOR_H */
 
 
