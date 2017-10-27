@@ -43,6 +43,10 @@
 
     <module name="video_thread"/>
 
+    <module name="video_capture">
+      <define name="VIDEO_CAPTURE_CAMERA" value="front_camera"/>
+    </module>
+
     <module name="pose_history">
 		  <define name="POSE_HISTORY_SIZE" value="128" />
 	  </module>
@@ -66,14 +70,14 @@
 
     </module>
 
-    
+    <!--
     <module name="video_rtp_stream">
       <define name="VIEWVIDEO_CAMERA" value="front_camera"/>
       <define name="VIEWVIDEO_CAMERA2" value="bottom_camera"/>
       <define name="VIEWVIDEO_DOWNSIZE_FACTOR" value="1"/>
       <define name="VIEWVIDEO_QUALITY_FACTOR" value="40"/>
     </module>
-    
+    -->
     <!--<module name="bebop_ae_awb"/>-->
   </modules>
 

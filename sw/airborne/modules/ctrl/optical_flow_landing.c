@@ -133,8 +133,6 @@ PRINT_CONFIG_VAR(OFL_OPTICAL_FLOW_ID)
 float divergence_vision;
 float divergence_vision_dt;
 float normalized_thrust;
-float cov_div;
-float pstate, pused;
 float istate;
 float dstate;
 float vision_time,  prev_vision_time;
@@ -153,8 +151,7 @@ float lp_cov_div;
 static abi_event agl_ev; ///< The altitude ABI event
 static abi_event optical_flow_ev;
 
-// struct containing most relevant parameters
-struct OpticalFlowLanding of_landing_ctrl;
+
 
 // sending the divergence message to the ground station:
 static void send_divergence(struct transport_tx *trans, struct link_device *dev)
