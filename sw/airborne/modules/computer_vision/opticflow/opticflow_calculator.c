@@ -52,7 +52,7 @@
 // whether to show the flow and corners:
 #define OPTICFLOW_SHOW_FLOW 0
 #define OPTICFLOW_SHOW_CORNERS 0
-#define OPTICFLOW_SHOW_INLIERS 0
+#define OPTICFLOW_SHOW_INLIERS 1
 
 // YUV histograms, number of bins:
 #define DOWNSELECT_VECTORS 1
@@ -461,18 +461,19 @@ void calc_fast9_lukas_kanade(struct opticflow_t *opticflow, struct opticflow_sta
         }
     }
 
-    for(c = 0; c < n_x_cells; c++) {
-          for(r = 0; r < n_y_cells; r++) {
-              x_min = c * cell_size;
-              x_max = (c+1) * cell_size;
-              y_min = r * cell_size;
-              y_max = (r+1) * cell_size;
+    if(OPTICFLOW_SHOW_INLIERS) {
+      for(c = 0; c < n_x_cells; c++) {
+            for(r = 0; r < n_y_cells; r++) {
+                x_min = c * cell_size;
+                x_max = (c+1) * cell_size;
+                y_min = r * cell_size;
+                y_max = (r+1) * cell_size;
 
-              image_draw_square(img, x_min, x_max, y_min, y_max);
+                image_draw_square(img, x_min, x_max, y_min, y_max);
 
-          }
+            }
+      }
     }
-
     // down-select the vectors:
     int x_cell, y_cell, index, n_inliers;
     int inliers[result->tracked_cnt];
