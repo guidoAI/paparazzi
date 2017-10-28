@@ -40,6 +40,7 @@
 #include "lib/vision/image.h"
 #include "lib/vision/lucas_kanade.h"
 #include "lib/vision/fast_rosten.h"
+#include "lib/vision/act_fast.h"
 #include "lib/vision/edge_flow.h"
 #include "size_divergence.h"
 #include "linear_flow_fit.h"
@@ -53,6 +54,10 @@
 #define OPTICFLOW_SHOW_FLOW 0
 #define OPTICFLOW_SHOW_CORNERS 0
 #define OPTICFLOW_SHOW_INLIERS 0
+
+#define EXHAUSTIVE_FAST 0
+#define ACT_FAST 1
+#define CORNER_METHOD 1
 
 // YUV histograms, number of bins:
 #define DOWNSELECT_VECTORS 1
@@ -367,15 +372,29 @@ void calc_fast9_lukas_kanade(struct opticflow_t *opticflow, struct opticflow_sta
   } else if (!opticflow->feature_management) {
     // needs to be set to 0 because result is now static
     result->corner_cnt = 0;
-    // FAST corner detection
-    // TODO: There is something wrong with fast9_detect destabilizing FPS. This problem is reduced with putting min_distance
-    // to 0 (see defines), however a more permanent solution should be considered
-    fast9_detect(&opticflow->prev_img_gray, opticflow->fast9_threshold, opticflow->fast9_min_distance,
-                 opticflow->fast9_padding, opticflow->fast9_padding, &result->corner_cnt,
-                 &opticflow->fast9_rsize,
-                 &opticflow->fast9_ret_corners,
-                 NULL);
 
+    if(CORNER_METHOD == EXHAUSTIVE_FAST) {
+      // FAST corner detection
+      // TODO: There is something wrong with fast9_detect destabilizing FPS. This problem is reduced with putting min_distance
+      // to 0 (see defines), however a more permanent solution should be considered
+      fast9_detect(&opticflow->prev_img_gray, opticflow->fast9_threshold, opticflow->fast9_min_distance,
+                   opticflow->fast9_padding, opticflow->fast9_padding, &result->corner_cnt,
+                   &opticflow->fast9_rsize,
+                   &opticflow->fast9_ret_corners,
+                   NULL);
+
+    }
+    else if (CORNER_METHOD == ACT_FAST) {
+        // ACT-FAST corner detection:
+        // TODO: all relevant things should be settings:
+        uint16_t n_time_steps = 20;
+        float long_step = 5;
+        float short_step = 2;
+        int min_gradient = 10;
+        act_fast(&opticflow->prev_img_gray, opticflow->fast9_threshold, &result->corner_cnt,
+            &opticflow->fast9_ret_corners, OPTICFLOW_MAX_TRACK_CORNERS, n_time_steps,
+            long_step, short_step, min_gradient);
+    }
     // Adaptive threshold
     if (opticflow->fast9_adaptive) {
       // Decrease and increase the threshold based on previous values
@@ -468,9 +487,7 @@ void calc_fast9_lukas_kanade(struct opticflow_t *opticflow, struct opticflow_sta
                 x_max = (c+1) * cell_size;
                 y_min = r * cell_size;
                 y_max = (r+1) * cell_size;
-
                 image_draw_square(img, x_min, x_max, y_min, y_max);
-
             }
       }
     }

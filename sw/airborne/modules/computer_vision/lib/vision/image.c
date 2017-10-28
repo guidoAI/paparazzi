@@ -637,45 +637,70 @@ void image_draw_square(struct image_t *img, int x_min, int x_max, int y_min, int
  * @param[in,out] *img The image
  * @param[in] loc The location at which to get the gradient
  * @param[in] method 0 = {-1, 0, 1}, 1 = Sobel {-1, 0, 1; -2, 0, 2; -1, 0, 1}
+ * @param[in] dx The gradient in x-direction
+ * @param[in] dy The gradient in y-direction
  */
-int image_gradient_pixel(struct image_t *img, struct point_t *loc, int method) {
+void image_gradient_pixel(struct image_t *img, struct point_t *loc, int method, int *dx, int* dy) {
   // create the simple and sobel filter only once:
-  static int Sobel[9] = {-1, 0, 1, -2, 0, 2, -1, 0, 1};
-  static int total_sobel = 8;
-  int gradient, index;
+
+  int gradient_x, gradient_y, index;
+  gradient_x = 0;
+  gradient_y = 0;
+
+  // get image buffer and take into account YUV vs. grayscale:
   uint8_t *img_buf = (uint8_t *)img->buf;
   uint8_t pixel_width = (img->type == IMAGE_YUV422) ? 2 : 1;
   uint8_t add_ind = pixel_width - 1;
+
   // check if all pixels will fall in the image:
   if(loc->x >= 1 && loc->x < img->w-1 && loc->y >= 1 && loc->y < img->h - 1) {
-    gradient = 0;
     if(method == 0) {
-        // simple method
+
+        // *************
+        // Simple method
+        // *************
+
+        // dx:
         index = loc->y * img->w * pixel_width + (loc->x-1) * pixel_width;
-        gradient -= (int) img_buf[index+add_ind];
+        gradient_x -= (int) img_buf[index+add_ind];
         index = loc->y * img->w * pixel_width + (loc->x+1) * pixel_width;
-        gradient += (int) img_buf[index+add_ind];
+        gradient_x += (int) img_buf[index+add_ind];
+        // dy:
+        index = (loc->y-1) * img->w * pixel_width + loc->x * pixel_width;
+        gradient_y -= (int) img_buf[index+add_ind];
+        index = (loc->y+1) * img->w * pixel_width + loc->x * pixel_width;
+        gradient_y += (int) img_buf[index+add_ind];
     }
     else {
-        // Sobel:
-        int filt_ind = 0;
+
+        // *****
+        // Sobel
+        // *****
+        static int Sobel[9] = {-1, 0, 1, -2, 0, 2, -1, 0, 1};
+        static int total_sobel = 8;
+
+        int filt_ind_y = 0;
+        int filt_ind_x;
         for (int x = -1; x <= 1; x++) {
             for (int y = -1; y <= 1; y++) {
+                index = (loc->y + y) * img->w * pixel_width + (loc->x+x) * pixel_width;
                 if(x!=0) {
-                    index = (loc->y + y) * img->w * pixel_width + (loc->x+x) * pixel_width;
-                    gradient += Sobel[filt_ind] * (int) img_buf[index+add_ind];
+                    filt_ind_x = (x+1)%3 + (y+1)*3;
+                    gradient_x += Sobel[filt_ind_x] * (int) img_buf[index+add_ind];
                 }
-                filt_ind++;
+                if(y!=0) {
+                    gradient_y += Sobel[filt_ind_y] * (int) img_buf[index+add_ind];
+                }
+                filt_ind_y++;
             }
         }
-        gradient /= total_sobel;
+        gradient_x /= total_sobel;
     }
+  }
 
-    return gradient;
-  }
-  else {
-      return 0;
-  }
+  // TODO: more efficient would be to use dx, dy directly:
+  (*dx) = gradient_x;
+  (*dy) = gradient_y;
 }
 
 /**

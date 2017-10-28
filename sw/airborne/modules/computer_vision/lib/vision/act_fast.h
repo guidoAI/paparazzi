@@ -12,9 +12,10 @@ All rights reserved.
  * 1. Skip uniform areas in the image. If these areas are contiguous, many non-corners will never be evaluated.
  * 2. Follow edges. Typically, following an edge will bring an agent to a corner.
  * These two simple rules lead to a significant lower number of corner evaluations, while still detecting a reasonable number of corners.
+ * Moreover, since the agents scanning the image start on a grid, corners will be quite well-distributed over the image.
  * Each step of the agent starts by classifying the agent location as a corner or not with FAST.
  *
- * For bigger images, the computational difference between ACT-FAST and normal FAST become significant.
+ * For bigger images, the computational advantage of ACT-FAST over the normal, exhaustive application of FAST becomes significant.
  */
 
 #ifndef ACT_FAST_H
@@ -25,11 +26,13 @@ struct agent
         float x;
         float y;
         int active;
+        float preferred_dir_x;
+        float preferred_dir_y;
 };
 
 #include "std.h"
 #include "lib/vision/image.h"
 
-void act_fast(struct image_t *img, uint8_t fast_threshold, uint16_t *num_corners, struct point_t **ret_corners, uint16_t n_agents, uint16_t n_time_steps, float long_step, float short_step, int min_gradient, uint16_t max_corners);
+void act_fast(struct image_t *img, uint8_t fast_threshold, uint16_t *num_corners, struct point_t **ret_corners, uint16_t n_agents, uint16_t n_time_steps, float long_step, float short_step, int min_gradient);
 
 #endif

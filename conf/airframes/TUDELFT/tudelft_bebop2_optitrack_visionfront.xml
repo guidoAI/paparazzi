@@ -45,12 +45,14 @@
 
     <module name="video_capture">
       <define name="VIDEO_CAPTURE_CAMERA" value="front_camera"/>
+      <define name="VIDEO_CAPTURE_PATH" value="/data/ftp/internal_000/images/"/>
     </module>
 
     <module name="pose_history">
 		  <define name="POSE_HISTORY_SIZE" value="128" />
 	  </module>
 
+<!--    <define name="INS_INT_VEL_ID" value="ABI_DISABLE"/> -->
     <module name="cv_opticflow">
       <define name="OPTICFLOW_CAMERA" value="front_camera"/>
       <define name="MAX_HORIZON" value="10"/>
