@@ -554,16 +554,29 @@ void image_show_points(struct image_t *img, struct point_t *points, uint16_t poi
   uint8_t *img_buf = (uint8_t *)img->buf;
   uint8_t pixel_width = (img->type == IMAGE_YUV422) ? 2 : 1;
 
+  int cross_hair = 1;
+  int size_crosshair = 5;
+  uint8_t color[4];
+  color[0] = 255;
+  color[1] = 255;
+  color[2] = 255;
+  color[3] = 255;
+
   // Go trough all points and color them
   for (int i = 0; i < points_cnt; i++) {
-    uint32_t idx = pixel_width * points[i].y * img->w + points[i].x * pixel_width;
-    img_buf[idx] = 255;
+      if(!cross_hair) {
+        uint32_t idx = pixel_width * points[i].y * img->w + points[i].x * pixel_width;
+        img_buf[idx] = 255;
 
-    // YUV422 consists of 2 pixels
-    if (img->type == IMAGE_YUV422) {
-      idx++;
-      img_buf[idx] = 255;
-    }
+        // YUV422 consists of 2 pixels
+        if (img->type == IMAGE_YUV422) {
+          idx++;
+          img_buf[idx] = 255;
+        }
+      }
+      else {
+          image_draw_crosshair(img, &(points[i]), color, size_crosshair);
+      }
   }
 }
 

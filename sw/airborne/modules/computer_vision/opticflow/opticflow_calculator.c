@@ -49,18 +49,23 @@
 #include "lib/filters/kalman_filter_vision.h"
 #include "subsystems/imu.h"
 
+// for measuring time
+#include "mcu_periph/sys_time.h"
 
 // whether to show the flow and corners:
 #define OPTICFLOW_SHOW_FLOW 0
-#define OPTICFLOW_SHOW_CORNERS 0
+#define OPTICFLOW_SHOW_CORNERS 1
 #define OPTICFLOW_SHOW_INLIERS 0
 
 #define EXHAUSTIVE_FAST 0
 #define ACT_FAST 1
-#define CORNER_METHOD 1
+uint16_t n_time_steps = 10;
+uint16_t n_agents = 25;
+// corner method:
+#define CORNER_METHOD 0
 
 // YUV histograms, number of bins:
-#define DOWNSELECT_VECTORS 1
+#define DOWNSELECT_VECTORS 0
 #define N_BINS_UV 5
 // Number of cells in image:
 #define N_CELLS 5
@@ -373,6 +378,9 @@ void calc_fast9_lukas_kanade(struct opticflow_t *opticflow, struct opticflow_sta
     // needs to be set to 0 because result is now static
     result->corner_cnt = 0;
 
+
+    float pre_corner = get_sys_time_float();
+
     if(CORNER_METHOD == EXHAUSTIVE_FAST) {
       // FAST corner detection
       // TODO: There is something wrong with fast9_detect destabilizing FPS. This problem is reduced with putting min_distance
@@ -387,25 +395,45 @@ void calc_fast9_lukas_kanade(struct opticflow_t *opticflow, struct opticflow_sta
     else if (CORNER_METHOD == ACT_FAST) {
         // ACT-FAST corner detection:
         // TODO: all relevant things should be settings:
-        uint16_t n_time_steps = 20;
-        float long_step = 5;
-        float short_step = 2;
-        int min_gradient = 10;
+        float long_step = 10; // 5
+        float short_step = 2; // 2
+        int min_gradient = 10; // 10
+        printf("opticflow->fast9_threshold = %d, n_agents = %d, n_time_steps = %d\n", opticflow->fast9_threshold, n_agents, n_time_steps);
         act_fast(&opticflow->prev_img_gray, opticflow->fast9_threshold, &result->corner_cnt,
-            &opticflow->fast9_ret_corners, OPTICFLOW_MAX_TRACK_CORNERS, n_time_steps,
+            &opticflow->fast9_ret_corners, n_agents, n_time_steps,
             long_step, short_step, min_gradient);
     }
+
+    float post_corner = get_sys_time_float();
+    printf("Time spent on corner detection: %f\n", post_corner - pre_corner);
+
     // Adaptive threshold
     if (opticflow->fast9_adaptive) {
+
+        // This works well for exhaustive FAST, but drives the threshold to the minimum for ACT-FAST:
       // Decrease and increase the threshold based on previous values
-      if (result->corner_cnt < 40
-          && opticflow->fast9_threshold > FAST9_LOW_THRESHOLD) { // TODO: Replace 40 with OPTICFLOW_MAX_TRACK_CORNERS / 2
-        opticflow->fast9_threshold--;
+      if (result->corner_cnt < 40) { // TODO: Replace 40 with OPTICFLOW_MAX_TRACK_CORNERS / 2
+        // make detections easier:
+        if(opticflow->fast9_threshold > FAST9_LOW_THRESHOLD) {
+            opticflow->fast9_threshold--;
+        }
+
+        if(CORNER_METHOD == ACT_FAST) {
+            n_time_steps++;
+            n_agents++;
+        }
+
       } else if (result->corner_cnt > OPTICFLOW_MAX_TRACK_CORNERS * 2 && opticflow->fast9_threshold < FAST9_HIGH_THRESHOLD) {
         opticflow->fast9_threshold++;
+        if(CORNER_METHOD == ACT_FAST && n_time_steps > 5 && n_agents > 10) {
+            n_time_steps--;
+            n_agents--;
+        }
       }
     }
   }
+
+
 
 #if OPTICFLOW_SHOW_CORNERS
   image_show_points(img, opticflow->fast9_ret_corners, result->corner_cnt);
@@ -425,11 +453,13 @@ void calc_fast9_lukas_kanade(struct opticflow_t *opticflow, struct opticflow_sta
 
   // Execute a Lucas Kanade optical flow
   result->tracked_cnt = result->corner_cnt;
+  float pre_flow = get_sys_time_float();
   struct flow_t *vectors = opticFlowLK(&opticflow->img_gray, &opticflow->prev_img_gray, opticflow->fast9_ret_corners,
                                        &result->tracked_cnt,
                                        opticflow->window_size / 2, opticflow->subpixel_factor, opticflow->max_iterations,
                                        opticflow->threshold_vec, opticflow->max_track_corners, opticflow->pyramid_level);
-
+  float post_flow = get_sys_time_float();
+  printf("Time spent on flow: %f\n", post_flow - pre_flow);
 #if OPTICFLOW_SHOW_FLOW
   image_show_flow(img, vectors, result->tracked_cnt, opticflow->subpixel_factor);
 #endif
