@@ -53,7 +53,7 @@
 #include "mcu_periph/sys_time.h"
 
 // whether to show the flow and corners:
-#define OPTICFLOW_SHOW_FLOW 0
+#define OPTICFLOW_SHOW_FLOW 1
 #define OPTICFLOW_SHOW_CORNERS 1
 #define OPTICFLOW_SHOW_INLIERS 0
 
@@ -62,7 +62,7 @@
 uint16_t n_time_steps = 10;
 uint16_t n_agents = 25;
 // corner method:
-#define CORNER_METHOD 0
+#define CORNER_METHOD 1
 
 // YUV histograms, number of bins:
 #define DOWNSELECT_VECTORS 0
@@ -436,7 +436,8 @@ void calc_fast9_lukas_kanade(struct opticflow_t *opticflow, struct opticflow_sta
 
 
 #if OPTICFLOW_SHOW_CORNERS
-  image_show_points(img, opticflow->fast9_ret_corners, result->corner_cnt);
+  uint8_t color_points[4] = {127, 255, 127, 255};
+  image_show_points_color(img, opticflow->fast9_ret_corners, result->corner_cnt, color_points);
 #endif
 
   // Check if we found some corners to track

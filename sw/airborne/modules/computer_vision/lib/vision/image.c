@@ -581,6 +581,42 @@ void image_show_points(struct image_t *img, struct point_t *points, uint16_t poi
 }
 
 /**
+ * Show points in an image by coloring them through giving
+ * the pixels the maximum value.
+ * This works with YUV422 and grayscale images
+ * @param[in,out] *img The image to place the points on
+ * @param[in] *points The points to show
+ * @param[in] *points_cnt The amount of points to show
+ * @param[in] *color The color of the points as a [U, Y1, V, Y2] uint8_t array, or a uint8_t value pointer for grayscale images.
+ *                   Example colors: white = {127, 255, 127, 255}, green = {0, 127, 0, 127};
+ */
+void image_show_points_color(struct image_t *img, struct point_t *points, uint16_t points_cnt, uint8_t *color)
+{
+  uint8_t *img_buf = (uint8_t *)img->buf;
+  uint8_t pixel_width = (img->type == IMAGE_YUV422) ? 2 : 1;
+
+  int cross_hair = 1;
+  int size_crosshair = 5;
+
+  // Go trough all points and color them
+  for (int i = 0; i < points_cnt; i++) {
+      if(!cross_hair) {
+        uint32_t idx = pixel_width * points[i].y * img->w + points[i].x * pixel_width;
+        img_buf[idx] = 255;
+
+        // YUV422 consists of 2 pixels
+        if (img->type == IMAGE_YUV422) {
+          idx++;
+          img_buf[idx] = 255;
+        }
+      }
+      else {
+          image_draw_crosshair(img, &(points[i]), color, size_crosshair);
+      }
+  }
+}
+
+/**
  * Shows the flow from a specific point to a new point
  * This works on YUV422 and Grayscale images
  * @param[in,out] *img The image to show the flow on
@@ -589,6 +625,9 @@ void image_show_points(struct image_t *img, struct point_t *points, uint16_t poi
  */
 void image_show_flow(struct image_t *img, struct flow_t *vectors, uint16_t points_cnt, uint8_t subpixel_factor)
 {
+  uint8_t color[4] = {255,255,255,255};
+  int size_crosshair = 5;
+
   // Go through all the points
   for (uint16_t i = 0; i < points_cnt; i++) {
     // Draw a line from the original position with the flow vector
@@ -601,6 +640,7 @@ void image_show_flow(struct image_t *img, struct flow_t *vectors, uint16_t point
       (vectors[i].pos.y + vectors[i].flow_y) / subpixel_factor
     };
     image_draw_line(img, &from, &to);
+    image_draw_crosshair(img, &to, color, size_crosshair);
   }
 }
 

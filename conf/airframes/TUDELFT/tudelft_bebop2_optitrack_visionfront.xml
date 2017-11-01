@@ -19,8 +19,8 @@
     <define name="USE_SONAR" value="0"/>
     <module name="ins" type="extended"/>
 
-    <define name="MT9F002_OUTPUT_HEIGHT" value="640" />
-    <define name="MT9F002_OUTPUT_WIDTH" value="640" />
+    <define name="MT9F002_OUTPUT_HEIGHT" value="320" />
+    <define name="MT9F002_OUTPUT_WIDTH" value="320" />
     <define name="MT9F002_INITIAL_OFFSET_X" value="0.15" />
     <define name="MT9F002_INITIAL_OFFSET_Y" value="0.0" />
     <define name="MT9F002_TARGET_EXPOSURE" value="30" />
@@ -64,6 +64,7 @@
       <define name="OPTICFLOW_DEROTATION_CORRECTION_FACTOR_X" value="0.8"/> <!--Obtained from a linefit--> 
       <define name="OPTICFLOW_DEROTATION_CORRECTION_FACTOR_Y" value="0.85"/> <!--Obtained from a linefit--> 
       <define name="OPTICFLOW_FEATURE_MANAGEMENT" value="0"/> <!-- feature  management still sucks -->
+      <define name="OPTICFLOW_MAX_TRACK_CORNERS" value="50"/> 
     </module>
 
     <module name="optical_flow_landing">
