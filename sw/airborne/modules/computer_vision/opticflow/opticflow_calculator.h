@@ -76,6 +76,8 @@ struct opticflow_t {
 
   int n_samples_color_histogram;        ///< The number of samples used to make a color histogram
   int color_similarity_threshold;             ///< The threshold to determine whether two color histograms are similar
+  int color_min_UV;                     ///< Estimated minimal value of the color channels U, V
+  int color_max_UV;                     ///< Estimated maximal value of the color channels U, V
 };
 
 
@@ -91,7 +93,7 @@ void calc_edgeflow_tot(struct opticflow_t *opticflow, struct opticflow_state_t *
 void kalman_filter_opticflow_velocity(float *velocity_x, float *velocity_y, float *acceleration_measurement, float fps,
                                       float *measurement_noise, float process_noise, bool reinitialize_kalman);
 
-void get_YUV_histogram(struct image_t *img, int x_min, int x_max, int y_min, int y_max, int n_samples, int* histogram, int n_bins_UV);
+void get_YUV_histogram(struct image_t *img, int x_min, int x_max, int y_min, int y_max, int n_samples, int* histogram, int n_bins_UV, int min_col, int max_col);
 int get_hist_distance(int* hist, int* model_hist);
 //void down_select_inlier_flow_vectors(int* inliers, struct flow_t* vectors, int n_vectors, int n_inliers);
 #endif /* OPTICFLOW_CALCULATOR_H */

@@ -598,7 +598,7 @@ void vertical_ctrl_optical_flow_cb(uint8_t sender_id UNUSED, uint32_t stamp, int
                                    int16_t flow_y UNUSED,
                                    int16_t flow_der_x UNUSED, int16_t flow_der_y UNUSED, float quality UNUSED, float size_divergence UNUSED, float dist UNUSED)
 {
-  // ugly hack: when front vision, use flow_x
+  // ugly hack: when front vision, use flow_x (flow_der_x?)
   divergence_vision = (float) flow_x / 1000.0f; // size_divergence;
   vision_time = ((float)stamp) / 1e6;
 }

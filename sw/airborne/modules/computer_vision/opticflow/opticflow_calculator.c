@@ -53,9 +53,9 @@
 #include "mcu_periph/sys_time.h"
 
 // whether to show the flow and corners:
-#define OPTICFLOW_SHOW_FLOW 1
-#define OPTICFLOW_SHOW_CORNERS 1
-#define OPTICFLOW_SHOW_INLIERS 0
+#define OPTICFLOW_SHOW_FLOW 0
+#define OPTICFLOW_SHOW_CORNERS 0
+#define OPTICFLOW_SHOW_INLIERS 1
 
 #define EXHAUSTIVE_FAST 0
 #define ACT_FAST 1
@@ -65,10 +65,10 @@ uint16_t n_agents = 25;
 #define CORNER_METHOD 1
 
 // YUV histograms, number of bins:
-#define DOWNSELECT_VECTORS 0
+#define DOWNSELECT_VECTORS 1
 #define N_BINS_UV 5
 // Number of cells in image:
-#define N_CELLS 5
+#define N_CELLS 3
 
 // What methods are run to determine divergence, lateral flow, etc.
 // SIZE_DIV looks at line sizes and only calculates divergence
@@ -227,7 +227,15 @@ PRINT_CONFIG_VAR(OPTICFLOW_COL_SAMPLES)
 #endif
 PRINT_CONFIG_VAR(OPTICFLOW_COL_THRESH)
 
+#ifndef OPTICFLOW_COL_MIN_UV
+#define OPTICFLOW_COL_MIN_UV 90
+#endif
+PRINT_CONFIG_VAR(OPTICFLOW_COL_MIN_UV)
 
+#ifndef OPTICFLOW_COL_MAX_UV
+#define OPTICFLOW_COL_MAX_UV 164
+#endif
+PRINT_CONFIG_VAR(OPTICFLOW_COL_MIN_UV)
 
 //Include median filter
 #include "filters/median_filter.h"
@@ -277,6 +285,8 @@ void opticflow_calc_init(struct opticflow_t *opticflow)
 
   opticflow->n_samples_color_histogram = OPTICFLOW_COL_SAMPLES;
   opticflow->color_similarity_threshold = OPTICFLOW_COL_THRESH;
+  opticflow->color_min_UV = OPTICFLOW_COL_MIN_UV;
+  opticflow->color_max_UV = OPTICFLOW_COL_MAX_UV;
 }
 /**
  * Run the optical flow with fast9 and lukaskanade on a new image frame
@@ -485,7 +495,7 @@ void calc_fast9_lukas_kanade(struct opticflow_t *opticflow, struct opticflow_sta
     int y_max = (r_center+1) * cell_size;
     // printf("ROI UV histogram = %d, %d, %d, %d\n", x_min, x_max, y_min, y_max);
     // TODO: img may have changed by drawing on it!!!!!!! if OPTICFLOW_SHOW_FLOW is true for example.
-    get_YUV_histogram(img, x_min, x_max, y_min, y_max, opticflow->n_samples_color_histogram, UV_histogram, N_BINS_UV);
+    get_YUV_histogram(img, x_min, x_max, y_min, y_max, opticflow->n_samples_color_histogram, UV_histogram, N_BINS_UV, opticflow->color_min_UV, opticflow->color_max_UV);
 
     int cell_ind = 0;
     //int distances_histograms[n_x_cells*n_y_cells];
@@ -502,7 +512,7 @@ void calc_fast9_lukas_kanade(struct opticflow_t *opticflow, struct opticflow_sta
               hist_distance = 0;
             }
             else {
-              get_YUV_histogram(img, x_min, x_max, y_min, y_max, opticflow->n_samples_color_histogram, histogram, N_BINS_UV);
+              get_YUV_histogram(img, x_min, x_max, y_min, y_max, opticflow->n_samples_color_histogram, histogram, N_BINS_UV, opticflow->color_min_UV, opticflow->color_max_UV);
               hist_distance = get_hist_distance(histogram, UV_histogram);
             }
             //distances_histograms[cell_ind] = hist_distance;
@@ -554,9 +564,11 @@ void calc_fast9_lukas_kanade(struct opticflow_t *opticflow, struct opticflow_sta
     for(int i = 0; i < result->tracked_cnt; i++) {
         // cross-hair, only draw if far enough from the border:
         if(inliers[i]) {
+            // green if inlier:
             color[0] = 0; color[2] = 0;
         }
         else {
+            // pink if outlier:
             color[0] = 255; color[2] = 255;
         }
         loc.x = vectors[i].pos.x / opticflow->subpixel_factor;
@@ -632,6 +644,7 @@ void calc_fast9_lukas_kanade(struct opticflow_t *opticflow, struct opticflow_sta
     result->flow_y = vectors[result->tracked_cnt / 2].flow_y;
   }
 
+
   // Flow Derotation
   float diff_flow_x = 0;
   float diff_flow_y = 0;
@@ -671,6 +684,12 @@ void calc_fast9_lukas_kanade(struct opticflow_t *opticflow, struct opticflow_sta
   //  result->vel_x =  - result->flow_der_x * result->fps * cam_state->agl / opticflow->subpixel_factor * OPTICFLOW_FOV_W / img->w
   //  result->vel_y =  result->flow_der_y * result->fps * cam_state->agl / opticflow->subpixel_factor * OPTICFLOW_FOV_H / img->h
 
+
+  // Correct also the flow for the FPS:
+  result->flow_x *= result->fps;
+  result->flow_y *= result->fps;
+  result->flow_der_x *= result->fps;
+  result->flow_der_y *= result->fps;
 
   // Determine quality of noise measurement for state filter
   //TODO develop a noise model based on groundtruth
@@ -1048,16 +1067,17 @@ static int cmp_array(const void *a, const void *b)
   return pa[0] - pb[0];
 }
 
-void get_YUV_histogram(struct image_t *img, int x_min, int x_max, int y_min, int y_max, int n_samples, int* histogram, int n_bins_UV) {
+void get_YUV_histogram(struct image_t *img, int x_min, int x_max, int y_min, int y_max, int n_samples, int* histogram, int n_bins_UV, int min_col, int max_col) {
   // get a UV histogram for now (Y to be added later):
   // sample pixels at random from the given region of interest
+
+  // printf("\n\nCELL\n\n");
 
   // empty the histogram
   for(int i = 0; i < n_bins_UV * n_bins_UV; i++) {
       histogram[i] = 0;
   }
   uint8_t *source = img->buf;
-  int bin_size = 255 / n_bins_UV;
   int x, y, bin_U, bin_V;
   int x_range = x_max - x_min;
   int y_range = y_max - y_min;
@@ -1065,6 +1085,15 @@ void get_YUV_histogram(struct image_t *img, int x_min, int x_max, int y_min, int
   uint16_t row_stride = img->w * 2;
   uint16_t pixel_step = 2;
   uint8_t U,V,Y;
+  int col_range = max_col - min_col;
+  int bin_size;
+  if(col_range == 255) {
+      bin_size = col_range / n_bins_UV;
+  }
+  else {
+      bin_size = col_range / (n_bins_UV - 2);
+  }
+  // printf("Min col = %d, max col = %d, range = %d, bin_size = %d\n", min_col, max_col, col_range, bin_size);
   for(int s = 0; s < n_samples; s++) {
       // generate random coordinates:
       x = rand() % x_range + x_min;
@@ -1077,19 +1106,45 @@ void get_YUV_histogram(struct image_t *img, int x_min, int x_max, int y_min, int
       U = source[index];
       Y = source[index+1]; // source[index+3]
       V = source[index+2];
+      // printf("(%d, %d, %d) ", U, V, Y);
 
       // determine the corresponding bins and place in the array:
-      if(Y >= 127) {
+      /*if(Y >= 25) {*/
           // if bright enough, bin the color:
+      if(min_col == 0 && max_col == 255) {
           bin_U = U / bin_size;
           bin_V = V / bin_size;
+      }
+      else {
+          if(U <= min_col) {
+              bin_U = 0;
+          }
+          else if(U >= max_col) {
+              bin_U = n_bins_UV - 1;
+          }
+          else {
+              bin_U = (U - min_col) / bin_size;
+          }
+          if(V <= min_col) {
+              bin_V = 0;
+          }
+          else if(V >= max_col) {
+              bin_V = n_bins_UV - 1;
+          }
+          else {
+              bin_V = (V - min_col) / bin_size;
+          }
+
+      }
+          /*
       }
       else {
           // if too dark, put it as grey:
           bin_U = n_bins_UV / 2;
           bin_V = n_bins_UV / 2;
-      }
+      }*/
 
+      // printf("Index = %d\n", bin_U * n_bins_UV + bin_V);
       histogram[bin_U * n_bins_UV + bin_V]++;
   }
 
@@ -1101,8 +1156,8 @@ void get_YUV_histogram(struct image_t *img, int x_min, int x_max, int y_min, int
 
 int get_hist_distance(int* hist, int* model_hist)
 {
-/*
-  printf("\n\nHistogram: ");
+
+  printf("\n\nHisto: ");
   for(int i = 0; i < N_BINS_UV * N_BINS_UV; i++) {
     printf("%d ", hist[i]);
   }
@@ -1112,7 +1167,7 @@ int get_hist_distance(int* hist, int* model_hist)
       printf("%d ", model_hist[i]);
     }
     printf("\n");
-*/
+
 
         int dist = 0;
         int add_dist;

@@ -39,6 +39,9 @@
 // will this work?
 #include "modules/ctrl/optical_flow_landing.h"
 
+
+#define MAKE_SNAPSHOTS false
+
 // reading the pressuremeter:
 #include "subsystems/abi.h"
 #ifndef LOGGER_BARO_ID
@@ -169,18 +172,20 @@ void file_logger_periodic(void)
   gettimeofday(&stop, 0);
   double curr_time = (double)(stop.tv_sec + stop.tv_usec / 1000000.0);
   double time_stamp = curr_time - (double)(start.tv_sec + start.tv_usec / 1000000.0);
-  if((time_stamp - prev_ss_time) > 0.2) // for 5hz
-  {
-    video_capture_shoot();
-    prev_ss_time = time_stamp;
-    take_shot = shots;
-    shots +=1;
-  }
-  else
-  {
-    take_shot = -1;
-  }
+  if(MAKE_SNAPSHOTS) {
+    if((time_stamp - prev_ss_time) > 0.2) // for 5hz
+    {
 
+      video_capture_shoot();
+      prev_ss_time = time_stamp;
+      take_shot = shots;
+      shots +=1;
+    }
+    else
+    {
+      take_shot = -1;
+    }
+  }
   static uint32_t counter;
   struct Int32Quat *quat = stateGetNedToBodyQuat_i();
   struct FloatEulers *eulers = stateGetNedToBodyEulers_f();

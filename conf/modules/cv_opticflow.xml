@@ -55,6 +55,8 @@
       <!-- Color histogram similarity threshold -->
       <define name="COL_SAMPLES" value="100" description="The number of samples used to make a color histogram"/>
       <define name="COL_THRESH" value="40" description="The color histogram distance that is used as a threshold for similarity - max is the number of samples"/>
+      <define name="COL_MIN_UV" value="90" description="The estimated minimum of the U / V values (which are typically close to 127), used for binning."/>
+      <define name="COL_MAX_UV" value="164" description="The estimated maximum of the U / V values (which are typically close to 127), used for binning."/>
 
     </section>
   </doc>
@@ -94,6 +96,8 @@
   <!-- For color histograms used in flow vector selection -->
         <dl_setting var="opticflow.n_samples_color_histogram" module="computer_vision/opticflow_module" min="25" step="5" max="1000" shortname="col_samples" param="OPTICFLOW_COL_SAMPLES"/>
         <dl_setting var="opticflow.color_similarity_threshold" module="computer_vision/opticflow_module" min="0" step="1" max="1000" shortname="col_thresh" param="OPTICFLOW_COL_THRESH"/>
+        <dl_setting var="opticflow.color_min_UV" module="computer_vision/opticflow_module" min="0" step="1" max="255" shortname="col_min_UV" param="OPTICFLOW_COL_MIN_UV"/>
+        <dl_setting var="opticflow.color_max_UV" module="computer_vision/opticflow_module" min="0" step="1" max="255" shortname="col_max_UV" param="OPTICFLOW_COL_MAX_UV"/>
 
       </dl_settings>
     </dl_settings>
