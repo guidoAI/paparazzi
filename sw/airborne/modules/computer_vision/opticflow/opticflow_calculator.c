@@ -517,18 +517,31 @@ void calc_fast9_lukas_kanade(struct opticflow_t *opticflow, struct opticflow_sta
             }
             //distances_histograms[cell_ind] = hist_distance;
             similarity_histograms[cell_ind] = hist_distance <= opticflow->color_similarity_threshold;
+
             cell_ind++;
         }
     }
 
     if(OPTICFLOW_SHOW_INLIERS) {
+        uint8_t color_rect[4] = {127, 255, 127, 255};
+        uint8_t colborder = 10;
+        uint8_t avg_color[4] = {0, 127, 255, 127};
       for(c = 0; c < n_x_cells; c++) {
             for(r = 0; r < n_y_cells; r++) {
                 x_min = c * cell_size;
                 x_max = (c+1) * cell_size;
+                c_center = (x_max + x_min) / 2;
                 y_min = r * cell_size;
                 y_max = (r+1) * cell_size;
-                image_draw_square(img, x_min, x_max, y_min, y_max);
+                r_center = (y_max + y_min) / 2;
+                // draw the cell:
+                image_draw_rectangle_color(img, x_min, x_max, y_min, y_max, color_rect);
+
+                // get average color and draw a colored rectangle:
+               get_average_YUV(img, x_min, x_max, y_min, y_max, opticflow->n_samples_color_histogram, avg_color);
+               image_draw_rectangle_color(img, c_center-colborder, c_center+colborder, r_center-colborder, r_center+colborder, avg_color);
+               image_draw_rectangle_color(img, c_center-(colborder-1), c_center+(colborder-1), r_center-(colborder-1), r_center+(colborder-1), avg_color);
+               image_draw_rectangle_color(img, c_center-(colborder-2), c_center+(colborder-2), r_center-(colborder-2), r_center+(colborder-2), avg_color);
             }
       }
     }
@@ -554,6 +567,8 @@ void calc_fast9_lukas_kanade(struct opticflow_t *opticflow, struct opticflow_sta
     //result->tracked_cnt = n_inliers;
 
 #if OPTICFLOW_SHOW_INLIERS
+
+
     struct point_t loc;
     uint8_t color[4];
     color[0] = 255;
@@ -1065,6 +1080,47 @@ static int cmp_array(const void *a, const void *b)
   const uint16_t *pa = *(const uint16_t **)a;
   const uint16_t *pb = *(const uint16_t **)b;
   return pa[0] - pb[0];
+}
+
+void get_average_YUV(struct image_t *img, int x_min, int x_max, int y_min, int y_max, int n_samples, uint8_t *color) {
+  // get average YUV values in a region, in the color format [U Y V Y]
+  uint8_t *source = img->buf;
+   int x, y;
+   int x_range = x_max - x_min;
+   int y_range = y_max - y_min;
+   uint16_t index;
+   uint16_t row_stride = img->w * 2;
+   uint16_t pixel_step = 2;
+   uint8_t U,V,Y;
+   uint32_t avg_U = 0;
+   uint32_t avg_V = 0;
+   uint32_t avg_Y = 0;
+   for(int s = 0; s < n_samples; s++) {
+       // generate random coordinates:
+       x = rand() % x_range + x_min;
+       // only accept even x due to UYVY format
+       x = (x % 2 == 0) ? x : x-1;
+       y = rand() % y_range + y_min;
+
+       // determine the index of the pixel in the UYVY image and get the values:
+       index = y * row_stride + x * pixel_step;
+       U = source[index];
+       Y = source[index+1]; // source[index+3]
+       V = source[index+2];
+
+       avg_U += U;
+       avg_V += V;
+       avg_Y += Y;
+  }
+  // average Y, U, V:
+  avg_U /= n_samples;
+  avg_V /= n_samples;
+  avg_Y /= n_samples;
+  // set the colors:
+  color[0] = (uint8_t) avg_U;
+  color[1] = (uint8_t) avg_Y;
+  color[2] = (uint8_t) avg_V;
+  color[3] = color[1];
 }
 
 void get_YUV_histogram(struct image_t *img, int x_min, int x_max, int y_min, int y_max, int n_samples, int* histogram, int n_bins_UV, int min_col, int max_col) {

@@ -645,14 +645,15 @@ void image_show_flow(struct image_t *img, struct flow_t *vectors, uint16_t point
 }
 
 /**
- * Draw a pink square on the image
+ * Draw a pink rectangle on the image
  * @param[in,out] *img The image to show the line on
  * @param[in] x_min start in x
  * @param[in] x_max end of x
  * @param[in] y_min start in y
  * @param[in] y_max end of y
+ * @param[in] color in [U, Y, V, Y] format
  */
-void image_draw_square(struct image_t *img, int x_min, int x_max, int y_min, int y_max) {
+void image_draw_rectangle_color(struct image_t *img, int x_min, int x_max, int y_min, int y_max, uint8_t * color) {
   struct point_t from, to;
 
   // bottom from left to right:
@@ -660,28 +661,28 @@ void image_draw_square(struct image_t *img, int x_min, int x_max, int y_min, int
   from.y = y_min;
   to.x = x_max;
   to.y = y_min;
-  image_draw_line(img, &from, &to);
+  image_draw_line_color(img, &from, &to, color);
 
   // from bottom right to top right:
   from.x = x_max;
   from.y = y_min;
   to.x = x_max;
   to.y = y_max;
-  image_draw_line(img, &from, &to);
+  image_draw_line_color(img, &from, &to, color);
 
   // from top right to top left:
   from.x = x_max;
   from.y = y_max;
   to.x = x_min;
   to.y = y_max;
-  image_draw_line(img, &from, &to);
+  image_draw_line_color(img, &from, &to, color);
 
   // from top left to bottom left:
   from.x = x_min;
   from.y = y_max;
   to.x = x_min;
   to.y = y_min;
-  image_draw_line(img, &from, &to);
+  image_draw_line_color(img, &from, &to, color);
 
 }
 
@@ -813,6 +814,8 @@ void image_draw_line_color(struct image_t *img, struct point_t *from, struct poi
   uint16_t startx = from->x;
   uint16_t starty = from->y;
 
+  uint8_t temp_color[4] = {color[0], color[1], color[2], color[3]};
+
   /* compute the distances in both directions */
   int32_t delta_x = to->x - from->x;
   int32_t delta_y = to->y - from->y;
@@ -837,18 +840,30 @@ void image_draw_line_color(struct image_t *img, struct point_t *from, struct poi
   if (delta_x > delta_y) { distance = delta_x * 20; }
   else { distance = delta_y * 20; }
 
+  printf("\n\n LINE \n\n");
   /* draw the line */
   for (uint16_t t = 0; /* starty >= 0 && */ starty < img->h && /* startx >= 0 && */ startx < img->w
        && t <= distance + 1; t++) {
+
+      // extra check?
+      if(startx % 2 == 1) {
+          temp_color[0] = color[2];
+          temp_color[2] = color[0];
+      }
+      else {
+          temp_color[0] = color[0];
+          temp_color[2] = color[2];
+      }
     uint32_t buf_loc = img->w * pixel_width * starty + startx * pixel_width;
-    img_buf[buf_loc] = (t <= 3) ? 0 : color[0]; // u (or grayscale)
+    //printf("t = %d, startx = %d, starty = %d, buff_loc = %d, xerr = %d, yerr = %d\n", t, startx, starty, buf_loc, xerr, yerr);
+    img_buf[buf_loc] = temp_color[0]; // Why this: (t <= 3) ? 0 : temp_color[0]; // u (or grayscale)
 
     if (img->type == IMAGE_YUV422) {
-      img_buf[buf_loc + 1] = color[1]; // y1
+      img_buf[buf_loc + 1] = temp_color[1]; // y1
 
       if (startx + 1 < img->w) {
-        img_buf[buf_loc + 2] = (t <= 3) ? 0 : color[2]; // v
-        img_buf[buf_loc + 3] = color[3]; // y2
+        img_buf[buf_loc + 2] = temp_color[2]; //(t <= 3) ? 0 : temp_color[2]; // v
+        img_buf[buf_loc + 3] = temp_color[3]; // y2
       }
     }
 
