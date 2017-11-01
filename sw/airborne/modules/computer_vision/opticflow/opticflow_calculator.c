@@ -537,11 +537,24 @@ void calc_fast9_lukas_kanade(struct opticflow_t *opticflow, struct opticflow_sta
                 // draw the cell:
                 image_draw_rectangle_color(img, x_min, x_max, y_min, y_max, color_rect);
 
-                // get average color and draw a colored rectangle:
-               get_average_YUV(img, x_min, x_max, y_min, y_max, opticflow->n_samples_color_histogram, avg_color);
+
+                // show the center pixel's color:
+                if(c_center % 2 == 1) c_center--;
+                uint32_t buf_loc = c_center * 2 + r_center * img->w * 2;
+                uint8_t *img_buf = (uint8_t *)img->buf;
+                avg_color[0] = img_buf[buf_loc];
+                avg_color[1] = img_buf[buf_loc+1];
+                avg_color[2] = img_buf[buf_loc+2];
+                avg_color[3] = img_buf[buf_loc+3];
+
+
+               // get average color and draw a colored rectangle:
+               // get_average_YUV(img, x_min, x_max, y_min, y_max, opticflow->n_samples_color_histogram, avg_color);
+
                image_draw_rectangle_color(img, c_center-colborder, c_center+colborder, r_center-colborder, r_center+colborder, avg_color);
                image_draw_rectangle_color(img, c_center-(colborder-1), c_center+(colborder-1), r_center-(colborder-1), r_center+(colborder-1), avg_color);
                image_draw_rectangle_color(img, c_center-(colborder-2), c_center+(colborder-2), r_center-(colborder-2), r_center+(colborder-2), avg_color);
+
             }
       }
     }
@@ -1089,8 +1102,8 @@ void get_average_YUV(struct image_t *img, int x_min, int x_max, int y_min, int y
    int x_range = x_max - x_min;
    int y_range = y_max - y_min;
    uint16_t index;
-   uint16_t row_stride = img->w * 2;
    uint16_t pixel_step = 2;
+   uint16_t row_stride = img->w * pixel_step;
    uint8_t U,V,Y;
    uint32_t avg_U = 0;
    uint32_t avg_V = 0;
@@ -1138,8 +1151,8 @@ void get_YUV_histogram(struct image_t *img, int x_min, int x_max, int y_min, int
   int x_range = x_max - x_min;
   int y_range = y_max - y_min;
   uint16_t index;
-  uint16_t row_stride = img->w * 2;
   uint16_t pixel_step = 2;
+  uint16_t row_stride = img->w * pixel_step;
   uint8_t U,V,Y;
   int col_range = max_col - min_col;
   int bin_size;
