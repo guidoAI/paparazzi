@@ -66,12 +66,14 @@ PRINT_CONFIG_VAR(LOGGER_OF_ID)
 // Callback function of the optical flow estimate:
 static void logger_optical_flow_cb(uint8_t sender_id, uint32_t stamp, int16_t flow_x,
                                    int16_t flow_y, int16_t flow_der_x, int16_t flow_der_y, float quality, float size_divergence, float dist);
-float logger_flow_x, logger_flow_y, logger_size_divergence;
+float logger_flow_x, logger_flow_y, logger_flow_der_x, logger_flow_der_y, logger_size_divergence;
 static abi_event optical_flow_ev;
 static void logger_optical_flow_cb(uint8_t sender_id UNUSED, uint32_t stamp UNUSED, int16_t flow_x,
                                    int16_t flow_y,
-                                   int16_t flow_der_x UNUSED, int16_t flow_der_y UNUSED, float quality UNUSED, float size_divergence, float dist UNUSED)
+                                   int16_t flow_der_x, int16_t flow_der_y, float quality UNUSED, float size_divergence, float dist UNUSED)
 {
+  logger_flow_der_x = (float) flow_der_x;
+  logger_flow_der_y = (float) flow_der_y;
   logger_flow_x = (float) flow_x;
   logger_flow_y = (float) flow_y;
   logger_size_divergence = size_divergence;
@@ -135,13 +137,15 @@ void file_logger_start(void)
   if (file_logger != NULL) {
     fprintf(
       file_logger,
-      "counter,gyro_unscaled_p,gyro_unscaled_q,gyro_unscaled_r,accel_unscaled_x,accel_unscaled_y,accel_unscaled_z,mag_unscaled_x,mag_unscaled_y,mag_unscaled_z,COMMAND_THRUST,COMMAND_ROLL,COMMAND_PITCH,COMMAND_YAW,qi,qx,qy,qz,shot,pressure,sonar,phi_f,theta_f,psi_f,pstate,cov_div,used_flow,flow_x,flow_y,size_divergence\n"
+      "counter,gyro_unscaled_p,gyro_unscaled_q,gyro_unscaled_r,accel_unscaled_x,accel_unscaled_y,accel_unscaled_z,mag_unscaled_x,mag_unscaled_y,mag_unscaled_z,COMMAND_THRUST,COMMAND_ROLL,COMMAND_PITCH,COMMAND_YAW,qi,qx,qy,qz,shot,pressure,sonar,phi_f,theta_f,psi_f,pstate,cov_div,used_flow,flow_x,flow_y,size_divergence,flow_der_x,flow_der_y,X,Y,Z,VX,VY,VZ\n"
     );
 
     logger_pressure = 0.0f;
     logger_sonar = 0.0f;
     logger_flow_x = 0.0f;
     logger_flow_y = 0.0f;
+    logger_flow_der_x = 0.0f;
+    logger_flow_der_y = 0.0f;
     logger_size_divergence = 0.0f;
   }
 
@@ -189,8 +193,10 @@ void file_logger_periodic(void)
   static uint32_t counter;
   struct Int32Quat *quat = stateGetNedToBodyQuat_i();
   struct FloatEulers *eulers = stateGetNedToBodyEulers_f();
+  struct NedCoor_f *pos = stateGetPositionNed_f();
+  struct NedCoor_f *vel = stateGetSpeedNed_f();
 
-  fprintf(file_logger, "%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f\n",
+  fprintf(file_logger, "%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f\n",
           counter,
           imu.gyro_unscaled.p,
           imu.gyro_unscaled.q,
@@ -220,7 +226,15 @@ void file_logger_periodic(void)
           of_landing_ctrl.divergence,
           logger_flow_x,
           logger_flow_y,
-          logger_size_divergence
+          logger_size_divergence,
+          logger_flow_der_x,
+          logger_flow_der_y,
+          pos->x,
+          pos->y,
+          pos->z,
+          vel->x,
+          vel->y,
+          vel->z
          );
   counter++;
 }
