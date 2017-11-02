@@ -40,7 +40,7 @@
 #include "modules/ctrl/optical_flow_landing.h"
 
 
-#define MAKE_SNAPSHOTS false
+#define MAKE_SNAPSHOTS true
 
 // reading the pressuremeter:
 #include "subsystems/abi.h"
@@ -177,7 +177,7 @@ void file_logger_periodic(void)
   double curr_time = (double)(stop.tv_sec + stop.tv_usec / 1000000.0);
   double time_stamp = curr_time - (double)(start.tv_sec + start.tv_usec / 1000000.0);
   if(MAKE_SNAPSHOTS) {
-    if((time_stamp - prev_ss_time) > 0.2) // for 5hz
+    if((time_stamp - prev_ss_time) > 2.0) // 0.2 sec for 5hz
     {
 
       video_capture_shoot();

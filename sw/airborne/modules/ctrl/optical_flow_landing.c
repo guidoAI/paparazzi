@@ -89,7 +89,7 @@ PRINT_CONFIG_VAR(OFL_OPTICAL_FLOW_ID)
 #endif
 
 #ifndef OFL_CONTROL_METHOD
-#define OFL_CONTROL_METHOD 0
+#define OFL_CONTROL_METHOD 1
 #endif
 
 #ifndef OFL_COV_METHOD
@@ -106,7 +106,7 @@ PRINT_CONFIG_VAR(OFL_OPTICAL_FLOW_ID)
 #endif
 
 #ifndef OFL_COV_SETPOINT
-#define OFL_COV_SETPOINT -0.0075
+#define OFL_COV_SETPOINT -0.075
 #endif
 
 #ifndef OFL_LP_CONST
@@ -214,7 +214,7 @@ void vertical_ctrl_module_init(void)
   of_landing_ctrl.delay_steps = 15;
   of_landing_ctrl.window_size = OFL_COV_WINDOW_SIZE;
   of_landing_ctrl.pgain_adaptive = OFL_PGAIN;
-  of_landing_ctrl.igain_adaptive = OFL_IGAIN;
+  of_landing_ctrl.igain_adaptive = 0.03;
   of_landing_ctrl.dgain_adaptive = OFL_DGAIN;
   of_landing_ctrl.reduction_factor_elc =
     0.80f; // for exponential gain landing, after detecting oscillations, the gain is multiplied with this factor
@@ -359,9 +359,9 @@ void vertical_ctrl_module_run(bool in_flight)
                                           of_landing_ctrl.dgain, dt);
 
       // trigger the landing if the cov div is too high:
-      if (fabsf(cov_div) > of_landing_ctrl.cov_limit) {
+      /*if (fabsf(cov_div) > of_landing_ctrl.cov_limit) {
         thrust_set = final_landing_procedure();
-      }
+      }*/
     } else if (of_landing_ctrl.CONTROL_METHOD == 1) {
       // ADAPTIVE GAIN CONTROL:
       // TODO: i-gain and d-gain are currently not adapted
@@ -375,18 +375,18 @@ void vertical_ctrl_module_run(bool in_flight)
       pused = pstate - (of_landing_ctrl.pgain_adaptive * pstate) * error_cov;
       // make sure pused does not become too small, nor grows too fast:
       if (pused < MINIMUM_GAIN) { pused = MINIMUM_GAIN; }
-      if (of_landing_ctrl.COV_METHOD == 1 && error_cov > 0.001) {
+      /*if (of_landing_ctrl.COV_METHOD == 1 && error_cov > 0.001) {
         pused = 0.5 * pused;
-      }
+      }*/
 
       // use the divergence for control:
       thrust_set = PID_divergence_control(of_landing_ctrl.divergence_setpoint, pused, of_landing_ctrl.igain,
                                           of_landing_ctrl.dgain, dt);
 
       // when to make the final landing:
-      if (pstate < of_landing_ctrl.p_land_threshold) {
+      /*if (pstate < of_landing_ctrl.p_land_threshold) {
         thrust_set = final_landing_procedure();
-      }
+      }*/
 
     } else if (of_landing_ctrl.CONTROL_METHOD == 2) {
       // EXPONENTIAL GAIN CONTROL:
@@ -599,7 +599,7 @@ void vertical_ctrl_optical_flow_cb(uint8_t sender_id UNUSED, uint32_t stamp, int
                                    int16_t flow_der_x UNUSED, int16_t flow_der_y UNUSED, float quality UNUSED, float size_divergence UNUSED, float dist UNUSED)
 {
   // ugly hack: when front vision, use flow_x (flow_der_x?)
-  divergence_vision = (float) flow_x / 1000.0f; // size_divergence;
+  divergence_vision = (float) flow_x / 100000.0f; // size_divergence;
   vision_time = ((float)stamp) / 1e6;
 }
 

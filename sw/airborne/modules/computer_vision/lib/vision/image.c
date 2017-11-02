@@ -42,6 +42,8 @@ void image_create(struct image_t *img, uint16_t width, uint16_t height, enum ima
   img->w = width;
   img->h = height;
 
+  // printf("Create image!\n");
+
   // Depending on the type the size differs
   if (type == IMAGE_YUV422) {
     img->buf_size = sizeof(uint8_t) * 2 * width * height;
@@ -63,6 +65,7 @@ void image_create(struct image_t *img, uint16_t width, uint16_t height, enum ima
 void image_free(struct image_t *img)
 {
   if (img->buf != NULL) {
+      //printf("Free image!\n");
     free(img->buf);
     img->buf = NULL;
   }
