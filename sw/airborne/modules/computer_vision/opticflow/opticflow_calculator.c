@@ -55,7 +55,7 @@
 // whether to show the flow and corners:
 #define OPTICFLOW_SHOW_FLOW 0
 #define OPTICFLOW_SHOW_CORNERS 0
-#define OPTICFLOW_SHOW_INLIERS 1
+#define OPTICFLOW_SHOW_INLIERS 0
 
 #define EXHAUSTIVE_FAST 0
 #define ACT_FAST 1
@@ -65,7 +65,7 @@ uint16_t n_agents = 25;
 #define CORNER_METHOD 1
 
 // YUV histograms, number of bins:
-#define DOWNSELECT_VECTORS 1
+#define DOWNSELECT_VECTORS 0
 #define N_BINS_UV 5
 // Number of cells in image:
 #define N_CELLS 3

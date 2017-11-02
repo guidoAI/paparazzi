@@ -73,14 +73,12 @@
 
     </module>
 
-
     <module name="video_rtp_stream">
       <define name="VIEWVIDEO_CAMERA" value="front_camera"/>
       <define name="VIEWVIDEO_CAMERA2" value="bottom_camera"/>
       <define name="VIEWVIDEO_DOWNSIZE_FACTOR" value="1"/>
       <define name="VIEWVIDEO_QUALITY_FACTOR" value="40"/>
     </module>
-
 
     <!--<module name="bebop_ae_awb"/>-->
   </modules>
@@ -246,8 +244,8 @@
 
   <section name="AUTOPILOT">
     <define name="MODE_STARTUP" value="AP_MODE_NAV"/>
-    <define name="MODE_MANUAL" value="AP_MODE_MODULE"/>
-    <!-- <define name="MODE_MANUAL" value="AP_MODE_ATTITUDE_DIRECT"/> -->
+    <!-- <define name="MODE_MANUAL" value="AP_MODE_MODULE"/> -->
+    <define name="MODE_MANUAL" value="AP_MODE_ATTITUDE_DIRECT"/>
     <define name="MODE_AUTO1" value="AP_MODE_ATTITUDE_Z_HOLD"/>
     <define name="MODE_AUTO2" value="AP_MODE_NAV"/>
 
