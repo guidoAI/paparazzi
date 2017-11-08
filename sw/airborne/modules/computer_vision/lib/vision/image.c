@@ -65,7 +65,7 @@ void image_create(struct image_t *img, uint16_t width, uint16_t height, enum ima
 void image_free(struct image_t *img)
 {
   if (img->buf != NULL) {
-      //printf("Free image!\n");
+    //  printf("Free image!\n");
     free(img->buf);
     img->buf = NULL;
   }

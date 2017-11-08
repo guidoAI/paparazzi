@@ -96,6 +96,9 @@ void kalman_filter_opticflow_velocity(float *velocity_x, float *velocity_y, floa
 void get_YUV_histogram(struct image_t *img, int x_min, int x_max, int y_min, int y_max, int n_samples, int* histogram, int n_bins_UV, int min_col, int max_col);
 void get_average_YUV(struct image_t *img, int x_min, int x_max, int y_min, int y_max, int n_samples, uint8_t *color);
 int get_hist_distance(int* hist, int* model_hist);
+
+void log_SSL_information(struct flow_t *vectors, uint16_t n_vectors, struct opticflow_t *opticflow, struct image_t *img);
+
 //void down_select_inlier_flow_vectors(int* inliers, struct flow_t* vectors, int n_vectors, int n_inliers);
 #endif /* OPTICFLOW_CALCULATOR_H */
 

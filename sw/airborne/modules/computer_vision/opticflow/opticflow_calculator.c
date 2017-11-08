@@ -52,6 +52,20 @@
 // for measuring time
 #include "mcu_periph/sys_time.h"
 
+
+// LOGGING:
+// for determining when to log vectors and images:
+#include "modules/ctrl/optical_flow_landing.h"
+float previous_log_time;
+/** Set the default File logger path to the USB drive */
+#ifndef FILE_LOGGER_PATH
+#define FILE_LOGGER_PATH /data/ftp/internal_000/
+#endif
+/** The file pointer */
+static FILE *ofc_file_logger = NULL;
+#include "modules/computer_vision/video_capture.h"
+
+
 // whether to show the flow and corners:
 #define OPTICFLOW_SHOW_FLOW 0
 #define OPTICFLOW_SHOW_CORNERS 0
@@ -287,6 +301,28 @@ void opticflow_calc_init(struct opticflow_t *opticflow)
   opticflow->color_similarity_threshold = OPTICFLOW_COL_THRESH;
   opticflow->color_min_UV = OPTICFLOW_COL_MIN_UV;
   opticflow->color_max_UV = OPTICFLOW_COL_MAX_UV;
+
+  // prepare logging:
+  previous_log_time = get_sys_time_float();
+
+  char filename[512];
+    // Check for available files
+    sprintf(filename, "%s/optical_flow.csv", STRINGIFY(FILE_LOGGER_PATH));
+    if (!(ofc_file_logger = fopen(filename, "r"))) {
+        // we have to create the file:
+        ofc_file_logger = fopen(filename, "w");
+
+        if (ofc_file_logger != NULL) {
+          fprintf(ofc_file_logger, "pstate,pused,n_vectors");
+          for(int i = 0; i < OPTICFLOW_MAX_TRACK_CORNERS; i++) {
+              fprintf(ofc_file_logger, ",px%d,py%d,fx%d,fy%d",i,i,i,i);
+          }
+          fprintf(ofc_file_logger, "\n");
+        }
+    }
+    else {
+        ofc_file_logger = fopen(filename, "a");
+    }
 }
 /**
  * Run the optical flow with fast9 and lukaskanade on a new image frame
@@ -408,14 +444,14 @@ void calc_fast9_lukas_kanade(struct opticflow_t *opticflow, struct opticflow_sta
         float long_step = 10; // 5
         float short_step = 2; // 2
         int min_gradient = 10; // 10
-        printf("opticflow->fast9_threshold = %d, n_agents = %d, n_time_steps = %d\n", opticflow->fast9_threshold, n_agents, n_time_steps);
+        //printf("opticflow->fast9_threshold = %d, n_agents = %d, n_time_steps = %d\n", opticflow->fast9_threshold, n_agents, n_time_steps);
         act_fast(&opticflow->prev_img_gray, opticflow->fast9_threshold, &result->corner_cnt,
             &opticflow->fast9_ret_corners, n_agents, n_time_steps,
             long_step, short_step, min_gradient);
     }
 
     float post_corner = get_sys_time_float();
-    printf("Time spent on corner detection: %f\n", post_corner - pre_corner);
+    //printf("Time spent on corner detection: %f\n", post_corner - pre_corner);
 
     // Adaptive threshold
     if (opticflow->fast9_adaptive) {
@@ -470,7 +506,7 @@ void calc_fast9_lukas_kanade(struct opticflow_t *opticflow, struct opticflow_sta
                                        opticflow->window_size / 2, opticflow->subpixel_factor, opticflow->max_iterations,
                                        opticflow->threshold_vec, opticflow->max_track_corners, opticflow->pyramid_level);
   float post_flow = get_sys_time_float();
-  printf("Time spent on flow: %f\n", post_flow - pre_flow);
+  // printf("Time spent on flow: %f\n", post_flow - pre_flow);
 #if OPTICFLOW_SHOW_FLOW
   image_show_flow(img, vectors, result->tracked_cnt, opticflow->subpixel_factor);
 #endif
@@ -672,6 +708,22 @@ void calc_fast9_lukas_kanade(struct opticflow_t *opticflow, struct opticflow_sta
     result->flow_y = vectors[result->tracked_cnt / 2].flow_y;
   }
 
+  // *******
+  // LOGGING
+  // *******
+  int16_t flow_threshold = 2;
+  float min_time_interval_logging = 2.0;
+  float pre_log_time = get_sys_time_float();
+  if(oscillating && abs(result->flow_x) > flow_threshold) {
+  // if(abs(result->flow_x) > flow_threshold) {
+      float curr_time = get_sys_time_float();
+      if(curr_time - previous_log_time > min_time_interval_logging) {
+          log_SSL_information(vectors, result->tracked_cnt, opticflow, img);
+          previous_log_time = curr_time;
+      }
+  }
+  float post_log_time = get_sys_time_float();
+  printf("Logging time: %f seconds.\n", post_log_time - pre_log_time);
 
   // Flow Derotation
   float diff_flow_x = 0;
@@ -1270,3 +1322,27 @@ void down_select_inlier_flow_vectors(int* inliers, struct flow_t* vectors, int n
   vectors = new_vectors;
 }
 */
+
+
+void log_SSL_information(struct flow_t *vectors, uint16_t n_vectors, struct opticflow_t *opticflow, struct image_t *img) {
+  // write the vectors to a file (always logging OPTICFLOW_MAX_TRACK_CORNERS to keep number of columns equal over time), together with the gains pstate, pused
+
+  printf("Logging!!!!\n");
+  // store the current color image:
+  video_capture_save(img);
+  // store the current gray-scale image:
+  // video_capture_save(&opticflow->prev_img_gray);
+
+  //store the gain and vectors:
+  fprintf(ofc_file_logger, "%f,%f,%d", pstate, pused, n_vectors);
+  for(int i = 0; i < OPTICFLOW_MAX_TRACK_CORNERS; i++) {
+      if(i < n_vectors) {
+          fprintf(ofc_file_logger, ",%f,%f,%f,%f", (float)vectors[i].pos.x, (float)vectors[i].pos.y, (float)vectors[i].flow_x, (float)vectors[i].flow_y);
+      }
+      else {
+          fprintf(ofc_file_logger, ",0.0,0.0,0.0,0.0");
+      }
+  }
+  fprintf(ofc_file_logger, "\n");
+}
+

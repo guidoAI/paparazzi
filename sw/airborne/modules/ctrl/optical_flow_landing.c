@@ -277,6 +277,8 @@ static void reset_all_vars(void)
   of_landing_ctrl.previous_err = 0.;
   of_landing_ctrl.sum_err = 0.;
   of_landing_ctrl.d_err = 0.;
+
+  oscillating = false;
 }
 
 /**
@@ -420,16 +422,20 @@ void vertical_ctrl_module_run(bool in_flight)
         // if the drone has been oscillating long enough, start landing:
         if (!of_landing_ctrl.elc_oscillate ||
             (count_covdiv > 0 && (get_sys_time_float() - elc_time_start) >= of_landing_ctrl.t_transition)) {
-          // next phase:
-          elc_phase = 1;
-          elc_time_start = get_sys_time_float();
-
-          // we don't want to oscillate, so reduce the gain:
-          elc_p_gain_start = of_landing_ctrl.reduction_factor_elc * pstate;
-          elc_i_gain_start = of_landing_ctrl.reduction_factor_elc * istate;
-          elc_d_gain_start = of_landing_ctrl.reduction_factor_elc * dstate;
-          count_covdiv = 0;
-          of_landing_ctrl.sum_err = 0.0f;
+            oscillating = true;
+//          // next phase:
+//          elc_phase = 1;
+//          elc_time_start = get_sys_time_float();
+//
+//          // we don't want to oscillate, so reduce the gain:
+//          elc_p_gain_start = of_landing_ctrl.reduction_factor_elc * pstate;
+//          elc_i_gain_start = of_landing_ctrl.reduction_factor_elc * istate;
+//          elc_d_gain_start = of_landing_ctrl.reduction_factor_elc * dstate;
+//          count_covdiv = 0;
+//          of_landing_ctrl.sum_err = 0.0f;
+        }
+        else {
+            oscillating = false;
         }
       } else if (elc_phase == 1) {
         // control divergence to 0 with the reduced gain:

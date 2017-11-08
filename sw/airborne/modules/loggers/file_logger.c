@@ -40,7 +40,7 @@
 #include "modules/ctrl/optical_flow_landing.h"
 
 
-#define MAKE_SNAPSHOTS true
+#define MAKE_SNAPSHOTS false
 
 // reading the pressuremeter:
 #include "subsystems/abi.h"
@@ -137,7 +137,7 @@ void file_logger_start(void)
   if (file_logger != NULL) {
     fprintf(
       file_logger,
-      "counter,gyro_unscaled_p,gyro_unscaled_q,gyro_unscaled_r,accel_unscaled_x,accel_unscaled_y,accel_unscaled_z,mag_unscaled_x,mag_unscaled_y,mag_unscaled_z,COMMAND_THRUST,COMMAND_ROLL,COMMAND_PITCH,COMMAND_YAW,qi,qx,qy,qz,shot,pressure,sonar,phi_f,theta_f,psi_f,pstate,cov_div,used_flow,flow_x,flow_y,size_divergence,flow_der_x,flow_der_y,X,Y,Z,VX,VY,VZ\n"
+      "counter,gyro_unscaled_p,gyro_unscaled_q,gyro_unscaled_r,accel_unscaled_x,accel_unscaled_y,accel_unscaled_z,mag_unscaled_x,mag_unscaled_y,mag_unscaled_z,COMMAND_THRUST,COMMAND_ROLL,COMMAND_PITCH,COMMAND_YAW,qi,qx,qy,qz,shot,pressure,sonar,phi_f,theta_f,psi_f,pstate,cov_div,used_flow,flow_x,flow_y,size_divergence,flow_der_x,flow_der_y,X,Y,Z,VX,VY,VZ,oscillating\n"
     );
 
     logger_pressure = 0.0f;
@@ -177,7 +177,7 @@ void file_logger_periodic(void)
   double curr_time = (double)(stop.tv_sec + stop.tv_usec / 1000000.0);
   double time_stamp = curr_time - (double)(start.tv_sec + start.tv_usec / 1000000.0);
   if(MAKE_SNAPSHOTS) {
-    if((time_stamp - prev_ss_time) > 2.0) // 0.2 sec for 5hz
+    if((time_stamp - prev_ss_time) > 0.1) // 0.2 sec for 5hz
     {
 
       video_capture_shoot();
@@ -196,7 +196,9 @@ void file_logger_periodic(void)
   struct NedCoor_f *pos = stateGetPositionNed_f();
   struct NedCoor_f *vel = stateGetSpeedNed_f();
 
-  fprintf(file_logger, "%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f\n",
+  int osc = (oscillating) ? 1 : 0;
+
+  fprintf(file_logger, "%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%d\n",
           counter,
           imu.gyro_unscaled.p,
           imu.gyro_unscaled.q,
@@ -234,7 +236,8 @@ void file_logger_periodic(void)
           pos->z,
           vel->x,
           vel->y,
-          vel->z
+          vel->z,
+          osc
          );
   counter++;
 }

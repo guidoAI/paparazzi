@@ -114,6 +114,7 @@ void video_capture_save(struct image_t *img)
 
     // Create jpg image from raw frame
     struct image_t img_jpeg;
+    printf("Create image %d ", video_capture_index);
     image_create(&img_jpeg, img->w, img->h, IMAGE_JPEG);
     jpeg_encode_image(img, &img_jpeg, VIDEO_CAPTURE_JPEG_QUALITY, true);
 
@@ -123,6 +124,7 @@ void video_capture_save(struct image_t *img)
     // Open file
     FILE *fp = fopen(save_name, "w");
     if (fp == NULL) {
+        // TODO: this potentially means not freeing the image, right?
       printf("[video_capture] Could not write shot %s.\n", save_name);
       break;
     }
@@ -133,6 +135,7 @@ void video_capture_save(struct image_t *img)
 #endif
 
     // Free image
+    printf("Free image %d ", video_capture_index);
     image_free(&img_jpeg);
 
     // End loop here

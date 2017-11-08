@@ -91,9 +91,13 @@ extern void guidance_v_module_init(void);
 extern void guidance_v_module_enter(void);
 extern void guidance_v_module_run(bool in_flight);
 
+// used for logging purposes:
+bool oscillating;
 float cov_div;
 float pstate, pused;
+
 // struct containing most relevant parameters
 struct OpticalFlowLanding of_landing_ctrl;
+
 
 #endif /* OPTICAL_FLOW_LANDING_H_ */
