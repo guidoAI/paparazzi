@@ -105,10 +105,12 @@ PRINT_CONFIG_VAR(OFL_OPTICAL_FLOW_ID)
 #define OFL_COV_LANDING_LIMIT 2.2
 #endif
 
+// -0.075
 #ifndef OFL_COV_SETPOINT
-#define OFL_COV_SETPOINT -0.075
+#define OFL_COV_SETPOINT -0.03
 #endif
 
+// 0.02
 #ifndef OFL_LP_CONST
 #define OFL_LP_CONST 0.02
 #endif
@@ -353,6 +355,7 @@ void vertical_ctrl_module_run(bool in_flight)
   ***********/
   // landing indicates whether the drone is already performing a final landing procedure (flare):
   if (!landing) {
+      last_time_ofc_run = get_sys_time_float();
     if (of_landing_ctrl.CONTROL_METHOD == 0) {
       // FIXED GAIN CONTROL, cov_limit for landing:
 
@@ -370,6 +373,11 @@ void vertical_ctrl_module_run(bool in_flight)
 
       // adapt the gains according to the error in covariance:
       float error_cov = of_landing_ctrl.cov_set_point - cov_div;
+
+      // for logging purposes
+      if(fabsf(error_cov) <= 0.025) oscillating = true;
+      else oscillating = false;
+
       // limit the error_cov, which could else become very large:
       if (error_cov > fabsf(of_landing_ctrl.cov_set_point)) { error_cov = fabsf(of_landing_ctrl.cov_set_point); }
       pstate -= (of_landing_ctrl.igain_adaptive * pstate) * error_cov;
@@ -424,7 +432,7 @@ void vertical_ctrl_module_run(bool in_flight)
             (count_covdiv > 0 && (get_sys_time_float() - elc_time_start) >= of_landing_ctrl.t_transition)) {
             oscillating = true;
 //          // next phase:
-//          elc_phase = 1;
+            elc_phase = 1;
 //          elc_time_start = get_sys_time_float();
 //
 //          // we don't want to oscillate, so reduce the gain:
@@ -439,25 +447,25 @@ void vertical_ctrl_module_run(bool in_flight)
         }
       } else if (elc_phase == 1) {
         // control divergence to 0 with the reduced gain:
-        pstate = elc_p_gain_start;
-        pused = pstate;
-        istate = elc_i_gain_start;
-        dstate = elc_d_gain_start;
+//        pstate = elc_p_gain_start;
+//        pused = pstate;
+//        istate = elc_i_gain_start;
+//        dstate = elc_d_gain_start;
 
-        float t_interval = get_sys_time_float() - elc_time_start;
-        // this should not happen, but just to be sure to prevent too high gain values:
-        if (t_interval < 0) { t_interval = 0.0f; }
+//        float t_interval = get_sys_time_float() - elc_time_start;
+//        // this should not happen, but just to be sure to prevent too high gain values:
+//        if (t_interval < 0) { t_interval = 0.0f; }
 
         // use the divergence for control:
         thrust_set = PID_divergence_control(phase_0_set_point, pused, istate, dstate, dt);
 
         // if we have been trying to hover stably again for 2 seconds and we move in the same way as the desired divergence, switch to landing:
-        if (t_interval >= 2.0f && of_landing_ctrl.divergence * of_landing_ctrl.divergence_setpoint >= 0.0f) {
-          // next phase:
-          elc_phase = 2;
-          elc_time_start = get_sys_time_float();
-          count_covdiv = 0;
-        }
+//        if (t_interval >= 2.0f && of_landing_ctrl.divergence * of_landing_ctrl.divergence_setpoint >= 0.0f) {
+//          // next phase:
+//          elc_phase = 2;
+//          elc_time_start = get_sys_time_float();
+//          count_covdiv = 0;
+//        }
       } else if (elc_phase == 2) {
         // land while exponentially decreasing the gain:
         float t_interval = get_sys_time_float() - elc_time_start;
@@ -571,7 +579,7 @@ int32_t PID_divergence_control(float setpoint, float P, float I, float D, float 
 
   // bound thrust:
   Bound(thrust, 0.25 * of_landing_ctrl.nominal_thrust * MAX_PPRZ, MAX_PPRZ);
-
+  // Bound(thrust, 0.5 * of_landing_ctrl.nominal_thrust * MAX_PPRZ, 0.85 * MAX_PPRZ);
   // update covariance
   set_cov_div(thrust);
 

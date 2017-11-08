@@ -313,7 +313,7 @@ void opticflow_calc_init(struct opticflow_t *opticflow)
         ofc_file_logger = fopen(filename, "w");
 
         if (ofc_file_logger != NULL) {
-          fprintf(ofc_file_logger, "pstate,pused,n_vectors");
+          fprintf(ofc_file_logger, "cov_div,pused,n_vectors");
           for(int i = 0; i < OPTICFLOW_MAX_TRACK_CORNERS; i++) {
               fprintf(ofc_file_logger, ",px%d,py%d,fx%d,fy%d",i,i,i,i);
           }
@@ -714,12 +714,16 @@ void calc_fast9_lukas_kanade(struct opticflow_t *opticflow, struct opticflow_sta
   int16_t flow_threshold = 2;
   float min_time_interval_logging = 2.0;
   float pre_log_time = get_sys_time_float();
-  if(oscillating && abs(result->flow_x) > flow_threshold) {
-  // if(abs(result->flow_x) > flow_threshold) {
+  if(oscillating && abs(result->flow_x) > flow_threshold * opticflow->subpixel_factor ) {
       float curr_time = get_sys_time_float();
-      if(curr_time - previous_log_time > min_time_interval_logging) {
-          log_SSL_information(vectors, result->tracked_cnt, opticflow, img);
-          previous_log_time = curr_time;
+      // we should not log too much, since it takes quite some time.
+      // moreover, the landing module should be active, so it should not have run too long ago
+      if(curr_time - previous_log_time > min_time_interval_logging && curr_time - last_time_ofc_run < 0.5) {
+          // don't make images when oscillating too little or too much:
+          if(cov_div >= of_landing_ctrl.cov_set_point - 0.025 && cov_div <= of_landing_ctrl.cov_set_point + 0.025) {
+              log_SSL_information(vectors, result->tracked_cnt, opticflow, img);
+              previous_log_time = curr_time;
+          }
       }
   }
   float post_log_time = get_sys_time_float();
@@ -1331,10 +1335,10 @@ void log_SSL_information(struct flow_t *vectors, uint16_t n_vectors, struct opti
   // store the current color image:
   video_capture_save(img);
   // store the current gray-scale image:
-  // video_capture_save(&opticflow->prev_img_gray);
+  video_capture_save(&opticflow->prev_img_gray);
 
   //store the gain and vectors:
-  fprintf(ofc_file_logger, "%f,%f,%d", pstate, pused, n_vectors);
+  fprintf(ofc_file_logger, "%f,%f,%d", cov_div, pused, n_vectors);
   for(int i = 0; i < OPTICFLOW_MAX_TRACK_CORNERS; i++) {
       if(i < n_vectors) {
           fprintf(ofc_file_logger, ",%f,%f,%f,%f", (float)vectors[i].pos.x, (float)vectors[i].pos.y, (float)vectors[i].flow_x, (float)vectors[i].flow_y);

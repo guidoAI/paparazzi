@@ -95,6 +95,7 @@ extern void guidance_v_module_run(bool in_flight);
 bool oscillating;
 float cov_div;
 float pstate, pused;
+float last_time_ofc_run;
 
 // struct containing most relevant parameters
 struct OpticalFlowLanding of_landing_ctrl;
