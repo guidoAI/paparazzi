@@ -64,7 +64,7 @@ float previous_log_time;
 /** The file pointer */
 static FILE *ofc_file_logger = NULL;
 #include "modules/computer_vision/video_capture.h"
-#define LOG_DEROTATION true
+#define LOG_DEROTATION false
 
 
 // whether to show the flow and corners:
@@ -888,10 +888,11 @@ void calc_edgeflow_tot(struct opticflow_t *opticflow, struct opticflow_state_t *
   int16_t der_shift_y = 0;
 
   if (opticflow->derotation) {
-    der_shift_x = (int16_t)(edge_hist[current_frame_nr].rates.p  /
+      // TODO: make this nice and general, so that p / q/ r are adapted to front / bottom cam!!!
+    der_shift_x = (int16_t)(edge_hist[current_frame_nr].rates.q  /
                             result->fps *
                             (float)img->w / (OPTICFLOW_FOV_W) * opticflow->derotation_correction_factor_x);
-    der_shift_y = (int16_t)(edge_hist[current_frame_nr].rates.q /
+    der_shift_y = (int16_t)(edge_hist[current_frame_nr].rates.r /
                             result->fps *
                             (float)img->h / (OPTICFLOW_FOV_H) * opticflow->derotation_correction_factor_y);
   }
