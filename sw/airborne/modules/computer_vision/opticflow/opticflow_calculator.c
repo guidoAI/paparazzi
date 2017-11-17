@@ -64,6 +64,7 @@ float previous_log_time;
 /** The file pointer */
 static FILE *ofc_file_logger = NULL;
 #include "modules/computer_vision/video_capture.h"
+#define LOG_DEROTATION true
 
 
 // whether to show the flow and corners:
@@ -313,11 +314,17 @@ void opticflow_calc_init(struct opticflow_t *opticflow)
         ofc_file_logger = fopen(filename, "w");
 
         if (ofc_file_logger != NULL) {
-          fprintf(ofc_file_logger, "cov_div,pused,n_vectors");
-          for(int i = 0; i < OPTICFLOW_MAX_TRACK_CORNERS; i++) {
-              fprintf(ofc_file_logger, ",px%d,py%d,fx%d,fy%d",i,i,i,i);
-          }
-          fprintf(ofc_file_logger, "\n");
+            if(LOG_DEROTATION) {
+                fprintf(ofc_file_logger, "delta_phi,delta_theta,delta_psi,flow_x,flow_y");
+            }
+            else {
+                fprintf(ofc_file_logger, "cov_div,pused,n_vectors");
+                for(int i = 0; i < OPTICFLOW_MAX_TRACK_CORNERS; i++) {
+                    fprintf(ofc_file_logger, ",px%d,py%d,fx%d,fy%d",i,i,i,i);
+                }
+            }
+
+            fprintf(ofc_file_logger, "\n");
         }
     }
     else {
@@ -714,15 +721,21 @@ void calc_fast9_lukas_kanade(struct opticflow_t *opticflow, struct opticflow_sta
   int16_t flow_threshold = 2;
   float min_time_interval_logging = 2.0;
   float pre_log_time = get_sys_time_float();
-  if(oscillating && abs(result->flow_x) > flow_threshold * opticflow->subpixel_factor ) {
-      float curr_time = get_sys_time_float();
-      // we should not log too much, since it takes quite some time.
-      // moreover, the landing module should be active, so it should not have run too long ago
-      if(curr_time - previous_log_time > min_time_interval_logging && curr_time - last_time_ofc_run < 0.5) {
-          // don't make images when oscillating too little or too much:
-          if(cov_div >= of_landing_ctrl.cov_set_point - 0.025 && cov_div <= of_landing_ctrl.cov_set_point + 0.025) {
-              log_SSL_information(vectors, result->tracked_cnt, opticflow, img);
-              previous_log_time = curr_time;
+  if(LOG_DEROTATION) {
+      // delta_phi,delta_theta,flow_x,flow_y
+      fprintf(ofc_file_logger, "%f,%f,%f,%f,%f\n", (cam_state->rates.p)  / result->fps, (cam_state->rates.q)  / result->fps, (cam_state->rates.r)  / result->fps, ((float)result->flow_x)/opticflow->subpixel_factor, ((float)result->flow_y)/opticflow->subpixel_factor);
+  }
+  else{
+      if(oscillating && abs(result->flow_x) > flow_threshold * opticflow->subpixel_factor ) {
+          float curr_time = get_sys_time_float();
+          // we should not log too much, since it takes quite some time.
+          // moreover, the landing module should be active, so it should not have run too long ago
+          if(curr_time - previous_log_time > min_time_interval_logging && curr_time - last_time_ofc_run < 0.5) {
+              // don't make images when oscillating too little or too much:
+              if(cov_div >= of_landing_ctrl.cov_set_point - 0.025 && cov_div <= of_landing_ctrl.cov_set_point + 0.025) {
+                  log_SSL_information(vectors, result->tracked_cnt, opticflow, img);
+                  previous_log_time = curr_time;
+              }
           }
       }
   }
@@ -1327,6 +1340,51 @@ void down_select_inlier_flow_vectors(int* inliers, struct flow_t* vectors, int n
 }
 */
 
+void undistort_flow(struct flow_t *vectors, uint16_t n_vectors, struct opticflow_t *opticflow, struct flow_t *undistorted_vectors) {
+
+  // parameters should be settings:
+  // cameraParams_2coeff.FocalLength =    332.5259  341.2480
+  // cameraParams_2coeff.PrincipalPoint =   179.5224  348.8104
+  float focal_length[2] = {332.5259, 341.2480};
+  float principal_point[2] = {179.5224, 348.8104};
+  float params[7] = {-0.002197, -0.027555, 0.338736, -0.102699, 0.015190, 0.060531, 0.058638};
+  float r2, r4, r6;
+  float centered_x[2], centered_y[2], undistorted_x[2], undistorted_y[2], radii[2], undistorted_flow[2];
+  for(int v = 0; v < n_vectors; v++) {
+      // distorted radius = norm of centered point
+      // A = [ones(N,1), distorted_radii, distorted_radii.^2, distorted_radii.^4, distorted_radii.^6, centered_points(:,1), centered_points(:,2)];
+      // Par = -0.002197 -0.027555 0.338736 -0.102699 0.015190 0.060531 0.058638
+      // undistorted = A * par
+
+      // make sure that both the starting and end point of the flow vector are represented with 0,0 the center of the image
+      centered_x[0] = ((float) vectors[v].pos.x / opticflow->subpixel_factor - principal_point[0]) / focal_length[0];
+      centered_y[0] = ((float) vectors[v].pos.y / opticflow->subpixel_factor - principal_point[1]) / focal_length[1];
+      radii[0] = sqrtf(centered_x[0]*centered_x[0] + centered_y[0]*centered_y[0]);
+      centered_x[1] = ((float) ((int16_t) vectors[v].pos.x + vectors[v].flow_x) / opticflow->subpixel_factor - principal_point[0]) / focal_length[0];
+      centered_y[1] = ((float) ((int16_t) vectors[v].pos.y + vectors[v].flow_y) / opticflow->subpixel_factor - principal_point[1]) / focal_length[1];
+      radii[1] = sqrtf(centered_x[1]*centered_x[1] + centered_y[1]*centered_y[1]);
+
+      // get the undistorted coordinates:
+      r2 = radii[0]*radii[0];
+      r4 = r2*r2;
+      r6 = r4*r2;
+      undistorted_x[0] = centered_x[0] + params[0] + params[1]*radii[0] + params[2]*r2 + params[3]*r4 + params[4]*r6 + params[5]*centered_x[0] + params[6]*centered_y[0];
+      undistorted_y[0] = centered_y[0] + params[0] + params[1]*radii[0] + params[2]*r2 + params[3]*r4 + params[4]*r6 + params[5]*centered_x[0] + params[6]*centered_y[0];
+      r2 = radii[1]*radii[1];
+      r4 = r2*r2;
+      r6 = r4*r2;
+      undistorted_x[1] = centered_x[1] + params[0] + params[1]*radii[1] + params[2]*r2 + params[3]*r4 + params[4]*r6 + params[5]*centered_x[1] + params[6]*centered_y[1];
+      undistorted_y[1] = centered_y[1] + params[0] + params[1]*radii[1] + params[2]*r2 + params[3]*r4 + params[4]*r6 + params[5]*centered_x[1] + params[6]*centered_y[1];
+      undistorted_flow[0] = undistorted_x[1] - undistorted_x[0];
+      undistorted_flow[1] = undistorted_y[1] - undistorted_y[0];
+
+      // put them in the output flow vector:
+      undistorted_vectors[v].pos.x = (uint32_t) ((undistorted_x[0] * focal_length[0] + principal_point[0]) * opticflow->subpixel_factor);
+      undistorted_vectors[v].pos.y = (uint32_t) ((undistorted_y[0] * focal_length[1] + principal_point[1]) * opticflow->subpixel_factor);
+      undistorted_vectors[v].flow_x = (int16_t) (undistorted_flow[0] * focal_length[0] * opticflow->subpixel_factor);
+      undistorted_vectors[v].flow_y = (int16_t) (undistorted_flow[1] * focal_length[1] * opticflow->subpixel_factor);
+  }
+}
 
 void log_SSL_information(struct flow_t *vectors, uint16_t n_vectors, struct opticflow_t *opticflow, struct image_t *img) {
   // write the vectors to a file (always logging OPTICFLOW_MAX_TRACK_CORNERS to keep number of columns equal over time), together with the gains pstate, pused
@@ -1344,6 +1402,7 @@ void log_SSL_information(struct flow_t *vectors, uint16_t n_vectors, struct opti
           fprintf(ofc_file_logger, ",%f,%f,%f,%f", (float)vectors[i].pos.x, (float)vectors[i].pos.y, (float)vectors[i].flow_x, (float)vectors[i].flow_y);
       }
       else {
+          // to ensure the same number of columns when there are fewer flow vectors:
           fprintf(ofc_file_logger, ",0.0,0.0,0.0,0.0");
       }
   }
