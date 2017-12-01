@@ -70,7 +70,7 @@
     </module>
 
     <module name="optical_flow_landing">
-      <define name="OFL_PGAIN" value="0.50"/>
+      <define name="OFL_PGAIN" value="0.25"/>
       <define name="OFL_IGAIN" value="0.02"/>
       <define name="COV_SETPOINT" value="-0.075"/>
     </module>
@@ -247,8 +247,8 @@
 
   <section name="AUTOPILOT">
     <define name="MODE_STARTUP" value="AP_MODE_NAV"/>
-    <!-- <define name="MODE_MANUAL" value="AP_MODE_MODULE"/> -->
-    <define name="MODE_MANUAL" value="AP_MODE_ATTITUDE_DIRECT"/>
+    <define name="MODE_MANUAL" value="AP_MODE_MODULE"/>
+    <!-- <define name="MODE_MANUAL" value="AP_MODE_ATTITUDE_DIRECT"/> -->
     <define name="MODE_AUTO1" value="AP_MODE_ATTITUDE_Z_HOLD"/>
     <define name="MODE_AUTO2" value="AP_MODE_NAV"/>
 

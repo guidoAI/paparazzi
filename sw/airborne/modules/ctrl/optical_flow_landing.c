@@ -89,7 +89,7 @@ PRINT_CONFIG_VAR(OFL_OPTICAL_FLOW_ID)
 #endif
 
 #ifndef OFL_CONTROL_METHOD
-#define OFL_CONTROL_METHOD 1
+#define OFL_CONTROL_METHOD 3
 #endif
 
 #ifndef OFL_COV_METHOD
@@ -149,6 +149,11 @@ uint32_t elc_time_start;
 float elc_p_gain_start, elc_i_gain_start,  elc_d_gain_start;
 int32_t count_covdiv;
 float lp_cov_div;
+
+// incremental increase in gain:
+float start_gain_increase_time;
+float step_time;
+float gain_increase;
 
 static abi_event agl_ev; ///< The altitude ABI event
 static abi_event optical_flow_ev;
@@ -226,7 +231,14 @@ void vertical_ctrl_module_init(void)
   // if the gain reaches this value during an exponential landing, the drone makes the final landing.
   of_landing_ctrl.p_land_threshold = OFL_P_LAND_THRESHOLD;
   of_landing_ctrl.elc_oscillate = OFL_ELC_OSCILLATE;
+
+  step_time = 10.0f;
+  gain_increase = 0.25;
+
+
   reset_all_vars();
+
+
 
   // Subscribe to the altitude above ground level ABI messages
   AbiBindMsgAGL(OFL_AGL_ID, &agl_ev, vertical_ctrl_agl_cb);
@@ -281,6 +293,9 @@ static void reset_all_vars(void)
   of_landing_ctrl.d_err = 0.;
 
   oscillating = false;
+
+  // negative to indicate that it has not been set yet:
+  start_gain_increase_time = -1.0;
 }
 
 /**
@@ -494,10 +509,41 @@ void vertical_ctrl_module_run(bool in_flight)
         if (pstate < of_landing_ctrl.p_land_threshold) {
           elc_phase = 3;
         }
-      } else {
+      }
+      else {
         thrust_set = final_landing_procedure();
       }
     }
+    else if (of_landing_ctrl.CONTROL_METHOD == 3) {
+        if(elc_phase == 0) {
+          // increase the gain by steps:
+          if(start_gain_increase_time < 0.0) {
+              start_gain_increase_time = get_sys_time_float();
+          }
+          float t = get_sys_time_float();
+
+          // using (int) as a floor function : )
+          pstate = (float)((int)((t-start_gain_increase_time) / step_time)) * gain_increase;
+          pused = pstate;
+
+          thrust_set = PID_divergence_control(of_landing_ctrl.divergence_setpoint, pused, of_landing_ctrl.igain, of_landing_ctrl.dgain, dt);
+
+          float error_cov = of_landing_ctrl.cov_set_point - cov_div;
+          // for logging purposes
+          if(fabsf(error_cov) <= 0.01) count_covdiv++;
+          if(count_covdiv > 10) oscillating = true;
+          if(oscillating) {
+              elc_phase = 1;
+          }
+        }
+        else {
+            // we keep the same gain for now:
+            thrust_set = PID_divergence_control(of_landing_ctrl.divergence_setpoint, pused, of_landing_ctrl.igain, of_landing_ctrl.dgain, dt);
+            // TODO: if the drone is stable for many seconds, we should start increasing again.
+        }
+
+    }
+
 
     if (in_flight) {
       Bound(thrust_set, 0.25 * of_landing_ctrl.nominal_thrust * MAX_PPRZ, MAX_PPRZ);
