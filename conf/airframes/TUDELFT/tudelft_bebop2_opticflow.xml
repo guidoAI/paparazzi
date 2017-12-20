@@ -57,6 +57,7 @@
 
     <module name="cv_textons.xml">
       <define name="TEXTONS_CAMERA" value="bottom_camera"/>
+      <define name="N_TEXTONS" value="30"/>
     </module>
 
     <module name="optical_flow_landing.xml"/>

@@ -39,6 +39,8 @@ uint32_t learned_samples = 0;
 uint8_t dictionary_initialized = 0;
 float *texton_distribution;
 
+#define MAX_N_TEXTONS 255
+
 // initial settings:
 #ifndef TEXTONS_RUN
 #define TEXTONS_RUN 1
@@ -160,7 +162,7 @@ struct image_t *texton_func(struct image_t *img)
     // set all vars to trigger a reinitialization and learning phase of the dictionary:
     dictionary_ready = 0;
     dictionary_initialized = 0;
-    load_dictionary = 0;  
+    load_dictionary = 0;
     learned_samples = 0;
     alpha_uint = 10;
     // reset reinitialize_dictionary
@@ -184,6 +186,8 @@ struct image_t *texton_func(struct image_t *img)
         dictionary_ready = 1;
         // lower learning rate
         alpha = 0.0;
+        printf("Enough learning!\n");
+        alpha_uint = 0;
         // set learned samples back to 0
         learned_samples = 0;
       }
@@ -630,17 +634,19 @@ void textons_init(void)
 {
   printf("Textons init\n");
   TD_ID = 0;
-  TD_0 = (float *)calloc(n_textons, sizeof(float));
-  TD_1 = (float *)calloc(n_textons, sizeof(float));
-  for(int i = 0; i < n_textons; i++) {
+  TD_0 = (float *)calloc(MAX_N_TEXTONS, sizeof(float));
+  TD_1 = (float *)calloc(MAX_N_TEXTONS, sizeof(float));
+  for(int i = 0; i < MAX_N_TEXTONS; i++) {
     TD_0[i] = 0.0f;
     TD_1[i] = 0.0f;
   }
+
   dictionary_initialized = 0;
   learned_samples = 0;
   dictionary_ready = 0;
-  dictionary = (float ** **)calloc(n_textons, sizeof(float ** *));
-  for (int w = 0; w < n_textons; w++) {
+
+  dictionary = (float ** **)calloc(MAX_N_TEXTONS, sizeof(float ** *));
+  for (int w = 0; w < MAX_N_TEXTONS; w++) {
     dictionary[w] = (float ** *) calloc(patch_size, sizeof(float **));
     for (int i = 0; i < patch_size; i++) {
       dictionary[w][i] = (float **) calloc(patch_size, sizeof(float *));
