@@ -75,7 +75,7 @@ float start_setpoint_ramp;
 
 // minimum value of the P-gain for divergence control
 // adaptive control / exponential gain control will not be able to go lower
-#define MINIMUM_GAIN 0.1
+#define MINIMUM_GAIN 0.05
 
 // SSL: we will learn unstable gains, but need stable gains for landing
 // this factor represents the trade-off between stability and performance

@@ -6,7 +6,7 @@ start_sample = 1;
 BIAS = true;
 PRIOR = true;
 
-weights = true; % whether we have onboard weights we want to compare to the current learning:
+weights = false; % whether we have onboard weights we want to compare to the current learning:
 if(weights)
     w = load('Weights_00000.dat');
 end
