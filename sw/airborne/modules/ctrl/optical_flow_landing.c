@@ -851,6 +851,28 @@ void vertical_ctrl_module_run(bool in_flight)
           final_landing_procedure();
         }
       }
+      else  if (of_landing_ctrl.CONTROL_METHOD == 5) {
+
+          // SSL hover, to check if it works nicely:
+
+          pstate = predict_gain(texton_distribution);
+          of_landing_ctrl.pgain = of_landing_ctrl.lp_factor_prediction * of_landing_ctrl.pgain + (1.0f - of_landing_ctrl.lp_factor_prediction) * of_landing_ctrl.reduction_factor_elc * pstate;
+          pused = of_landing_ctrl.pgain;
+          // make sure pused does not become too small, nor grows too fast:
+          if (of_landing_ctrl.pgain < MINIMUM_GAIN) { of_landing_ctrl.pgain = MINIMUM_GAIN; }
+          // have the i and d gain depend on the p gain:
+          istate = 0.025 * of_landing_ctrl.pgain;
+          dstate = 0.0f;
+          printf("of_landing_ctrl.pgain = %f\n", of_landing_ctrl.pgain);
+
+          // use the divergence for control:
+          thrust = PID_divergence_control(of_landing_ctrl.divergence_setpoint, pused, istate, dstate, &err);
+          // keep track of histories and set the covariance
+          set_cov_div(thrust);
+          // update the controller errors:
+          update_errors(err);
+
+      }
     } else {
       final_landing_procedure();
     }
@@ -1226,8 +1248,6 @@ void learn_from_file(void)
 void recursive_least_squares_batch(float* targets, float** samples, uint8_t D, uint16_t count, float* params, float* fit_error)
 {
   // TODO: potentially randomizing the sequence of the samples, as not to get a bias towards the later samples
-  // TODO: determine the error over the set. For now, we set the error to 0:
-  (*fit_error) = 0.0f;
   // local vars for iterating, random numbers:
   int sam, d;
   uint8_t D_1 = D+1;
@@ -1274,6 +1294,16 @@ void recursive_least_squares_batch(float* targets, float** samples, uint8_t D, u
       recursive_least_squares(targets[sam], augmented_sample, D_1, params);
     }
   }
+
+  // give the samples one by one to the recursive procedure to determine the fit on the training set:
+  float prediction;
+  float sum_abs_err = 0;
+  for(sam = 0; sam < count; sam++)
+  {
+    prediction = predict_gain(samples[sam]);
+    sum_abs_err += fabs(prediction - targets[sam]);
+  }
+  (*fit_error) = sum_abs_err / count;
 }
 
 static inline void float_mat_div_scalar(float **o, float **a, float scalar, int m, int n)
