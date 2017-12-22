@@ -142,6 +142,7 @@ static FILE *dictionary_logger = NULL;
 struct image_t *texton_func(struct image_t *img);
 struct image_t *texton_func(struct image_t *img)
 {
+
   // whether to execute the function:
   if(!running) return img;
 

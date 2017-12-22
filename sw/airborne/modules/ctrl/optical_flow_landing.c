@@ -394,6 +394,7 @@ void vertical_ctrl_module_run(bool in_flight)
   dt += ((float)delta_t) / 1000.0f;
   if (dt > 10.0f) {
     dt = 0.0f;
+    previous_time = new_time;
     return;
   }
   previous_time = new_time;
@@ -408,18 +409,24 @@ void vertical_ctrl_module_run(bool in_flight)
     // Reset integrators, landing phases, etc.
     // reset_all_vars(); // commented out to allow us to study the observation variables in-hand, i.e., without flying
 
+    pstate = predict_gain(texton_distribution);
+    // printf("Predicted gain: %f\n", pstate);
+
     // SSL: only learn if not flying - due to use of resources:
     if(of_landing_ctrl.learn_gains) {
-      printf("STARTING LEARNING!\n");
+        printf("LEARNING WEIGHTS!\n");
       // learn the weights from the file filled with training examples:
       learn_from_file();
       // reset the learn_gains variable to false:
       of_landing_ctrl.learn_gains = false;
+      // dt is smaller than it actually should be...
     }
     if(of_landing_ctrl.load_weights) {
+        printf("LOADING WEIGHTS!");
       load_weights();
       of_landing_ctrl.load_weights = false;
     }
+
   }
 
   /***********
@@ -467,13 +474,11 @@ void vertical_ctrl_module_run(bool in_flight)
   } else {
 
     // USE REAL VISION OUTPUTS:
-
     if (vision_message_nr != previous_message_nr && dt > 1E-5 && ind_hist > 1) {
 
       // TODO: this div_factor depends on the subpixel-factor (automatically adapt?)
       div_factor = -1.28f; // magic number comprising field of view etc.
       float new_divergence = (divergence_vision * div_factor) / dt;
-
       // deal with (unlikely) fast changes in divergence:
       float max_div_dt = 0.20;
       if (fabs(new_divergence - divergence) > max_div_dt) {
@@ -804,7 +809,6 @@ void vertical_ctrl_module_run(bool in_flight)
           }
         }
         else if (elc_phase == 1) {
-
           // land while exponentially decreasing the gain:
           clock_gettime(CLOCK_MONOTONIC, &spec);
           new_time = spec.tv_sec * 1E3 + spec.tv_nsec / 1E6;
@@ -1150,11 +1154,12 @@ void load_texton_distribution(void)
     // Load the dictionary:
     n_read_samples = 0;
     // For now we read the samples sequentially:
-    for(i = 0; i < MAX_SAMPLES_LEARNING; i++)
+    // for(i = 0; i < MAX_SAMPLES_LEARNING; i++)
+    for(i = 0; i < 30; i++)
     {
       read_result = fscanf(distribution_logger, "%f ", &sonar[n_read_samples]);
                         if(read_result == EOF) break;
-      if(i % 100) printf("SONAR: %f\n", sonar[n_read_samples]);
+      // if(i % 100) printf("SONAR: %f\n", sonar[n_read_samples]);
       read_result = fscanf(distribution_logger, "%f ", &gains[n_read_samples]);
                         if(read_result == EOF) break;
       read_result = fscanf(distribution_logger, "%f ", &cov_divs_log[n_read_samples]);
@@ -1173,7 +1178,7 @@ void load_texton_distribution(void)
     }
                 fclose(distribution_logger);
 
-    printf("Learned samples = %d\n", n_read_samples);
+    // printf("Learned samples = %d\n", n_read_samples);
   }
 }
 
@@ -1182,13 +1187,11 @@ void learn_from_file(void)
   int i;
   float fit_error;
 
-  printf("LOAD FILE\n");
   // first load the texton distributions:
   load_texton_distribution();
 
   // then learn from it:
   // TODO: uncomment & comment to learn gains instead of sonar:
-  printf("FIT MODEL\n");
   if(!RECURSIVE_LEARNING)
   {
     fit_linear_model(gains, text_dists, n_textons, n_read_samples, weights, &fit_error);
@@ -1196,18 +1199,16 @@ void learn_from_file(void)
   }
   else
   {
-    printf("RECURSIVE!\n");
     recursive_least_squares_batch(gains, text_dists, n_textons, n_read_samples, weights, &fit_error);
   }
 
-  printf("SAVE WEIGHTS\n");
   // save the weights to a file:
   save_weights();
 
   printf("Learned! Fit error = %f\n", fit_error);
 
   // free learning distributions:
-  for(i = 0; i < MAX_SAMPLES_LEARNING; i++)
+  for(i = 0; i < n_read_samples; i++)
   {
     free(text_dists[i]);
   }
@@ -1224,7 +1225,6 @@ void learn_from_file(void)
  */
 void recursive_least_squares_batch(float* targets, float** samples, uint8_t D, uint16_t count, float* params, float* fit_error)
 {
-  printf("START RECURSIVE!\n");
   // TODO: potentially randomizing the sequence of the samples, as not to get a bias towards the later samples
   // TODO: determine the error over the set. For now, we set the error to 0:
   (*fit_error) = 0.0f;
@@ -1274,8 +1274,6 @@ void recursive_least_squares_batch(float* targets, float** samples, uint8_t D, u
       recursive_least_squares(targets[sam], augmented_sample, D_1, params);
     }
   }
-
-  printf("READY!!\n");
 }
 
 static inline void float_mat_div_scalar(float **o, float **a, float scalar, int m, int n)
@@ -1456,6 +1454,7 @@ void fit_linear_model(float* targets, float** samples, uint8_t D, uint16_t count
 
 float predict_gain(float* distribution)
 {
+  //printf("Start prediction!\n");
   int i;
   float sum;
 
@@ -1492,6 +1491,7 @@ float predict_gain(float* distribution)
   if(of_landing_ctrl.use_bias) {
     sum += weights[n_textons];
   }
+  // printf("Prediction = %f\n", sum);
   return sum;
 }
 
