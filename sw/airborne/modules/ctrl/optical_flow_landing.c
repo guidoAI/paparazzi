@@ -164,7 +164,7 @@ PRINT_CONFIG_VAR(OPTICAL_FLOW_LANDING_OPTICAL_FLOW_ID)
 #endif
 
 #ifndef OPTICAL_FLOW_LANDING_CONTROL_METHOD
-#define OPTICAL_FLOW_LANDING_CONTROL_METHOD 4
+#define OPTICAL_FLOW_LANDING_CONTROL_METHOD 2
 #endif
 
 #ifndef OPTICAL_FLOW_LANDING_COV_METHOD
@@ -207,7 +207,7 @@ void vertical_ctrl_module_init(void)
   of_landing_ctrl.vel = 0.0f;
   of_landing_ctrl.divergence_setpoint = -0.30f; //-0.20f; // For exponential gain landing, pick a negative value
   previous_divergence_setpoint = of_landing_ctrl.divergence_setpoint;
-  of_landing_ctrl.cov_set_point = -0.010f; // for cov(uz, div), i.e., cov_method 0
+  of_landing_ctrl.cov_set_point = -0.015f; // for cov(uz, div), i.e., cov_method 0
   of_landing_ctrl.cov_limit =
     2.2f; // This high a value means that for a constant divergence landing no landing will be triggered
   // If you want to trigger a landing, set the limit to something like 0.025f; // limit for cov(uz,div) - used only for landing triggering
@@ -510,6 +510,7 @@ void vertical_ctrl_module_run(bool in_flight)
     }
   }
 
+  // Only control when in flight, else nothing.
   if (in_flight) {
 
     /***********
@@ -524,9 +525,13 @@ void vertical_ctrl_module_run(bool in_flight)
 
       // First seconds, don't do anything crazy:
       if (module_active_time_sec < 2.5f) {
+        printf("Inactive time...\n");
         int32_t nominal_throttle = of_landing_ctrl.nominal_thrust * MAX_PPRZ;
         thrust = nominal_throttle;
         stabilization_cmd[COMMAND_THRUST] = thrust;
+        // keep track of histories and set the covariance
+        set_cov_div(thrust);
+        cov_div = 0.0f; // however, cov div is set to 0 to prevent strange issues at module startup.
         return;
       }
 
@@ -545,9 +550,9 @@ void vertical_ctrl_module_run(bool in_flight)
         // update the controller errors:
         update_errors(err);
         // trigger the landing if the cov div is too high:
-        if (ind_hist >= of_landing_ctrl.window_size && fabs(cov_div) > of_landing_ctrl.cov_limit) {
+        /*if (ind_hist >= of_landing_ctrl.window_size && fabs(cov_div) > of_landing_ctrl.cov_limit) {
           final_landing_procedure();
-        }
+        }*/
       } else if (of_landing_ctrl.CONTROL_METHOD == 1) {
 
         // ADAPTIVE GAIN CONTROL:
@@ -627,7 +632,7 @@ void vertical_ctrl_module_run(bool in_flight)
           if (lp_cov_div <= of_landing_ctrl.cov_set_point) {
             count_covdiv++;
           } else {
-            count_covdiv = 0;
+            count_covdiv--;
           }
           // if the drone has been oscillating long enough, start landing:
           if (ind_hist >= of_landing_ctrl.window_size && count_covdiv > of_landing_ctrl.count_transition) {
@@ -898,6 +903,7 @@ void final_landing_procedure()
  */
 void set_cov_div(int32_t thrust)
 {
+  printf("Enter cov_div...");
   // histories and cov detection:
   normalized_thrust = (float)(thrust / (MAX_PPRZ / 100));
   thrust_history[ind_hist % of_landing_ctrl.window_size] = normalized_thrust;
@@ -915,6 +921,7 @@ void set_cov_div(int32_t thrust)
     cov_div = get_cov(past_divergence_history, divergence_history, of_landing_ctrl.window_size);
     // printf("Time window in seconds: %f\n", get_mean_array(dt_history, of_landing_ctrl.window_size) * of_landing_ctrl.window_size);
   }
+  printf("and exit...\n");
 
 }
 
