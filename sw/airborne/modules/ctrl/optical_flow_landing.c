@@ -59,6 +59,15 @@
 
 #include "math/pprz_stat.h"
 
+// for moving forward:
+#include "firmwares/rotorcraft/navigation.h"
+#include "generated/flight_plan.h"
+#include "generated/airframe.h"
+
+// variables for moving forward:
+uint8_t safeToGoForwards = false;
+
+
 /* Default sonar/agl to use */
 #ifndef OFL_AGL_ID
 #define OFL_AGL_ID ABI_BROADCAST
@@ -192,6 +201,50 @@ uint8_t cov_array_filled;
 
 void vertical_ctrl_module_init(void);
 void vertical_ctrl_module_run(bool in_flight);
+
+// Avoidance:
+
+/*
+ * Sets waypoint 'waypoint' to the coordinates of 'new_coor'
+ */
+uint8_t moveWaypoint(uint8_t waypoint, struct EnuCoor_i *new_coor)
+{
+  printf("Moving waypoint %d to x:%f y:%f\n", waypoint, POS_FLOAT_OF_BFP(new_coor->x),
+                POS_FLOAT_OF_BFP(new_coor->y));
+  waypoint_set_xy_i(waypoint, new_coor->x, new_coor->y);
+  return false;
+}
+
+/*
+ * Calculates coordinates of a distance of 'distanceMeters' forward w.r.t. current position and heading
+ */
+uint8_t calculateForwards(struct EnuCoor_i *new_coor, float distanceMeters)
+{
+  struct EnuCoor_i *pos             = stateGetPositionEnu_i(); // Get your current position
+  struct Int32Eulers *eulerAngles   = stateGetNedToBodyEulers_i();
+  // Calculate the sine and cosine of the heading the drone is keeping
+  float sin_heading                 = sinf(ANGLE_FLOAT_OF_BFP(eulerAngles->psi));
+  float cos_heading                 = cosf(ANGLE_FLOAT_OF_BFP(eulerAngles->psi));
+  // Now determine where to place the waypoint you want to go to
+  new_coor->x                       = pos->x + POS_BFP_OF_REAL(sin_heading * (distanceMeters));
+  new_coor->y                       = pos->y + POS_BFP_OF_REAL(cos_heading * (distanceMeters));
+  printf("Calculated %f m forward position. x: %f  y: %f based on pos(%f, %f) and heading(%f)\n", distanceMeters,
+                POS_FLOAT_OF_BFP(new_coor->x), POS_FLOAT_OF_BFP(new_coor->y), POS_FLOAT_OF_BFP(pos->x), POS_FLOAT_OF_BFP(pos->y),
+                DegOfRad(ANGLE_FLOAT_OF_BFP(eulerAngles->psi)) );
+  return false;
+}
+
+/*
+ * Calculates coordinates of distance forward and sets waypoint 'waypoint' to those coordinates
+ */
+uint8_t moveWaypointForward(uint8_t waypoint, float distanceMeters)
+{
+  struct EnuCoor_i new_coor;
+  calculateForwards(&new_coor, distanceMeters);
+  moveWaypoint(waypoint, &new_coor);
+  return false;
+}
+
 
 /**
  * Initialize the optical flow landing module
@@ -374,14 +427,19 @@ void vertical_ctrl_module_run(bool in_flight)
     if (of_landing_ctrl.CONTROL_METHOD == 0) {
       // FIXED GAIN CONTROL, cov_limit for landing:
 
+        float moveDistance = 0.5;
+        moveWaypointForward(WP_GOAL, moveDistance);
+        nav_set_heading_towards_waypoint(WP_GOAL);
+
       // use the divergence for control:
       thrust_set = PID_divergence_control(of_landing_ctrl.divergence_setpoint, of_landing_ctrl.pgain, of_landing_ctrl.igain,
                                           of_landing_ctrl.dgain, dt);
 
       // trigger the landing if the cov div is too high:
-      /*if (fabsf(cov_div) > of_landing_ctrl.cov_limit) {
+      if (fabsf(cov_div) > of_landing_ctrl.cov_limit) {
         thrust_set = final_landing_procedure();
-      }*/
+        waypoint_set_here_2d(WP_GOAL);
+      }
     } else if (of_landing_ctrl.CONTROL_METHOD == 1) {
       // ADAPTIVE GAIN CONTROL:
       // TODO: i-gain and d-gain are currently not adapted
@@ -662,6 +720,9 @@ void vertical_ctrl_optical_flow_cb(uint8_t sender_id UNUSED, uint32_t stamp, int
   divergence_vision = (float) flow_x / 100000.0f; // size_divergence;
   vision_time = ((float)stamp) / 1e6;
 }
+
+
+
 
 ////////////////////////////////////////////////////////////////////
 // Call our controller

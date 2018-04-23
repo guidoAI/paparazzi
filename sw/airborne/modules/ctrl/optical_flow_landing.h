@@ -100,5 +100,4 @@ float last_time_ofc_run;
 // struct containing most relevant parameters
 struct OpticalFlowLanding of_landing_ctrl;
 
-
 #endif /* OPTICAL_FLOW_LANDING_H_ */
