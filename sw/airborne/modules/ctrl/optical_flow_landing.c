@@ -231,9 +231,9 @@ void vertical_ctrl_module_init(void)
   of_landing_ctrl.lp_cov_div_factor =
     0.99; // low pass filtering cov div so that the drone is really oscillating when triggering the descent
   of_landing_ctrl.count_transition =
-    300; // tuned for Bebop 2 (higher frame rate than AR drone) - number of time steps the low-passed cov div should be beyond the limit
+    200; // tuned for Bebop 2 (higher frame rate than AR drone) - number of time steps the low-passed cov div should be beyond the limit
   of_landing_ctrl.p_land_threshold =
-    0.25f; // if the gain reaches this value during an exponential landing, the drone makes the final landing.
+    0.10f; // if the gain reaches this value during an exponential landing, the drone makes the final landing.
   of_landing_ctrl.learn_gains = false;
   // of_landing_ctrl.stable_gain_factor = STABLE_GAIN_FACTOR;
   of_landing_ctrl.load_weights = false;
@@ -631,7 +631,7 @@ void vertical_ctrl_module_run(bool in_flight)
           // if oscillating, maintain a counter to see if it endures:
           if (lp_cov_div <= of_landing_ctrl.cov_set_point) {
             count_covdiv++;
-          } else {
+          } else if(count_covdiv > 0){
             count_covdiv--;
           }
           // if the drone has been oscillating long enough, start landing:
