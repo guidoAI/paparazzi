@@ -437,7 +437,7 @@ void vertical_ctrl_module_run(bool in_flight)
 
       // trigger the landing if the cov div is too high:
       if (fabsf(cov_div) > of_landing_ctrl.cov_limit) {
-        thrust_set = final_landing_procedure();
+        //thrust_set = final_landing_procedure();
         waypoint_set_here_2d(WP_GOAL);
       }
     } else if (of_landing_ctrl.CONTROL_METHOD == 1) {

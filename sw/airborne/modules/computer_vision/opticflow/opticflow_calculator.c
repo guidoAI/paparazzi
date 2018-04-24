@@ -64,7 +64,8 @@ float previous_log_time;
 /** The file pointer */
 static FILE *ofc_file_logger = NULL;
 #include "modules/computer_vision/video_capture.h"
-#define LOG_DEROTATION false
+#define LOG_DEROTATION true
+#define LOG_SSL false
 
 
 // whether to show the flow and corners:
@@ -664,6 +665,7 @@ void calc_fast9_lukas_kanade(struct opticflow_t *opticflow, struct opticflow_sta
     }
 #endif
   }
+
   // Estimate size divergence:
   if (SIZE_DIV) {
     n_samples = 100;
@@ -724,8 +726,9 @@ void calc_fast9_lukas_kanade(struct opticflow_t *opticflow, struct opticflow_sta
   if(LOG_DEROTATION) {
       // delta_phi,delta_theta,flow_x,flow_y
       fprintf(ofc_file_logger, "%f,%f,%f,%f,%f\n", (cam_state->rates.p)  / result->fps, (cam_state->rates.q)  / result->fps, (cam_state->rates.r)  / result->fps, ((float)result->flow_x)/opticflow->subpixel_factor, ((float)result->flow_y)/opticflow->subpixel_factor);
+      //fprintf(ofc_file_logger, "%f,%f,%f,%f,%f\n", (cam_state->phi - opticflow->prev_phi)  / result->fps, (cam_state->theta - opticflow->prev_theta)  / result->fps, (cam_state->rates.r)  / result->fps, ((float)result->flow_x)/opticflow->subpixel_factor, ((float)result->flow_y)/opticflow->subpixel_factor);
   }
-  else{
+  else if(LOG_SSL){
       if(oscillating && abs(result->flow_x) > flow_threshold * opticflow->subpixel_factor ) {
           float curr_time = get_sys_time_float();
           // we should not log too much, since it takes quite some time.
