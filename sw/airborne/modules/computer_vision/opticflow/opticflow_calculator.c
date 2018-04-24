@@ -316,7 +316,7 @@ void opticflow_calc_init(struct opticflow_t *opticflow)
 
         if (ofc_file_logger != NULL) {
             if(LOG_DEROTATION) {
-                fprintf(ofc_file_logger, "delta_phi,delta_theta,delta_psi,flow_x,flow_y");
+                fprintf(ofc_file_logger, "delta_phi,delta_theta,delta_psi,flow_x,flow_y,der_flow_x,der_flow_y");
             }
             else {
                 fprintf(ofc_file_logger, "cov_div,pused,n_vectors");
@@ -717,6 +717,22 @@ void calc_fast9_lukas_kanade(struct opticflow_t *opticflow, struct opticflow_sta
     result->flow_y = vectors[result->tracked_cnt / 2].flow_y;
   }
 
+
+  // Flow Derotation
+  float diff_flow_x = 0;
+  float diff_flow_y = 0;
+
+  /*// Flow Derotation TODO:
+  float diff_flow_x = (cam_state->phi - opticflow->prev_phi) * img->w / OPTICFLOW_FOV_W;
+  float diff_flow_y = (cam_state->theta - opticflow->prev_theta) * img->h / OPTICFLOW_FOV_H;*/
+
+  if (opticflow->derotation && result->tracked_cnt > 5) {
+    diff_flow_x = (cam_state->rates.p)  / result->fps * img->w /
+                  OPTICFLOW_FOV_W;// * img->w / OPTICFLOW_FOV_W;
+    diff_flow_y = (cam_state->rates.q) / result->fps * img->h /
+                  OPTICFLOW_FOV_H;// * img->h / OPTICFLOW_FOV_H;
+  }
+
   // *******
   // LOGGING
   // *******
@@ -725,7 +741,7 @@ void calc_fast9_lukas_kanade(struct opticflow_t *opticflow, struct opticflow_sta
   float pre_log_time = get_sys_time_float();
   if(LOG_DEROTATION) {
       // delta_phi,delta_theta,flow_x,flow_y
-      fprintf(ofc_file_logger, "%f,%f,%f,%f,%f\n", (cam_state->rates.p)  / result->fps, (cam_state->rates.q)  / result->fps, (cam_state->rates.r)  / result->fps, ((float)result->flow_x)/opticflow->subpixel_factor, ((float)result->flow_y)/opticflow->subpixel_factor);
+      fprintf(ofc_file_logger, "%f,%f,%f,%f,%f,%f,%f\n", (cam_state->rates.p)  / result->fps, (cam_state->rates.q)  / result->fps, (cam_state->rates.r)  / result->fps, ((float)result->flow_x)/opticflow->subpixel_factor, ((float)result->flow_y)/opticflow->subpixel_factor, diff_flow_x, diff_flow_y);
       //fprintf(ofc_file_logger, "%f,%f,%f,%f,%f\n", (cam_state->phi - opticflow->prev_phi)  / result->fps, (cam_state->theta - opticflow->prev_theta)  / result->fps, (cam_state->rates.r)  / result->fps, ((float)result->flow_x)/opticflow->subpixel_factor, ((float)result->flow_y)/opticflow->subpixel_factor);
   }
   else if(LOG_SSL){
@@ -745,20 +761,6 @@ void calc_fast9_lukas_kanade(struct opticflow_t *opticflow, struct opticflow_sta
   float post_log_time = get_sys_time_float();
   printf("Logging time: %f seconds.\n", post_log_time - pre_log_time);
 
-  // Flow Derotation
-  float diff_flow_x = 0;
-  float diff_flow_y = 0;
-
-  /*// Flow Derotation TODO:
-  float diff_flow_x = (cam_state->phi - opticflow->prev_phi) * img->w / OPTICFLOW_FOV_W;
-  float diff_flow_y = (cam_state->theta - opticflow->prev_theta) * img->h / OPTICFLOW_FOV_H;*/
-
-  if (opticflow->derotation && result->tracked_cnt > 5) {
-    diff_flow_x = (cam_state->rates.p)  / result->fps * img->w /
-                  OPTICFLOW_FOV_W;// * img->w / OPTICFLOW_FOV_W;
-    diff_flow_y = (cam_state->rates.q) / result->fps * img->h /
-                  OPTICFLOW_FOV_H;// * img->h / OPTICFLOW_FOV_H;
-  }
 
   result->flow_der_x = result->flow_x - diff_flow_x * opticflow->subpixel_factor *
                        opticflow->derotation_correction_factor_x;
