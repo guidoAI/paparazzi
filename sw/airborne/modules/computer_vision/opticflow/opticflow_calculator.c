@@ -64,7 +64,7 @@ float previous_log_time;
 /** The file pointer */
 static FILE *ofc_file_logger = NULL;
 #include "modules/computer_vision/video_capture.h"
-#define LOG_DEROTATION true
+#define LOG_DEROTATION false
 #define LOG_SSL false
 
 
