@@ -98,7 +98,7 @@ PRINT_CONFIG_VAR(OFL_OPTICAL_FLOW_ID)
 #endif
 
 #ifndef OFL_CONTROL_METHOD
-#define OFL_CONTROL_METHOD 3
+#define OFL_CONTROL_METHOD 0
 #endif
 
 #ifndef OFL_COV_METHOD
@@ -111,7 +111,7 @@ PRINT_CONFIG_VAR(OFL_OPTICAL_FLOW_ID)
 #endif
 
 #ifndef OFL_COV_LANDING_LIMIT
-#define OFL_COV_LANDING_LIMIT 2.2
+#define OFL_COV_LANDING_LIMIT 0.5
 #endif
 
 // -0.075
@@ -427,7 +427,7 @@ void vertical_ctrl_module_run(bool in_flight)
     if (of_landing_ctrl.CONTROL_METHOD == 0) {
       // FIXED GAIN CONTROL, cov_limit for landing:
 
-        float moveDistance = 0.5;
+        float moveDistance = 0.25;
         moveWaypointForward(WP_GOAL, moveDistance);
         nav_set_heading_towards_waypoint(WP_GOAL);
 
@@ -437,7 +437,7 @@ void vertical_ctrl_module_run(bool in_flight)
 
       // trigger the landing if the cov div is too high:
       if (fabsf(cov_div) > of_landing_ctrl.cov_limit) {
-        //thrust_set = final_landing_procedure();
+        thrust_set = final_landing_procedure();
         waypoint_set_here_2d(WP_GOAL);
       }
     } else if (of_landing_ctrl.CONTROL_METHOD == 1) {

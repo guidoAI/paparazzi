@@ -741,7 +741,7 @@ void calc_fast9_lukas_kanade(struct opticflow_t *opticflow, struct opticflow_sta
   float pre_log_time = get_sys_time_float();
   if(LOG_DEROTATION) {
       // delta_phi,delta_theta,flow_x,flow_y
-      fprintf(ofc_file_logger, "%f,%f,%f,%f,%f,%f,%f\n", (cam_state->rates.p)  / result->fps, (cam_state->rates.q)  / result->fps, (cam_state->rates.r)  / result->fps, ((float)result->flow_x)/opticflow->subpixel_factor, ((float)result->flow_y)/opticflow->subpixel_factor, diff_flow_x, diff_flow_y);
+      fprintf(ofc_file_logger, "%f,%f,%f,%f,%f,%f,%f\n", (cam_state->rates.p)  / result->fps, (cam_state->rates.q)  / result->fps, (cam_state->rates.r)  / result->fps, ((float)result->flow_x)/opticflow->subpixel_factor, ((float)result->flow_y)/opticflow->subpixel_factor, diff_flow_x * opticflow->derotation_correction_factor_x, diff_flow_y * opticflow->derotation_correction_factor_y);
       //fprintf(ofc_file_logger, "%f,%f,%f,%f,%f\n", (cam_state->phi - opticflow->prev_phi)  / result->fps, (cam_state->theta - opticflow->prev_theta)  / result->fps, (cam_state->rates.r)  / result->fps, ((float)result->flow_x)/opticflow->subpixel_factor, ((float)result->flow_y)/opticflow->subpixel_factor);
   }
   else if(LOG_SSL){

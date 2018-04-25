@@ -10,7 +10,7 @@
     <module name="motor_mixing"/>
     <module name="actuators" type="bebop"/>
     <module name="imu" type="bebop"/>
-    <!-- <module name="gps" type="datalink"/> -->
+    <module name="gps" type="datalink"/>
     <module name="stabilization" type="indi_simple"/>
     <module name="ahrs" type="int_cmpl_quat">
       <configure name="USE_MAGNETOMETER" value="FALSE"/>
@@ -60,8 +60,8 @@
       <define name="MAX_HORIZON" value="10"/>
       <define name="OPTICFLOW_FX" value="347.22222222"/> <!-- 2.5 / (3.6 * 2.0) * 1000 -->
       <define name="OPTICFLOW_FY" value="347.22222222"/> <!-- 2.5 / (3.6 * 2.0) * 1000 -->
-      <define name="OPTICFLOW_FOV_W" value="2.086961"/> <!-- 2 * arctan(240 / (2*347.22222222)) -->
-      <define name="OPTICFLOW_FOV_H" value="2.302915"/> <!-- 2 * arctan(240 / (2*347.22222222)) -->
+      <define name="OPTICFLOW_FOV_W" value="4.8"/> <!-- 2 * arctan(240 / (2*347.22222222))  2.086961 --> 
+      <define name="OPTICFLOW_FOV_H" value="4.6"/> <!-- 2 * arctan(240 / (2*347.22222222)) 2.302915  -->
       <define name="OPTICFLOW_DEROTATION" value="0"/> <!-- formulas are not correct for the front cam -->
       <define name="OPTICFLOW_DEROTATION_CORRECTION_FACTOR_X" value="-1.0"/> <!--Obtained from a linefit--> 
       <define name="OPTICFLOW_DEROTATION_CORRECTION_FACTOR_Y" value="-1.0"/> <!--Obtained from a linefit--> 
