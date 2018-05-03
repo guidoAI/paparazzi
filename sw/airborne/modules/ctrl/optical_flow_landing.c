@@ -151,8 +151,8 @@ PRINT_CONFIG_VAR(OPTICAL_FLOW_LANDING_OPTICAL_FLOW_ID)
 #endif
 
 #ifndef OPTICAL_FLOW_LANDING_IGAIN
-// #define OPTICAL_FLOW_LANDING_IGAIN 0.01
-#define OPTICAL_FLOW_LANDING_IGAIN 0.0
+#define OPTICAL_FLOW_LANDING_IGAIN 0.01
+// #define OPTICAL_FLOW_LANDING_IGAIN 0.0
 #endif
 
 #ifndef OPTICAL_FLOW_LANDING_DGAIN
@@ -193,6 +193,12 @@ void vertical_ctrl_module_run(bool in_flight);
 
 // for exponential gain landing, gain increase per second during the first (hover) phase:
 #define INCREASE_GAIN_PER_SECOND 0.02
+
+// does the drone disturb its own thrust during the exponential strategy?
+#define DISTURB_THRUST true
+#define THRUST_DISTURB_TIME 0.10
+//0.05
+#define PROPORTION_OF_NOMINAL 0.5
 
 /**
  * Initialize the optical flow landing module
@@ -525,7 +531,6 @@ void vertical_ctrl_module_run(bool in_flight)
 
       // First seconds, don't do anything crazy:
       if (module_active_time_sec < 2.5f) {
-        printf("Inactive time...\n");
         int32_t nominal_throttle = of_landing_ctrl.nominal_thrust * MAX_PPRZ;
         thrust = nominal_throttle;
         stabilization_cmd[COMMAND_THRUST] = thrust;
@@ -619,6 +624,25 @@ void vertical_ctrl_module_run(bool in_flight)
 
           // use the divergence for control:
           thrust = PID_divergence_control(phase_0_set_point, pused, istate, dstate, &err);
+
+
+          if(DISTURB_THRUST) {
+              // not at the start:
+              if(pstate > OPTICAL_FLOW_LANDING_PGAIN + 0.5 * INCREASE_GAIN_PER_SECOND) {
+                  // not when already oscillating (the gain is then not changing and the disturbance would last longer):
+                  if(cov_div > of_landing_ctrl.cov_set_point) {
+                    // every 5 seconds, disturb your own thrust (lower than nominal):
+                    float remainder =fmodf(pstate, 5*INCREASE_GAIN_PER_SECOND);
+                    printf("state, threshold, remainder = %f, %f, %f\n", pstate, 5*INCREASE_GAIN_PER_SECOND, remainder);
+                    if(remainder  < INCREASE_GAIN_PER_SECOND * THRUST_DISTURB_TIME) {
+                        printf("THRUST REDUCTION!!!!\n");
+                        thrust = PROPORTION_OF_NOMINAL * of_landing_ctrl.nominal_thrust * MAX_PPRZ;
+                    }
+                  }
+              }
+          }
+
+
           // keep track of histories and set the covariance
           set_cov_div(thrust);
           // update the controller errors:
@@ -903,7 +927,6 @@ void final_landing_procedure()
  */
 void set_cov_div(int32_t thrust)
 {
-  printf("Enter cov_div...");
   // histories and cov detection:
   normalized_thrust = (float)(thrust / (MAX_PPRZ / 100));
   thrust_history[ind_hist % of_landing_ctrl.window_size] = normalized_thrust;
@@ -921,7 +944,6 @@ void set_cov_div(int32_t thrust)
     cov_div = get_cov(past_divergence_history, divergence_history, of_landing_ctrl.window_size);
     // printf("Time window in seconds: %f\n", get_mean_array(dt_history, of_landing_ctrl.window_size) * of_landing_ctrl.window_size);
   }
-  printf("and exit...\n");
 
 }
 
