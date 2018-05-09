@@ -85,6 +85,7 @@ PRINT_CONFIG_VAR(OFL_OPTICAL_FLOW_ID)
 #define OFL_PGAIN 0.40
 #endif
 
+// 0.01
 #ifndef OFL_IGAIN
 #define OFL_IGAIN 0.01
 #endif
@@ -121,7 +122,7 @@ PRINT_CONFIG_VAR(OFL_OPTICAL_FLOW_ID)
 
 // 0.02
 #ifndef OFL_LP_CONST
-#define OFL_LP_CONST 0.02
+#define OFL_LP_CONST 0.01
 #endif
 
 #ifndef OFL_P_LAND_THRESHOLD

@@ -4,6 +4,9 @@
   <doc>
     <description>Represent the appearance (texture, color) of an image by means of a texton histogram.</description>
 
+    <define name="TEXTONS_CAMERA" value="front_camera|bottom_camera" description="Video device to use"/>
+    <define name="TEXTONS_FPS" value="0" description="The (maximum) frequency to run the calculations at. If zero, it will max out at the camera frame rate"/>
+
     <section name="TEXTONS" prefix="TEXTONS_">
       <define name="LOAD_DICTIONARY" value="YES" description="Whether a dictionary is loaded (YES) or learned (NO)."/>
       <define name="N_TEXTONS" value="20" description="The number of textons (words) in the dictionary."/>

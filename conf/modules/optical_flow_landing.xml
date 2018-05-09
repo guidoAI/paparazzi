@@ -28,7 +28,7 @@
     <dl_settings>
       <dl_settings NAME="OpticalFlowLanding">
         <dl_setting var="of_landing_ctrl.nominal_thrust" min="0" step="0.001" max="1" module="ctrl/optical_flow_landing" shortname="nominal_thrust"/>
-        <dl_setting var="of_landing_ctrl.lp_const" min="0.005" step="0.005" max="1" module="ctrl/optical_flow_landing" shortname="lp_factor" param="OFL_LP_CONST"/>
+        <dl_setting var="of_landing_ctrl.lp_const" min="0.001" step="0.001" max="1" module="ctrl/optical_flow_landing" shortname="lp_factor" param="OFL_LP_CONST"/>
         <dl_setting var="of_landing_ctrl.divergence_setpoint" min="-1" step="0.01" max="1" module="ctrl/optical_flow_landing" shortname="div sp"/>
         <dl_setting var="of_landing_ctrl.cov_set_point" min="-6" step="0.0001" max="6" module="ctrl/optical_flow_landing" shortname="cov_set_point" param="OFL_COV_SETPOINT"/>
         <dl_setting var="of_landing_ctrl.cov_limit" min="0" step="0.0001" max="6" module="ctrl/optical_flow_landing" shortname="cov_limit" param="OFL_COV_LANDING_LIMIT"/>

@@ -69,9 +69,14 @@
       <define name="OPTICFLOW_MAX_TRACK_CORNERS" value="25"/> 
     </module>
 
+    <module name="cv_textons">
+      <define name="TEXTONS_CAMERA" value="front_camera"/>
+      <define name="TEXTONS_FPS" value="3"/>
+    </module>
+
     <module name="optical_flow_landing">
       <define name="OFL_PGAIN" value="0.25"/>
-      <define name="OFL_IGAIN" value="0.02"/>
+      <define name="OFL_IGAIN" value="0.05"/>
       <define name="COV_SETPOINT" value="-0.075"/>
     </module>
 

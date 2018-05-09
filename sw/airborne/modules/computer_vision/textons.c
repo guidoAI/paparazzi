@@ -33,6 +33,9 @@
 #include <stdio.h>
 #include "modules/computer_vision/cv.h"
 #include "modules/computer_vision/textons.h"
+//#include "modules/computer_vision/lib/vision/image.h"
+
+struct video_listener *listener = NULL;
 
 float ** **dictionary;
 uint32_t learned_samples = 0;
@@ -516,7 +519,8 @@ void textons_init(void)
     }
   }
 
-  cv_add(texton_func);
+  listener = cv_add_to_device(&TEXTONS_CAMERA, texton_func, TEXTONS_FPS);
+  //cv_add(texton_func);
 }
 
 void textons_stop(void)
