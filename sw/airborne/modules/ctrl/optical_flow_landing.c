@@ -195,7 +195,7 @@ void vertical_ctrl_module_run(bool in_flight);
 #define INCREASE_GAIN_PER_SECOND 0.02
 
 // does the drone disturb its own thrust during the exponential strategy?
-#define DISTURB_THRUST true
+#define DISTURB_THRUST false
 #define THRUST_DISTURB_TIME 0.10
 //0.05
 #define PROPORTION_OF_NOMINAL 0.5
