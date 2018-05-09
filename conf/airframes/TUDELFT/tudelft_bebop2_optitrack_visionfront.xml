@@ -75,9 +75,10 @@
     </module>
 
     <module name="optical_flow_landing">
-      <define name="OFL_PGAIN" value="0.25"/>
+      <define name="OFL_PGAIN" value="0.40"/> <!-- 0.25 -->
       <define name="OFL_IGAIN" value="0.05"/>
       <define name="COV_SETPOINT" value="-0.075"/>
+      <define name="LP_CONST" value="0.001"/> 
     </module>
 
 <!--
