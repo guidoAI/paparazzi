@@ -36,11 +36,17 @@
 // #include "subsystems/electrical.h"
 #include "modules/computer_vision/video_capture.h"
 
+
 // will this work?
 #include "modules/ctrl/optical_flow_landing.h"
 
+#include "modules/computer_vision/textons.h"
 
-#define MAKE_SNAPSHOTS true
+#define MAKE_SNAPSHOTS false
+
+#define LOG_TEXTONS true
+
+int log_count;
 
 // reading the pressuremeter:
 #include "subsystems/abi.h"
@@ -115,6 +121,7 @@ static FILE *file_logger = NULL;
 /** Start the file logger and open a new file */
 void file_logger_start(void)
 {
+  log_count = 0;
   uint32_t counter = 0;
   char filename[512];
   
@@ -135,10 +142,24 @@ void file_logger_start(void)
   file_logger = fopen(filename, "w");
 
   if (file_logger != NULL) {
-    fprintf(
-      file_logger,
-      "counter,gyro_unscaled_p,gyro_unscaled_q,gyro_unscaled_r,accel_unscaled_x,accel_unscaled_y,accel_unscaled_z,mag_unscaled_x,mag_unscaled_y,mag_unscaled_z,COMMAND_THRUST,COMMAND_ROLL,COMMAND_PITCH,COMMAND_YAW,qi,qx,qy,qz,shot,pressure,sonar,phi_f,theta_f,psi_f,pstate,cov_div,used_flow,flow_x,flow_y,size_divergence,flow_der_x,flow_der_y,X,Y,Z,VX,VY,VZ,oscillating\n"
-    );
+
+    if(!LOG_TEXTONS) {
+        fprintf(
+              file_logger,
+              "counter,gyro_unscaled_p,gyro_unscaled_q,gyro_unscaled_r,accel_unscaled_x,accel_unscaled_y,accel_unscaled_z,mag_unscaled_x,mag_unscaled_y,mag_unscaled_z,COMMAND_THRUST,COMMAND_ROLL,COMMAND_PITCH,COMMAND_YAW,qi,qx,qy,qz,shot,pressure,sonar,phi_f,theta_f,psi_f,pstate,cov_div,used_flow,flow_x,flow_y,size_divergence,flow_der_x,flow_der_y,X,Y,Z,VX,VY,VZ,oscillating\n"
+            );
+    }
+    else {
+        fprintf(
+              file_logger,
+              "counter,gyro_unscaled_p,gyro_unscaled_q,gyro_unscaled_r,accel_unscaled_x,accel_unscaled_y,accel_unscaled_z,mag_unscaled_x,mag_unscaled_y,mag_unscaled_z,COMMAND_THRUST,COMMAND_ROLL,COMMAND_PITCH,COMMAND_YAW,qi,qx,qy,qz,shot,pressure,sonar,phi_f,theta_f,psi_f,pstate,cov_div,used_flow,flow_x,flow_y,size_divergence,flow_der_x,flow_der_y,X,Y,Z,VX,VY,VZ,oscillating"
+            );
+        for (int t = 0; t < n_textons; t++) {
+            fprintf(file_logger, ",texton%d", t);
+        }
+        fprintf(file_logger, "\n");
+    }
+
 
     logger_pressure = 0.0f;
     logger_sonar = 0.0f;
@@ -172,6 +193,17 @@ void file_logger_periodic(void)
     return;
   }
 
+  log_count++;
+  //printf("log_count = %d, mod 100 = %d\n", log_count, log_count % 100);
+  if(log_count % 100 != 0) {
+      //printf("NO LOGGING\n");
+      return;
+  }
+  else {
+      //printf("\nLOGGING!\n");
+      log_count = 0;
+  }
+
   //timing
   gettimeofday(&stop, 0);
   double curr_time = (double)(stop.tv_sec + stop.tv_usec / 1000000.0);
@@ -198,7 +230,7 @@ void file_logger_periodic(void)
 
   int osc = (oscillating) ? 1 : 0;
 
-  fprintf(file_logger, "%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%d\n",
+  fprintf(file_logger, "%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%d",
           counter,
           imu.gyro_unscaled.p,
           imu.gyro_unscaled.q,
@@ -239,5 +271,16 @@ void file_logger_periodic(void)
           vel->z,
           osc
          );
+
+  if(!LOG_TEXTONS) {
+      fprintf(file_logger, "\n");
+  }
+  else {
+      for (int t = 0; t < n_textons; t++) {
+                  fprintf(file_logger, ",%f", texton_distribution[t]);
+      }
+      fprintf(file_logger, "\n");
+  }
+
   counter++;
 }
