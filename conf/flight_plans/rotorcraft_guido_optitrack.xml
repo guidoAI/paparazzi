@@ -84,7 +84,7 @@
     <block name="land">
       <go wp="TD"/>
     </block>
-    <block name="flare">
+    <block key="l" name="flare">
       <exception cond="NavDetectGround()" deroute="Holding point"/>
       <exception cond="!nav_is_in_flight()" deroute="landed"/>
       <call_once fun="NavStartDetectGround()"/>
