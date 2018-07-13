@@ -124,7 +124,7 @@ void file_logger_periodic(void)
   static uint32_t counter;
   struct Int32Quat *quat = stateGetNedToBodyQuat_i();
 
-  struct NedCoor_f * position = stateGetPositionNed_f();
+  float z = stateGetPositionNed_f()->z;
 
   fprintf(file_logger, "%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%f,%f,%f\n",
           counter,
@@ -146,7 +146,7 @@ void file_logger_periodic(void)
           quat->qy,
           quat->qz,
           agl_dist_value_filtered,
-          position->z,
+          z,
           logger_divergence
          );
   counter++;

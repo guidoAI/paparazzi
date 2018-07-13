@@ -39,6 +39,9 @@
       <define name="OPTICFLOW_DEROTATION_CORRECTION_FACTOR_Y" value="0.85"/> <!--Obtained from a linefit--> 
     </module>
 
+    <!--
+    <module name="agl_dist"/>
+    -->
 
     <!-- <module name="video_rtp_stream">
       <define name="VIEWVIDEO_CAMERA" value="bottom_camera"/>
