@@ -43,7 +43,7 @@
  * @param[in] n_samples  The number of line segments that will be taken into account. 0 means all line segments will be considered.
  * @return divergence
  */
-float get_size_divergence(struct flow_t *vectors, int count, int n_samples)
+float get_size_divergence(struct flow_t *vectors, int count, int n_samples, float* variance_estimates)
 {
   float distance_1, distance_2;
   float *divs;  // divs will contain the individual divergence estimates:
@@ -116,6 +116,7 @@ float get_size_divergence(struct flow_t *vectors, int count, int n_samples)
 
   // calculate the mean divergence:
   float mean_divergence = mean_f(divs, used_samples);
+  (*variance_estimates) = variance_f(divs, used_samples);
 
   // free the memory of divs:
   free(divs);

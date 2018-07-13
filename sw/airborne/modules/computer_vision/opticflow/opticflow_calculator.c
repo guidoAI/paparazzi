@@ -420,8 +420,9 @@ bool calc_fast9_lukas_kanade(struct opticflow_t *opticflow, struct image_t *img,
 
   static int n_samples = 100;
   // Estimate size divergence:
+  float variance_size_divergence;
   if (SIZE_DIV) {
-    result->div_size = get_size_divergence(vectors, result->tracked_cnt, n_samples);// * result->fps;
+    result->div_size = get_size_divergence(vectors, result->tracked_cnt, n_samples, &variance_size_divergence);// * result->fps;
   } else {
     result->div_size = 0.0f;
   }
@@ -496,11 +497,24 @@ bool calc_fast9_lukas_kanade(struct opticflow_t *opticflow, struct image_t *img,
   // Velocity calculation
   // Right now this formula is under assumption that the flow only exist in the center axis of the camera.
   // TODO Calculate the velocity more sophisticated, taking into account the drone's angle and the slope of the ground plane.
+  // TODO use the height estimate from the state estimation filter, not the filtered sonar value.
   result->vel_cam.x = (float)result->flow_der_x * result->fps * agl_dist_value_filtered /
                       (opticflow->subpixel_factor * OPTICFLOW_FX);
   result->vel_cam.y = (float)result->flow_der_y * result->fps * agl_dist_value_filtered /
                       (opticflow->subpixel_factor * OPTICFLOW_FY);
-  result->vel_cam.z = result->divergence * result->fps * agl_dist_value_filtered;
+  if(SIZE_DIV) {
+    // TODO: use variance_size_divergence
+    result->vel_cam.z = result->div_size * result->fps * agl_dist_value_filtered;
+  }
+  else if(LINEAR_FIT){
+    // TODO: use fit_info.fit_error / surface_roughness
+    result->vel_cam.z = result->divergence * result->fps * agl_dist_value_filtered;
+  }
+  else {
+    // TODO: we should set the noise measurement to a high value in this case
+    // For this, we would need three separate noise measurements in "result"
+    result->vel_cam.z = 0.0f;
+  }
 
   //Apply a  median filter to the velocity if wanted
   if (opticflow->median_filter == true) {
@@ -508,7 +522,8 @@ bool calc_fast9_lukas_kanade(struct opticflow_t *opticflow, struct image_t *img,
   }
 
   // Determine quality of noise measurement for state filter
-  //TODO develop a noise model based on groundtruth
+  // TODO develop a noise model based on groundtruth
+  // TODO take the tracking errors into account
   //result->noise_measurement = 1 - (float)result->tracked_cnt / ((float)opticflow->max_track_corners * 1.25f);
   result->noise_measurement = 0.25;
 

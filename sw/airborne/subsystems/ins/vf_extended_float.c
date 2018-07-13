@@ -133,7 +133,7 @@ void vff_propagate(float accel, float dt)
 {
   /* update state */
   vff.zdotdot = accel + 9.81 - vff.bias;
-  vff.z = vff.z + dt * vff.zdot;
+  vff.z = vff.z + dt * vff.zdot; // TODO: where is this part? dt^2/2
   vff.zdot = vff.zdot + dt * vff.zdotdot;
   /* update covariance */
   const float FPF00 = vff.P[0][0] + dt * (vff.P[1][0] + vff.P[0][1] + dt * vff.P[1][1]);

@@ -407,6 +407,7 @@ void ins_int_update_gps(struct GpsState *gps_s)
 #if INS_USE_GPS_ALT
   vff_update_z_conf(((float)gps_pos_cm_ned.z) / 100.0, INS_VFF_R_GPS);
 #endif
+  // TODO: question: if using optical flow, (where) is this set to true?
 #if INS_USE_GPS_ALT_SPEED
   vff_update_vz_conf(((float)gps_speed_cm_s_ned.z) / 100.0, INS_VFF_VZ_R_GPS);
   ins_int.propagation_cnt = 0;

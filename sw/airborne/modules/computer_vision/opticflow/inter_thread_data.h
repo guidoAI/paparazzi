@@ -53,7 +53,10 @@ struct opticflow_result_t {
   float surface_roughness; ///< Surface roughness as determined with a linear optical flow fit
   float divergence;       ///< Divergence as determined with a linear flow fit
 
-  float noise_measurement;  ///< noise of measurement, for state filter
+  float noise_measurement;     ///< generic noise measurement
+  float noise_measurement_vx;  ///< noise of measurement, for state filter, x-direction
+  float noise_measurement_vy;  ///< noise of measurement, for state filter, y-direction
+  float noise_measurement_vz;  ///< noise of measurement, for state filter, z-direction
 };
 
 #endif
