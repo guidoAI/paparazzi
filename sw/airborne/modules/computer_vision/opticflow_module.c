@@ -123,10 +123,10 @@ void opticflow_module_run(void)
       AbiSendMsgVELOCITY_ESTIMATE(VEL_OPTICFLOW_ID, now_ts,
                                   opticflow_result.vel_body.x,
                                   opticflow_result.vel_body.y,
-                                  opticflow_result.vel_body.z,
+                                  0.0f, //opticflow_result.vel_body.z,
                                   opticflow_result.noise_measurement,
                                   opticflow_result.noise_measurement,
-                                  opticflow_result.noise_measurement
+                                  1000.0f //opticflow_result.noise_measurement
                                  );
     }
     opticflow_got_result = false;
