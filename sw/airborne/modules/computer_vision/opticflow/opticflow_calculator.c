@@ -504,10 +504,18 @@ bool calc_fast9_lukas_kanade(struct opticflow_t *opticflow, struct image_t *img,
                       (opticflow->subpixel_factor * OPTICFLOW_FY);
   if(SIZE_DIV) {
     // TODO: use variance_size_divergence
+    if(abs(result->div_size) > 1.0f) {
+      result->div_size = 0.0f;
+    }
+    // TODO: agl_dist_value_filtered can be affected by outliers. These will screw up results now. Where is it determined? Why not the estimated height from the state filter?
     result->vel_cam.z = result->div_size * result->fps * agl_dist_value_filtered;
+
   }
   else if(LINEAR_FIT){
     // TODO: use fit_info.fit_error / surface_roughness
+    if(abs(result->div_size) > 1.0f) {
+      result->div_size = 0.0f;
+    }
     result->vel_cam.z = result->divergence * result->fps * agl_dist_value_filtered;
   }
   else {

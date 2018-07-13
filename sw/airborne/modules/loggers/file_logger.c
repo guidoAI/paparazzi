@@ -33,12 +33,34 @@
 
 #include "subsystems/imu.h"
 #include "firmwares/rotorcraft/stabilization.h"
+
+// extra logging
 #include "state.h"
+#include "modules/sonar/agl_dist.h"
+
 
 /** Set the default File logger path to the USB drive */
 #ifndef FILE_LOGGER_PATH
 #define FILE_LOGGER_PATH /data/video/usb
 #endif
+
+
+// reading the optical flow messages:
+#include "subsystems/abi.h"
+#ifndef LOGGER_OPTICFLOW_ID
+#define LOGGER_OPTICFLOW_ID ABI_BROADCAST
+#endif
+PRINT_CONFIG_VAR(LOGGER_OPTICFLOW_ID)
+float logger_divergence;
+static abi_event opticflow_ev; ///< The opticflow ABI event
+/// Callback function of the ground altitude
+static void logger_opticflow_cb(uint8_t sender_id, uint32_t stamp, int16_t flow_x, int16_t flow_y, int16_t flow_der_x, int16_t flow_der_y, float quality, float size_divergence);
+// Reading from "sensors":
+static void logger_opticflow_cb(uint8_t sender_id, uint32_t stamp, int16_t flow_x, int16_t flow_y, int16_t flow_der_x, int16_t flow_der_y, float quality, float size_divergence)
+{
+  logger_divergence = size_divergence;
+}
+
 
 /** The file pointer */
 static FILE *file_logger = NULL;
@@ -79,7 +101,7 @@ void file_logger_start(void)
   if (file_logger != NULL) {
     fprintf(
       file_logger,
-      "counter,gyro_unscaled_p,gyro_unscaled_q,gyro_unscaled_r,accel_unscaled_x,accel_unscaled_y,accel_unscaled_z,mag_unscaled_x,mag_unscaled_y,mag_unscaled_z,COMMAND_THRUST,COMMAND_ROLL,COMMAND_PITCH,COMMAND_YAW,qi,qx,qy,qz\n"
+      "counter,gyro_unscaled_p,gyro_unscaled_q,gyro_unscaled_r,accel_unscaled_x,accel_unscaled_y,accel_unscaled_z,mag_unscaled_x,mag_unscaled_y,mag_unscaled_z,COMMAND_THRUST,COMMAND_ROLL,COMMAND_PITCH,COMMAND_YAW,qi,qx,qy,qz,sonar_height,filtered_height,divergence\n"
     );
   }
 }
@@ -102,7 +124,9 @@ void file_logger_periodic(void)
   static uint32_t counter;
   struct Int32Quat *quat = stateGetNedToBodyQuat_i();
 
-  fprintf(file_logger, "%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d\n",
+  struct NedCoor_f * position = stateGetPositionNed_f();
+
+  fprintf(file_logger, "%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%f,%f,%f\n",
           counter,
           imu.gyro_unscaled.p,
           imu.gyro_unscaled.q,
@@ -120,7 +144,10 @@ void file_logger_periodic(void)
           quat->qi,
           quat->qx,
           quat->qy,
-          quat->qz
+          quat->qz,
+          agl_dist_value_filtered,
+          position->z,
+          logger_divergence
          );
   counter++;
 }
