@@ -51,7 +51,7 @@
 #define LOGGER_OPTICFLOW_ID ABI_BROADCAST
 #endif
 PRINT_CONFIG_VAR(LOGGER_OPTICFLOW_ID)
-float logger_divergence;
+float logger_divergence, logger_flow_x, logger_flow_y, logger_flow_quality;
 static abi_event opticflow_ev; ///< The opticflow ABI event
 /// Callback function of the ground altitude
 static void logger_opticflow_cb(uint8_t sender_id, uint32_t stamp, int16_t flow_x, int16_t flow_y, int16_t flow_der_x, int16_t flow_der_y, float quality, float size_divergence);
@@ -59,6 +59,9 @@ static void logger_opticflow_cb(uint8_t sender_id, uint32_t stamp, int16_t flow_
 static void logger_opticflow_cb(uint8_t sender_id, uint32_t stamp, int16_t flow_x, int16_t flow_y, int16_t flow_der_x, int16_t flow_der_y, float quality, float size_divergence)
 {
   logger_divergence = size_divergence;
+  logger_flow_x = flow_der_x;
+  logger_flow_y = flow_der_y;
+  logger_flow_quality = quality;
 }
 
 
@@ -101,7 +104,7 @@ void file_logger_start(void)
   if (file_logger != NULL) {
     fprintf(
       file_logger,
-      "counter,gyro_unscaled_p,gyro_unscaled_q,gyro_unscaled_r,accel_unscaled_x,accel_unscaled_y,accel_unscaled_z,mag_unscaled_x,mag_unscaled_y,mag_unscaled_z,COMMAND_THRUST,COMMAND_ROLL,COMMAND_PITCH,COMMAND_YAW,qi,qx,qy,qz,sonar_height,filtered_height,divergence\n"
+      "counter,gyro_unscaled_p,gyro_unscaled_q,gyro_unscaled_r,accel_unscaled_x,accel_unscaled_y,accel_unscaled_z,mag_unscaled_x,mag_unscaled_y,mag_unscaled_z,COMMAND_THRUST,COMMAND_ROLL,COMMAND_PITCH,COMMAND_YAW,qi,qx,qy,qz,sonar_height,filtered_height,divergence,flow_x,flow_y,flow_quality\n"
     );
   }
 }
@@ -147,7 +150,10 @@ void file_logger_periodic(void)
           quat->qz,
           agl_dist_value_filtered,
           z,
-          logger_divergence
+          logger_divergence,
+          logger_flow_x,
+          logger_flow_y,
+          logger_flow_quality
          );
   counter++;
 }

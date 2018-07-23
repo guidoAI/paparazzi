@@ -533,7 +533,7 @@ bool calc_fast9_lukas_kanade(struct opticflow_t *opticflow, struct image_t *img,
   // TODO develop a noise model based on groundtruth
   // TODO take the tracking errors into account
   //result->noise_measurement = 1 - (float)result->tracked_cnt / ((float)opticflow->max_track_corners * 1.25f);
-  result->noise_measurement = 0.25;
+  result->noise_measurement = variance_size_divergence; //0.25;
 
   // *************************************************************************************
   // Next Loop Preparation
