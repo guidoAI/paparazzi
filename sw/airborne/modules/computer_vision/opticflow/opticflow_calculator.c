@@ -45,6 +45,8 @@
 #include "linear_flow_fit.h"
 #include "modules/sonar/agl_dist.h"
 
+#include "state.h"
+
 // whether to show the flow and corners:
 #define OPTICFLOW_SHOW_FLOW 0
 #define OPTICFLOW_SHOW_CORNERS 0
@@ -242,6 +244,8 @@ static int cmp_flow(const void *a, const void *b);
 static int cmp_array(const void *a, const void *b);
 static void manage_flow_features(struct image_t *img, struct opticflow_t *opticflow,
                                  struct opticflow_result_t *result);
+// log flow vectors:
+static FILE *flow_logger = NULL;
 
 /**
  * Initialize the opticflow calculator
@@ -286,7 +290,53 @@ void opticflow_calc_init(struct opticflow_t *opticflow)
 
   struct FloatEulers euler = {OPTICFLOW_BODY_TO_CAM_PHI, OPTICFLOW_BODY_TO_CAM_THETA, OPTICFLOW_BODY_TO_CAM_PSI};
   float_rmat_of_eulers(&body_to_cam, &euler);
+
+  // start logging:
+  char filename[512];
+  // Check for available files
+  sprintf(filename, "/data/ftp/internal_000/flow.csv");
+  flow_logger = fopen(filename, "w");
+  if (flow_logger != NULL) {
+    fprintf(flow_logger, "pitch_diff,roll_diff,yaw_diff,pitch_rate,roll_rate,yaw_rate");
+    for(int i = 0; i < OPTICFLOW_MAX_TRACK_CORNERS; i++) {
+      fprintf(flow_logger, ",px%d,py%d,fv%d_x,fv%d_y", i, i, i, i);
+    }
+    fprintf(flow_logger, "\n");
+
+  }
+  fclose(flow_logger);
 }
+
+void log_flow_vectors(struct flow_t *vectors, unsigned int n_vectors, float pitch_diff, float roll_diff, float yaw_diff, float pitch_rate, float roll_rate, float yaw_rate) {
+
+  // start logging:
+  char filename[512];
+  // Check for available files
+  sprintf(filename, "/data/ftp/internal_000/flow.csv");
+  flow_logger = fopen(filename, "a");
+
+  if (flow_logger != NULL) {
+      printf("File open!\n");
+      fprintf(flow_logger, "%f,%f,%f,%f,%f,%f", pitch_diff, roll_diff, yaw_diff, pitch_rate, roll_rate, yaw_rate);
+      for(int i = 0; i < n_vectors; i++) {
+        fprintf(flow_logger, ",%d,%d,%d,%d", vectors[i].pos.x, vectors[i].pos.y, vectors[i].flow_x, vectors[i].flow_y);
+      }
+      int no_flow = -1;
+      for(int i = n_vectors; i < OPTICFLOW_MAX_TRACK_CORNERS; i++) {
+        fprintf(flow_logger, ",%d,%d,%d,%d", no_flow, no_flow, no_flow, no_flow);
+      }
+      fprintf(flow_logger, "\n");
+
+      fclose(flow_logger);
+    }
+  else {
+    printf("File not open...\n");
+  }
+
+
+
+}
+
 /**
  * Run the optical flow with fast9 and lukaskanade on a new image frame
  * @param[in] *opticflow The opticalflow structure that keeps track of previous images
@@ -474,13 +524,21 @@ bool calc_fast9_lukas_kanade(struct opticflow_t *opticflow, struct image_t *img,
   float diff_flow_y = 0.f;
 
   if (opticflow->derotation && result->tracked_cnt > 5) {
-    diff_flow_x = (opticflow->img_gray.eulers.phi - opticflow->prev_img_gray.eulers.phi) * OPTICFLOW_FX;
-    diff_flow_y = (opticflow->img_gray.eulers.theta - opticflow->prev_img_gray.eulers.theta) * OPTICFLOW_FY;
+    float diff_phi = (opticflow->img_gray.eulers.phi - opticflow->prev_img_gray.eulers.phi);
+    float diff_theta = (opticflow->img_gray.eulers.theta - opticflow->prev_img_gray.eulers.theta);
+    diff_flow_x = diff_phi * OPTICFLOW_FX;
+    diff_flow_y = diff_theta * OPTICFLOW_FY;
     /*diff_flow_x = (cam_state->rates.p)  / result->fps * img->w /
                   OPTICFLOW_FOV_W;// * img->w / OPTICFLOW_FOV_W;
     diff_flow_y = (cam_state->rates.q) / result->fps * img->h /
                   OPTICFLOW_FOV_H;// * img->h / OPTICFLOW_FOV_H;*/
+
+    float diff_psi = (opticflow->img_gray.eulers.psi - opticflow->prev_img_gray.eulers.psi);
+    //log_flow_vectors(vectors, result->tracked_cnt, diff_theta, diff_phi, diff_psi);
+    log_flow_vectors(vectors, result->tracked_cnt, diff_theta, diff_phi, diff_psi, stateGetBodyRates_f()->q, stateGetBodyRates_f()->p, stateGetBodyRates_f()->r);
   }
+
+
 
   float rotation_threshold = M_PI / 180.0f;
   if (fabs(opticflow->img_gray.eulers.phi - opticflow->prev_img_gray.eulers.phi) > rotation_threshold
