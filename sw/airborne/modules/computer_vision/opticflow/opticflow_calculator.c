@@ -246,6 +246,10 @@ static void manage_flow_features(struct image_t *img, struct opticflow_t *opticf
                                  struct opticflow_result_t *result);
 // log flow vectors:
 static FILE *flow_logger = NULL;
+#define LOG_FLOW 1
+
+// tracking corners back as extra check:
+#define TRACK_BACK 1
 
 /**
  * Initialize the opticflow calculator
@@ -291,20 +295,22 @@ void opticflow_calc_init(struct opticflow_t *opticflow)
   struct FloatEulers euler = {OPTICFLOW_BODY_TO_CAM_PHI, OPTICFLOW_BODY_TO_CAM_THETA, OPTICFLOW_BODY_TO_CAM_PSI};
   float_rmat_of_eulers(&body_to_cam, &euler);
 
-  // start logging:
-  char filename[512];
-  // Check for available files
-  sprintf(filename, "/data/ftp/internal_000/flow.csv");
-  flow_logger = fopen(filename, "w");
-  if (flow_logger != NULL) {
-    fprintf(flow_logger, "pitch_diff,roll_diff,yaw_diff,pitch_rate,roll_rate,yaw_rate");
-    for(int i = 0; i < OPTICFLOW_MAX_TRACK_CORNERS; i++) {
-      fprintf(flow_logger, ",px%d,py%d,fv%d_x,fv%d_y", i, i, i, i);
-    }
-    fprintf(flow_logger, "\n");
+  if(LOG_FLOW) {
+    // start logging:
+    char filename[512];
+    // Check for available files
+    sprintf(filename, "/data/ftp/internal_000/flow.csv");
+    flow_logger = fopen(filename, "w");
+    if (flow_logger != NULL) {
+      fprintf(flow_logger, "pitch_diff,roll_diff,yaw_diff,pitch_rate,roll_rate,yaw_rate");
+      for(int i = 0; i < OPTICFLOW_MAX_TRACK_CORNERS; i++) {
+        fprintf(flow_logger, ",px%d,py%d,fv%d_x,fv%d_y,err%d", i, i, i, i, i);
+      }
+      fprintf(flow_logger, "\n");
 
+    }
+    fclose(flow_logger);
   }
-  fclose(flow_logger);
 }
 
 void log_flow_vectors(struct flow_t *vectors, unsigned int n_vectors, float pitch_diff, float roll_diff, float yaw_diff, float pitch_rate, float roll_rate, float yaw_rate) {
@@ -319,11 +325,11 @@ void log_flow_vectors(struct flow_t *vectors, unsigned int n_vectors, float pitc
       printf("File open!\n");
       fprintf(flow_logger, "%f,%f,%f,%f,%f,%f", pitch_diff, roll_diff, yaw_diff, pitch_rate, roll_rate, yaw_rate);
       for(int i = 0; i < n_vectors; i++) {
-        fprintf(flow_logger, ",%d,%d,%d,%d", vectors[i].pos.x, vectors[i].pos.y, vectors[i].flow_x, vectors[i].flow_y);
+        fprintf(flow_logger, ",%d,%d,%d,%d,%d", vectors[i].pos.x, vectors[i].pos.y, vectors[i].flow_x, vectors[i].flow_y, vectors[i].error);
       }
       int no_flow = -1;
       for(int i = n_vectors; i < OPTICFLOW_MAX_TRACK_CORNERS; i++) {
-        fprintf(flow_logger, ",%d,%d,%d,%d", no_flow, no_flow, no_flow, no_flow);
+        fprintf(flow_logger, ",%d,%d,%d,%d,%d", no_flow, no_flow, no_flow, no_flow, no_flow);
       }
       fprintf(flow_logger, "\n");
 
@@ -459,10 +465,71 @@ bool calc_fast9_lukas_kanade(struct opticflow_t *opticflow, struct image_t *img,
 
   // Execute a Lucas Kanade optical flow
   result->tracked_cnt = result->corner_cnt;
+  uint8_t keep_bad_points = 0;
+
+  /*
+  printf("Tracking: ");
+  for(int i = 0; i < result->tracked_cnt; i++) {
+    printf("(%d, %d, %d, %d) ", opticflow->fast9_ret_corners[i].x, opticflow->fast9_ret_corners[i].y, opticflow->fast9_ret_corners[i].x_sub, opticflow->fast9_ret_corners[i].y_sub);
+  }
+  printf("\n");
+  */
   struct flow_t *vectors = opticFlowLK(&opticflow->img_gray, &opticflow->prev_img_gray, opticflow->fast9_ret_corners,
                                        &result->tracked_cnt,
                                        opticflow->window_size / 2, opticflow->subpixel_factor, opticflow->max_iterations,
-                                       opticflow->threshold_vec, opticflow->max_track_corners, opticflow->pyramid_level);
+                                       opticflow->threshold_vec, opticflow->max_track_corners, opticflow->pyramid_level, keep_bad_points);
+
+  if(TRACK_BACK) {
+    printf("Tracking back!!!\n");
+    // initialize corners at the tracked positions:
+    for(int i = 0; i < result->tracked_cnt; i++) {
+      opticflow->fast9_ret_corners[i].x = (uint32_t) (vectors[i].pos.x + vectors[i].flow_x) / opticflow->subpixel_factor;
+      opticflow->fast9_ret_corners[i].y = (uint32_t) (vectors[i].pos.y + vectors[i].flow_y) / opticflow->subpixel_factor;
+      printf("(%d, %d) ", opticflow->fast9_ret_corners[i].x, opticflow->fast9_ret_corners[i].y);
+    }
+    printf("\n");
+
+
+
+    // present the images in the opposite order:
+    keep_bad_points = 1;
+    uint16_t back_track_cnt = result->tracked_cnt;
+    struct flow_t *back_vectors = opticFlowLK(&opticflow->prev_img_gray, &opticflow->img_gray, opticflow->fast9_ret_corners,
+                                           &back_track_cnt,
+                                           opticflow->window_size / 2, opticflow->subpixel_factor, opticflow->max_iterations,
+                                           opticflow->threshold_vec, opticflow->max_track_corners, opticflow->pyramid_level, keep_bad_points);
+
+    //struct flow_t *back_vectors = vectors;
+
+    printf("Tracked %d points back.\n", back_track_cnt);
+    int32_t back_x, back_y, diff_x, diff_y, dist_squared;
+    int32_t back_track_threshold = 200;
+    uint8_t keep[OPTICFLOW_MAX_TRACK_CORNERS];
+    for(int i = 0; i < result->tracked_cnt; i++) {
+      if(back_vectors[i].error < 1E4) {
+        back_x = (int32_t) (back_vectors[i].pos.x + back_vectors[i].flow_x);
+        back_y = (int32_t) (back_vectors[i].pos.y + back_vectors[i].flow_y);
+        diff_x = back_x - vectors[i].pos.x;
+        diff_y = back_y - vectors[i].pos.y;
+        dist_squared = diff_x*diff_x + diff_y*diff_y;
+        printf("Vector %d: x,y = %d, %d, back x, y = %d, %d, back tracking error %d\n", i, vectors[i].pos.x, vectors[i].pos.y, back_x, back_y, dist_squared);
+        if(dist_squared > back_track_threshold) {
+          keep[i] = 0;
+          vectors[i].error = 1E5;
+        }
+        else {
+          keep[i] = 1;
+        }
+      }
+      else {
+        keep[i] = 0;
+        vectors[i].error = 1E5;
+      }
+    }
+
+    free(back_vectors);
+  }
+
 
 #if OPTICFLOW_SHOW_FLOW
   image_show_flow(img, vectors, result->tracked_cnt, opticflow->subpixel_factor);
@@ -534,8 +601,9 @@ bool calc_fast9_lukas_kanade(struct opticflow_t *opticflow, struct image_t *img,
                   OPTICFLOW_FOV_H;// * img->h / OPTICFLOW_FOV_H;*/
 
     float diff_psi = (opticflow->img_gray.eulers.psi - opticflow->prev_img_gray.eulers.psi);
-    //log_flow_vectors(vectors, result->tracked_cnt, diff_theta, diff_phi, diff_psi);
-    log_flow_vectors(vectors, result->tracked_cnt, diff_theta, diff_phi, diff_psi, stateGetBodyRates_f()->q, stateGetBodyRates_f()->p, stateGetBodyRates_f()->r);
+    if(LOG_FLOW) {
+      log_flow_vectors(vectors, result->tracked_cnt, diff_theta, diff_phi, diff_psi, stateGetBodyRates_f()->q, stateGetBodyRates_f()->p, stateGetBodyRates_f()->r);
+    }
   }
 
 
