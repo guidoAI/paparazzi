@@ -48,7 +48,7 @@
 #include "state.h"
 
 // whether to show the flow and corners:
-#define OPTICFLOW_SHOW_FLOW 0
+#define OPTICFLOW_SHOW_FLOW 1
 #define OPTICFLOW_SHOW_CORNERS 0
 
 #define EXHAUSTIVE_FAST 0
@@ -246,10 +246,10 @@ static void manage_flow_features(struct image_t *img, struct opticflow_t *opticf
                                  struct opticflow_result_t *result);
 // log flow vectors:
 static FILE *flow_logger = NULL;
-#define LOG_FLOW 1
+#define LOG_FLOW 0
 
 // tracking corners back as extra check:
-#define TRACK_BACK 1
+#define TRACK_BACK 0
 
 /**
  * Initialize the opticflow calculator

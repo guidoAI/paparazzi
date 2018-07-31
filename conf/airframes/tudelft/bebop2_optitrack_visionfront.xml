@@ -19,7 +19,21 @@
     <define name="USE_SONAR" value="0"/>
     <module name="ins" type="extended"/>
 
-    <define name="MT9F002_OUTPUT_HEIGHT" value="640" />
+
+	<!-- race settings: 
+	<define name="MT9F002_OUTPUT_WIDTH" value="160"/>
+	<define name="MT9F002_OUTPUT_HEIGHT" value="315"/>
+	<define name="MT9F002_OUTPUT_SCALER" value="0.125"/>
+	<define name="MT9F002_INITIAL_OFFSET_X" value="2050"/> 
+	<define name="MT9F002_INITIAL_OFFSET_Y" value="476"/>
+	<define name="MT9F002_TARGET_EXPOSURE" value="30.0"/>
+	<define name="MT9F002_GAIN_RED" value="3.0"/>
+	<define name="MT9F002_GAIN_BLUE" value="4.0"/>
+	<define name="MT9F002_GAIN_GREEN1" value="3.0"/>
+	<define name="MT9F002_GAIN_GREEN2" value="3.0"/>
+-->
+
+ <define name="MT9F002_OUTPUT_HEIGHT" value="640" />
     <define name="MT9F002_OUTPUT_WIDTH" value="640" />
     <define name="MT9F002_INITIAL_OFFSET_X" value="0.15" />
     <define name="MT9F002_INITIAL_OFFSET_Y" value="0.0" />
@@ -31,7 +45,8 @@
     <define name="MT9F002_OUTPUT_SCALER" value="0.25"/>
     <define name="MT9F002_X_ODD_INC_VAL" value="1"/>
     <define name="MT9F002_Y_ODD_INC_VAL" value="1"/>
-  </firmware>
+
+</firmware>
 
   <modules main_freq="512">
     <module name="geo_mag"/>
@@ -72,13 +87,14 @@
 
     </module>
 
+    <!--
     <module name="video_rtp_stream">
       <define name="VIEWVIDEO_CAMERA" value="front_camera"/>
       <define name="VIEWVIDEO_CAMERA2" value="bottom_camera"/>
       <define name="VIEWVIDEO_DOWNSIZE_FACTOR" value="1"/>
       <define name="VIEWVIDEO_QUALITY_FACTOR" value="40"/>
     </module>
-
+    -->
     <!--<module name="bebop_ae_awb"/>-->
   </modules>
 
