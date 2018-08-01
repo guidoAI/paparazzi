@@ -41,6 +41,7 @@
 #include "lib/vision/fast_rosten.h"
 #include "lib/vision/act_fast.h"
 #include "lib/vision/edge_flow.h"
+#include "lib/vision/undistortion.h"
 #include "size_divergence.h"
 #include "linear_flow_fit.h"
 #include "modules/sonar/agl_dist.h"
@@ -242,6 +243,7 @@ static int cmp_array(const void *a, const void *b);
 static void manage_flow_features(struct image_t *img, struct opticflow_t *opticflow,
                                  struct opticflow_result_t *result);
 
+static struct flow_t * predict_flow_vectors(struct flow_t * flow_vectors, uint16_t n_points, float phi_diff, float theta_diff, float psi_diff, struct opticflow_t *opticflow);
 /**
  * Initialize the opticflow calculator
  * @param[out] *opticflow The new optical flow calculator
@@ -472,12 +474,16 @@ bool calc_fast9_lukas_kanade(struct opticflow_t *opticflow, struct image_t *img,
   float diff_flow_y = 0.f;
 
   if (opticflow->derotation && result->tracked_cnt > 5) {
-    diff_flow_x = (opticflow->img_gray.eulers.phi - opticflow->prev_img_gray.eulers.phi) * OPTICFLOW_FX;
-    diff_flow_y = (opticflow->img_gray.eulers.theta - opticflow->prev_img_gray.eulers.theta) * OPTICFLOW_FY;
+    float phi_diff = opticflow->img_gray.eulers.phi - opticflow->prev_img_gray.eulers.phi;
+    float theta_diff = opticflow->img_gray.eulers.theta - opticflow->prev_img_gray.eulers.theta;
+    float psi_diff = opticflow->img_gray.eulers.psi - opticflow->prev_img_gray.eulers.psi;
+    diff_flow_x = phi_diff * OPTICFLOW_FX;
+    diff_flow_y = theta_diff * OPTICFLOW_FY;
     /*diff_flow_x = (cam_state->rates.p)  / result->fps * img->w /
                   OPTICFLOW_FOV_W;// * img->w / OPTICFLOW_FOV_W;
     diff_flow_y = (cam_state->rates.q) / result->fps * img->h /
                   OPTICFLOW_FOV_H;// * img->h / OPTICFLOW_FOV_H;*/
+    struct flow_t * predicted_flow_vectors = predict_flow_vectors(vectors, result->tracked_cnt, phi_diff, theta_diff, psi_diff, opticflow);
   }
 
   float rotation_threshold = M_PI / 180.0f;
@@ -532,6 +538,62 @@ bool calc_fast9_lukas_kanade(struct opticflow_t *opticflow, struct image_t *img,
 
   return true;
 }
+
+/*
+ * Predict flow vectors by means of the rotation rates:
+ */
+static struct flow_t * predict_flow_vectors(struct flow_t * flow_vectors, uint16_t n_points, float phi_diff, float theta_diff, float psi_diff, struct opticflow_t *opticflow) {
+
+  // reserve memory for the predicted flow vectors:
+  struct flow_t *predicted_flow_vectors = malloc(sizeof(struct flow_t) * n_points);
+
+  float K[9] = {189.69f, 0.0f, 165.04f,
+                0.0f, 188.60f, 118.44f,
+                0.0f, 0.0f, 1.0f};
+  float k = 1.25f;
+  float A, B, C; // as in Longuet-Higgins
+  // specific for the x,y swapped Bebop 2 images:
+  A = -psi_diff;
+  B = theta_diff;
+  C = phi_diff;
+
+  float x_n, y_n;
+  float x_n_new, y_n_new, x_pix_new, y_pix_new;
+  float predicted_flow_x, predicted_flow_y;
+  for(uint16_t i = 0; i < n_points; i++) {
+    // the from-coordinate is always the same:
+    predicted_flow_vectors[i].pos.x = flow_vectors[i].pos.x;
+    predicted_flow_vectors[i].pos.y = flow_vectors[i].pos.y;
+
+    bool success = distorted_pixels_to_normalized_coords((float)flow_vectors[i].pos.x/opticflow->subpixel_factor, (float)flow_vectors[i].pos.y/opticflow->subpixel_factor, &x_n, &y_n, k, K);
+    if(success) {
+      // predict flow as in a linear pinhole camera model:
+      predicted_flow_x = A * x_n * y_n - B * x_n*x_n - B + C * y_n;
+      predicted_flow_y = -C * x_n + A + A * y_n*y_n - B * x_n * y_n;
+
+      x_n_new = x_n + predicted_flow_x;
+      y_n_new = y_n + predicted_flow_y;
+
+      bool success = normalized_coords_to_distorted_pixels(x_n_new, y_n_new, &x_pix_new, &y_pix_new, k, K);
+      if(success) {
+        predicted_flow_vectors[i].flow_x = x_pix_new - flow_vectors[i].pos.x;
+        predicted_flow_vectors[i].flow_y = y_pix_new - flow_vectors[i].pos.y;
+      }
+      else {
+        // TODO: set the error of the vector high
+        predicted_flow_vectors[i].flow_x = 0.0f;
+        predicted_flow_vectors[i].flow_y = 0.0f;
+      }
+    }
+    else {
+      // TODO: set the error of the vector high
+      predicted_flow_vectors[i].flow_x = 0.0f;
+      predicted_flow_vectors[i].flow_y = 0.0f;
+    }
+  }
+  return predicted_flow_vectors;
+}
+
 
 /* manage_flow_features - Update list of corners to be tracked by LK
  * Remembers previous points and tries to find new points in less dense
