@@ -478,7 +478,8 @@ bool calc_fast9_lukas_kanade(struct opticflow_t *opticflow, struct image_t *img,
   }
 
   if(opticflow->show_flow) {
-    image_show_flow(img, vectors, result->tracked_cnt, opticflow->subpixel_factor);
+    // TODO: remove comment:
+    // image_show_flow(img, vectors, result->tracked_cnt, opticflow->subpixel_factor);
   }
 
   static int n_samples = 100;
@@ -546,6 +547,9 @@ bool calc_fast9_lukas_kanade(struct opticflow_t *opticflow, struct image_t *img,
     diff_flow_y = (cam_state->rates.q) / result->fps * img->h /
                   OPTICFLOW_FOV_H;// * img->h / OPTICFLOW_FOV_H;*/
     struct flow_t * predicted_flow_vectors = predict_flow_vectors(vectors, result->tracked_cnt, phi_diff, theta_diff, psi_diff, opticflow);
+    if(opticflow->show_flow) {
+      image_show_flow(img, predicted_flow_vectors, result->tracked_cnt, opticflow->subpixel_factor);
+    }
   }
 
   float rotation_threshold = M_PI / 180.0f;
@@ -627,6 +631,7 @@ static struct flow_t * predict_flow_vectors(struct flow_t * flow_vectors, uint16
     predicted_flow_vectors[i].pos.x = flow_vectors[i].pos.x;
     predicted_flow_vectors[i].pos.y = flow_vectors[i].pos.y;
 
+    printf("(x,y) = (%d,%d), (fx,fy)=(%d,%d)", flow_vectors[i].pos.x, flow_vectors[i].pos.y, flow_vectors[i].flow_x, flow_vectors[i].flow_y);
     bool success = distorted_pixels_to_normalized_coords((float)flow_vectors[i].pos.x/opticflow->subpixel_factor, (float)flow_vectors[i].pos.y/opticflow->subpixel_factor, &x_n, &y_n, k, K);
     if(success) {
       // predict flow as in a linear pinhole camera model:
@@ -637,20 +642,26 @@ static struct flow_t * predict_flow_vectors(struct flow_t * flow_vectors, uint16
       y_n_new = y_n + predicted_flow_y;
 
       bool success = normalized_coords_to_distorted_pixels(x_n_new, y_n_new, &x_pix_new, &y_pix_new, k, K);
+
       if(success) {
-        predicted_flow_vectors[i].flow_x = x_pix_new - flow_vectors[i].pos.x;
-        predicted_flow_vectors[i].flow_y = y_pix_new - flow_vectors[i].pos.y;
+        predicted_flow_vectors[i].flow_x = (int16_t) (x_pix_new*opticflow->subpixel_factor - (float)flow_vectors[i].pos.x);
+        predicted_flow_vectors[i].flow_y = (int16_t) (y_pix_new*opticflow->subpixel_factor - (float)flow_vectors[i].pos.y);
+        printf("Predicted: (x,y) = (%d,%d), (fx,fy)=(%d,%d)\n", predicted_flow_vectors[i].pos.x, predicted_flow_vectors[i].pos.y, predicted_flow_vectors[i].flow_x, predicted_flow_vectors[i].flow_y);
       }
       else {
         // TODO: set the error of the vector high
-        predicted_flow_vectors[i].flow_x = 0.0f;
-        predicted_flow_vectors[i].flow_y = 0.0f;
+        printf("normalized_coords_to_distorted_pixels was false\n");
+        predicted_flow_vectors[i].flow_x = 0;
+        predicted_flow_vectors[i].flow_y = 0;
+        predicted_flow_vectors[i].error = LARGE_FLOW_ERROR;
       }
     }
     else {
       // TODO: set the error of the vector high
-      predicted_flow_vectors[i].flow_x = 0.0f;
-      predicted_flow_vectors[i].flow_y = 0.0f;
+      printf("distorted_pixels_to_normalized_coords was false\n");
+      predicted_flow_vectors[i].flow_x = 0;
+      predicted_flow_vectors[i].flow_y = 0;
+      predicted_flow_vectors[i].error = LARGE_FLOW_ERROR;
     }
   }
   return predicted_flow_vectors;
