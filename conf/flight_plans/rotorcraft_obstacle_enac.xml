@@ -119,6 +119,7 @@ static inline void FlowAvoidance(void)
 	  <variable var="obstacle_k2" init="0.05" type="float" min="0." max="0.5" step="0.01"/>
 	  <variable var="obstacle_dpsi" init="0." type="float" min="-3.14" max="3.14" step="0.01"/>
 	  <variable var="n_bins" init="-1" type="int16_t" min="-1" max="30" step="1"/>
+	  <variable var="max_rate_stop" init="0.10" type="float" min="0.0" max="6.28" step="0.01"/>
     <abi_binding name="JEVOIS_MSG" handler="jevois_msg_cb"/>
 	</variables>
 
@@ -156,7 +157,7 @@ static inline void FlowAvoidance(void)
       <deroute block="Standby"/>
     </block>
     <block name="Line Avoid" strip_button="Line Avoid">
-      <exception cond="optical_div > obstacle_max_div" deroute="Stop"/>
+      <exception cond="optical_div > obstacle_max_div && max_rate_stop > fabs(stateGetBodyRates_f()->r)" deroute="Stop"/>
       <go wp="START"/>
       <for var="i" from="1" to="3">
         <call_once fun="nav_set_heading_deg(90)"/>
