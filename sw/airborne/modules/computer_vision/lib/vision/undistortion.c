@@ -55,8 +55,9 @@
  * @return Whether the distortion was successful
  */
 bool Dhane_distortion(float x_n, float y_n, float* x_nd, float* y_nd, float k) {
+  float f = 1.0f;
   float R = sqrtf(x_n*x_n + y_n*y_n);
-  float r = tanf( asinf( (1.0f / k) * sinf( atanf( R ) ) ) );
+  float r = f * tanf( asinf( (1.0f / k) * sinf( atanf( R / f ) ) ) );
   float reduction_factor = r/R;
   (*x_nd) = reduction_factor * x_n;
   (*y_nd) = reduction_factor * y_n;
@@ -74,14 +75,15 @@ bool Dhane_distortion(float x_n, float y_n, float* x_nd, float* y_nd, float k) {
  * @return Whether the distortion was successful
  */
 bool Dhane_undistortion(float x_nd, float y_nd, float* x_n, float* y_n, float k) {
+  float f = 1.0f;
   float r = sqrtf( x_nd*x_nd + y_nd*y_nd );
-  float inner_part = sinf( atanf( r ) ) * k;
+  float inner_part = sinf( atanf( r/f ) ) * k;
   // we will take the asine of the inner part. It can happen that it is outside of [-1, 1], in which case, it would lead to an error.
   if(fabs(inner_part) > 0.9999) {
     return false;
   }
 
-  float R = tanf( asinf( inner_part ) );
+  float R = f*tanf( asinf( inner_part ) );
   float enlargement_factor = R / r;
   (*x_n) = enlargement_factor * x_nd;
   (*y_n) = enlargement_factor * y_nd;

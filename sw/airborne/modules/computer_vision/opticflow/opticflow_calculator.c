@@ -613,10 +613,14 @@ static struct flow_t * predict_flow_vectors(struct flow_t * flow_vectors, uint16
   // reserve memory for the predicted flow vectors:
   struct flow_t *predicted_flow_vectors = malloc(sizeof(struct flow_t) * n_points);
 
-  float K[9] = {189.69f, 0.0f, 165.04f,
-                0.0f, 188.60f, 118.44f,
+  // TODO: also this should come from undistortion:
+  float K[9] = {311.59304538f, 0.0f, 158.37457814f,
+                0.0f, 313.01338397f, 326.49375925f,
                 0.0f, 0.0f, 1.0f};
-  float k = 1.25f;
+  // TODO: make an option to not do distortion / undistortion.
+  // it now ignores all coords with too big a Y-coordinate... but this should be X in the current Bebop setup.
+  // When pitching up / down, the vectors seem to be going also sideways... is this really what distortion does?
+  float k = 1.25f; // TODO: this should come from undistort.h
   float A, B, C; // as in Longuet-Higgins
   // specific for the x,y swapped Bebop 2 images:
   A = -psi_diff;
@@ -630,6 +634,7 @@ static struct flow_t * predict_flow_vectors(struct flow_t * flow_vectors, uint16
     // the from-coordinate is always the same:
     predicted_flow_vectors[i].pos.x = flow_vectors[i].pos.x;
     predicted_flow_vectors[i].pos.y = flow_vectors[i].pos.y;
+    // TODO: we could set flow_vectors[i].error to 0, so that we are sure that an error means that the undistortion was unsuccessful:
 
     printf("(x,y) = (%d,%d), (fx,fy)=(%d,%d)", flow_vectors[i].pos.x, flow_vectors[i].pos.y, flow_vectors[i].flow_x, flow_vectors[i].flow_y);
     bool success = distorted_pixels_to_normalized_coords((float)flow_vectors[i].pos.x/opticflow->subpixel_factor, (float)flow_vectors[i].pos.y/opticflow->subpixel_factor, &x_n, &y_n, k, K);
@@ -646,6 +651,7 @@ static struct flow_t * predict_flow_vectors(struct flow_t * flow_vectors, uint16
       if(success) {
         predicted_flow_vectors[i].flow_x = (int16_t) (x_pix_new*opticflow->subpixel_factor - (float)flow_vectors[i].pos.x);
         predicted_flow_vectors[i].flow_y = (int16_t) (y_pix_new*opticflow->subpixel_factor - (float)flow_vectors[i].pos.y);
+        predicted_flow_vectors[i].error = 0;
         printf("Predicted: (x,y) = (%d,%d), (fx,fy)=(%d,%d)\n", predicted_flow_vectors[i].pos.x, predicted_flow_vectors[i].pos.y, predicted_flow_vectors[i].flow_x, predicted_flow_vectors[i].flow_y);
       }
       else {
