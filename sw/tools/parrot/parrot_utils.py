@@ -1,3 +1,5 @@
+#!/usr/bin/python2
+
 #
 # Copyright (C) 2012-2014 The Paparazzi Team
 #               2015 Freek van Tienen <freek.v.tienen@gmail.com>
@@ -103,6 +105,7 @@ class ParrotUtils:
             self.tn = telnetlib.Telnet(self.address, timeout=3)
             self.ftp = FTP(self.address)
             self.ftp.login()
+            #self.tn.read_until(bytes(self.prompt, 'utf-8'))
             self.tn.read_until(self.prompt)
             return True
         except:
@@ -270,6 +273,7 @@ class ParrotUtils:
 
     # Upload and run a new program
     def upload_and_run(self, name, folder, min_ver=None, max_ver=None):
+        print('Hello!');
         if self.check_version_before_run and min_ver is not None and max_ver is not None:
             v = self.check_version()
             print("Checking " + self.uav_name + " firmware version... " + str(v))
