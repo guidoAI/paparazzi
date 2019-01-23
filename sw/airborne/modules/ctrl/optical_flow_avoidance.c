@@ -54,6 +54,8 @@
 #include "generated/flight_plan.h"
 #include "generated/airframe.h"
 
+#include "stdio.h"
+
 // variables for moving forward:
 uint8_t safeToGoForwards = false;
 
@@ -134,9 +136,10 @@ static abi_event optical_flow_ev;
 // TODO: make a new message here!
 static void send_flow_avoidance(struct transport_tx *trans, struct link_device *dev)
 {
-  pprz_msg_send_FLOW_AVOIDANCE(trans, dev, AC_ID,
+/*  pprz_msg_send_FLOW_AVOIDANCE(trans, dev, AC_ID,
                            &(of_avoidance_ctrl.flow), &flow_vision_dt, &normalized_thrust,
                            &cov_flow, &pstate, &pused);
+                           */
 }
 
 /// Function definitions
@@ -161,8 +164,11 @@ uint8_t cov_array_filled;
 
 void flow_avoidance_ctrl_module_init(void);
 void flow_avoidance_ctrl_module_run(bool in_flight);
+uint8_t moveWaypointForward(uint8_t waypoint, float distanceMeters);
 
 // Avoidance control of lateral position with optitrack:
+uint8_t moveWaypoint(uint8_t waypoint, struct EnuCoor_i *new_coor);
+uint8_t calculateForwards(struct EnuCoor_i *new_coor, float distanceMeters);
 
 /*
  * Sets waypoint 'waypoint' to the coordinates of 'new_coor'
@@ -243,7 +249,7 @@ void flow_avoidance_ctrl_module_init(void)
   // Subscribe to the optical flow estimator:
   // register telemetry:
   AbiBindMsgOPTICAL_FLOW(OFA_OPTICAL_FLOW_ID, &optical_flow_ev, flow_avoidance_ctrl_optical_flow_cb);
-  register_periodic_telemetry(DefaultPeriodic, PPRZ_MSG_ID_FLOW_AVOIDANCE, send_flow_avoidance);
+  // register_periodic_telemetry(DefaultPeriodic, PPRZ_MSG_ID_FLOW_AVOIDANCE, send_flow_avoidance);
 }
 
 /**
