@@ -4,6 +4,9 @@
 
   <firmware name="rotorcraft">
     <target name="ap" board="bebop2"/>
+    <target name="nps" board="pc">
+      <module name="fdm" type="gazebo"/>
+    </target>
 
     <module name="telemetry" type="transparent_udp"/>
     <module name="radio_control" type="datalink"/>
@@ -237,6 +240,7 @@
     <define name="JSBSIM_MODEL" value="simple_x_quad_ccw" type="string"/>
     <define name="SENSORS_PARAMS" value="nps_sensors_params_default.h" type="string"/>
   </section>
+  <include href="conf/simulator/gazebo/airframes/bebop.xml"/>
 
   <section name="AUTOPILOT">
     <define name="MODE_STARTUP" value="AP_MODE_NAV"/>
