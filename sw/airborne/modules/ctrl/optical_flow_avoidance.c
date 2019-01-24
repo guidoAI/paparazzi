@@ -136,10 +136,9 @@ static abi_event optical_flow_ev;
 // TODO: make a new message here!
 static void send_flow_avoidance(struct transport_tx *trans, struct link_device *dev)
 {
-/*  pprz_msg_send_FLOW_AVOIDANCE(trans, dev, AC_ID,
-                           &(of_avoidance_ctrl.flow), &flow_vision_dt, &normalized_thrust,
+  pprz_msg_send_FLOW_AVOIDANCE(trans, dev, AC_ID,
+                           &(of_avoidance_ctrl.flow), &normalized_thrust,
                            &cov_flow, &pstate, &pused);
-                           */
 }
 
 /// Function definitions
@@ -249,7 +248,7 @@ void flow_avoidance_ctrl_module_init(void)
   // Subscribe to the optical flow estimator:
   // register telemetry:
   AbiBindMsgOPTICAL_FLOW(OFA_OPTICAL_FLOW_ID, &optical_flow_ev, flow_avoidance_ctrl_optical_flow_cb);
-  // register_periodic_telemetry(DefaultPeriodic, PPRZ_MSG_ID_FLOW_AVOIDANCE, send_flow_avoidance);
+  register_periodic_telemetry(DefaultPeriodic, PPRZ_MSG_ID_FLOW_AVOIDANCE, send_flow_avoidance);
 }
 
 /**
