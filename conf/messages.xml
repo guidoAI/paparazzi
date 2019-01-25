@@ -1647,6 +1647,7 @@
     </message>
 
     <!-- 211 is free -->
+
     <message name="FLOW_AVOIDANCE" id="212">
       <field name="flow" type="float"> vertical velocity / height from optitrack (unit = 1/sec)</field>
       <field name="normalized_thrust" type="float"> thrust / max thrust paparazzi (-)</field>

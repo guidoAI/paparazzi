@@ -67,7 +67,7 @@ PRINT_CONFIG_VAR(OFA_OPTICAL_FLOW_ID)
 
 // Other default values:
 #ifndef OFA_PGAIN
-#define OFA_PGAIN 0.40
+#define OFA_PGAIN 5.0
 #endif
 
 #ifndef OFA_IGAIN
@@ -350,7 +350,7 @@ void flow_avoidance_ctrl_module_run(bool in_flight)
       thrust_set = PID_flow_control(of_avoidance_ctrl.flow_setpoint, of_avoidance_ctrl.pgain, of_avoidance_ctrl.igain,
                                           of_avoidance_ctrl.dgain, dt);
 
-      // trigger the landing if the cov div is too high:
+      // trigger a stop if the cov div is too high:
       if (fabsf(cov_flow) > of_avoidance_ctrl.cov_limit) {
         thrust_set = final_landing_procedure();
         waypoint_set_here_2d(WP_GOAL);
@@ -518,7 +518,7 @@ void flow_avoidance_ctrl_optical_flow_cb(uint8_t sender_id UNUSED, uint32_t stam
                                    int16_t flow_y UNUSED, int16_t flow_der_x, int16_t flow_der_y UNUSED, float quality UNUSED, float size_flow UNUSED, float dist UNUSED)
 {
   // ugly hack: when front vision, use flow_x (flow_der_x?)
-  flow_vision = (float) flow_der_x / 100000.0f; // size_flow;
+  flow_vision = (float) flow_der_x / 10000.0f; // size_flow;
   vision_time = ((float)stamp) / 1e6;
 }
 
