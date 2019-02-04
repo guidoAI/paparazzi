@@ -140,8 +140,8 @@ uint8_t cycle = 0;
 // File pointer for saving the dictionary
 static FILE *dictionary_logger = NULL;
 
-#ifndef DICTIONARY_PATH
-#define DICTIONARY_PATH /data/ftp/internal_000
+#ifndef TEXTONS_DICTIONARY_PATH
+#define TEXTONS_DICTIONARY_PATH /data/ftp/internal_000
 #endif
 
 /**
@@ -594,7 +594,7 @@ void save_texton_dictionary(void)
   char filename[512];
 
   // Check for available files
-  sprintf(filename, "%s/Dictionary_%05d.dat", STRINGIFY(DICTIONARY_PATH), dictionary_number);
+  sprintf(filename, "%s/Dictionary_%05d.dat", STRINGIFY(TEXTONS_DICTIONARY_PATH), dictionary_number);
 
   dictionary_logger = fopen(filename, "w");
 
@@ -621,7 +621,7 @@ void save_texton_dictionary(void)
 void load_texton_dictionary(void)
 {
   char filename[512];
-  sprintf(filename, "%s/Dictionary_%05d.dat", STRINGIFY(DICTIONARY_PATH), dictionary_number);
+  sprintf(filename, "%s/Dictionary_%05d.dat", STRINGIFY(TEXTONS_DICTIONARY_PATH), dictionary_number);
 
   if ((dictionary_logger = fopen(filename, "r"))) {
     // Load the dictionary:
