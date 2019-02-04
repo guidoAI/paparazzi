@@ -55,6 +55,9 @@
 	  </module>
 
 <!--    <define name="INS_INT_VEL_ID" value="ABI_DISABLE"/> -->
+    <module name="cv_textons">
+      <define name="TEXTONS_CAMERA" value="front_camera"/>
+    </module>
     <module name="cv_opticflow">
       <define name="OPTICFLOW_CAMERA" value="front_camera"/>
       <define name="MAX_HORIZON" value="10"/>
