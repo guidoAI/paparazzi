@@ -56,6 +56,19 @@
 
 #include "stdio.h"
 
+// Textons:
+#include "modules/computer_vision/textons.h"
+float* texton_distribution;
+float* last_texton_distribution;
+// On Bebop 2:
+#ifdef TEXTONS_DICTIONARY_PATH
+#define TEXTON_DISTRIBUTION_PATH TEXTONS_DICTIONARY_PATH
+#else
+#define TEXTON_DISTRIBUTION_PATH /data/ftp/internal_000
+#endif
+static FILE *distribution_logger = NULL;
+void save_texton_distribution(void);
+
 // variables for moving forward:
 uint8_t safeToGoForwards = false;
 
@@ -249,6 +262,10 @@ void flow_avoidance_ctrl_module_init(void)
   // register telemetry:
   AbiBindMsgOPTICAL_FLOW(OFA_OPTICAL_FLOW_ID, &optical_flow_ev, flow_avoidance_ctrl_optical_flow_cb);
   register_periodic_telemetry(DefaultPeriodic, PPRZ_MSG_ID_FLOW_AVOIDANCE, send_flow_avoidance);
+
+  texton_distribution = (float*) calloc(MAX_N_TEXTONS, sizeof(float));
+  last_texton_distribution = (float*) calloc(MAX_N_TEXTONS, sizeof(float));
+
 }
 
 /**
@@ -349,6 +366,9 @@ void flow_avoidance_ctrl_module_run(bool in_flight)
       // use the flow for control:
       thrust_set = PID_flow_control(of_avoidance_ctrl.flow_setpoint, of_avoidance_ctrl.pgain, of_avoidance_ctrl.igain,
                                           of_avoidance_ctrl.dgain, dt);
+
+      // save the texton distribution:
+      save_texton_distribution();
 
       // trigger a stop if the cov div is too high:
       if (fabsf(cov_flow) > of_avoidance_ctrl.cov_limit) {
@@ -545,3 +565,98 @@ void guidance_v_module_run(bool in_flight)
 {
 	flow_avoidance_ctrl_module_run(in_flight);
 }
+
+// SSL:
+void save_texton_distribution(void)
+{
+  // Since the control module typically runs faster than the texton vision process, we need to check that we are storing a recent vision result:
+  int i, same;
+  same = 1;
+  last_texton_distribution = get_texton_distribution();
+  for(i = 0; i < n_textons; i++)
+  {
+    // check if the texton distribution is the same as the previous one:
+    if(texton_distribution[i] != last_texton_distribution[i])
+    {
+      same = 0;
+    }
+    // update the last texton distribution:
+    last_texton_distribution[i] = texton_distribution[i];
+  }
+
+  // don't save the texton distribution if it is the same as previous time step:
+  if(same)
+  {
+    printf("Same\n");
+    return;
+  }
+
+  // If not the same, append the target values (cov_div, gain, class: close or far) and texton values to a .dat file:
+  char filename[512];
+  sprintf(filename, "%s/Training_set_%05d.dat", STRINGIFY(TEXTON_DISTRIBUTION_PATH), 0);
+  distribution_logger = fopen(filename, "a");
+  if(distribution_logger == NULL)
+  {
+    perror(filename);
+  }
+  else
+  {
+    int oscillating = fabsf(cov_flow) > of_avoidance_ctrl.cov_limit;
+    printf("Logging with gain %f, cov_flow %f, oscillating: %d\n", pstate, cov_flow, oscillating);
+
+    // save the information in a single row:
+    fprintf(distribution_logger, "%f ", pstate); // gain measurement
+    fprintf(distribution_logger, "%f ", cov_flow); // cov flow measurement
+    fprintf(distribution_logger, "%d ", oscillating); // classification
+    for(i = 0; i < n_textons-1; i++)
+    {
+      fprintf(distribution_logger, "%f ", texton_distribution[i]);
+    }
+    fprintf(distribution_logger, "%f\n", texton_distribution[n_textons-1]);
+    fclose(distribution_logger);
+  }
+}
+
+/*
+ * TODO: Do later when we can save:
+ *
+ *
+void load_texton_distribution(void)
+{
+  int i, j, read_result;
+  char filename[512];
+  sprintf(filename, "%s/Training_set_%05d.dat", STRINGIFY(TEXTON_DISTRIBUTION_PATH), 0);
+
+  if((distribution_logger = fopen(filename, "r")))
+  {
+    // Load the dictionary:
+    int n_read_samples = 0;
+    // For now we read the samples sequentially:
+    // for(i = 0; i < MAX_SAMPLES_LEARNING; i++)
+    for(i = 0; i < 30; i++)
+    {
+      // if(i % 100) printf("SONAR: %f\n", sonar[n_read_samples]);
+      read_result = fscanf(distribution_logger, "%f ", &gains[n_read_samples]);
+      if(read_result == EOF) break;
+      read_result = fscanf(distribution_logger, "%f ", &cov_divs_log[n_read_samples]);
+      if(read_result == EOF) break;
+      read_result = fscanf(distribution_logger, "%f ", &sonar[n_read_samples]);
+      if(read_result == EOF) break;
+
+      text_dists[n_read_samples] = (float*) calloc(n_textons,sizeof(float));
+
+      for(j = 0; j < n_textons-1; j++)
+      {
+        read_result = fscanf(distribution_logger, "%f ", &text_dists[n_read_samples][j]);
+                        if(read_result == EOF) break;
+      }
+      read_result = fscanf(distribution_logger, "%f\n", &text_dists[n_read_samples][n_textons-1]);
+                        if(read_result == EOF) break;
+      n_read_samples++;
+    }
+                fclose(distribution_logger);
+
+    // printf("Learned samples = %d\n", n_read_samples);
+  }
+}
+*/

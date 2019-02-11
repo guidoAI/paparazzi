@@ -45,8 +45,6 @@ uint32_t learned_samples = 0;
 uint8_t dictionary_initialized = 0;
 float *texton_distribution;
 
-#define MAX_N_TEXTONS 255
-
 // initial settings:
 #ifndef TEXTONS_FPS
 #define TEXTONS_FPS 0       ///< Default FPS (zero means run at camera fps)

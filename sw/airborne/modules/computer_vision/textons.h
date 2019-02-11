@@ -71,8 +71,9 @@ float* get_texton_distribution();
 extern void textons_init(void);
 extern void textons_stop(void);
 
-
 // helper functions (potentially should go elsewhere):
 float get_entropy(float *p_dist, int D);
+
+#define MAX_N_TEXTONS 255
 
 #endif /* TEXTONS_H */
