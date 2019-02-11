@@ -585,11 +585,12 @@ void save_texton_distribution(void)
   }
 
   // don't save the texton distribution if it is the same as previous time step:
-  if(same)
+  /*if(same)
   {
     printf("Same\n");
     return;
   }
+  */
 
   // If not the same, append the target values (cov_div, gain, class: close or far) and texton values to a .dat file:
   char filename[512];
