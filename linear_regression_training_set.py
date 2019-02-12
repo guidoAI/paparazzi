@@ -33,10 +33,22 @@ A_bias = np.ones([n_elements, 1]);
 A = np.concatenate((textons, A_bias), axis=1);
 
 covs = covs.reshape([n_elements, 1]);
-x = np.linalg.pinv(A) @ covs;
+# mqximum likelihood:
+# x = np.linalg.pinv(A) @ covs;
+# maximum a posteriori:
+prior = 0.0;
+AT = np.transpose(A);
+ATA = AT @ A;
+ATA += prior * np.eye(ATA.shape[0]);
+x = (np.linalg.inv(ATA) @ AT) @ covs;
+
+# predict:
 y = A @ x;
 
 plt.figure();
 plt.plot(y, covs, 'o')
 plt.xlabel('Estimated cov divs');
 plt.ylabel('Actual cov divs')
+
+for weight in x:
+    print('{0:3.3f} '.format(weight[0]), end='')
