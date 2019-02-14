@@ -58,8 +58,8 @@
 
 // Textons:
 #include "modules/computer_vision/textons.h"
-float* texton_distribution;
-float* last_texton_distribution;
+float *texton_distribution;
+float *last_texton_distribution;
 // On Bebop 2:
 #ifdef TEXTONS_DICTIONARY_PATH
 #define TEXTON_DISTRIBUTION_PATH TEXTONS_DICTIONARY_PATH
@@ -150,14 +150,14 @@ static abi_event optical_flow_ev;
 static void send_flow_avoidance(struct transport_tx *trans, struct link_device *dev)
 {
   pprz_msg_send_FLOW_AVOIDANCE(trans, dev, AC_ID,
-                           &(of_avoidance_ctrl.flow), &normalized_thrust,
-                           &cov_flow, &pstate, &pused);
+                               &(of_avoidance_ctrl.flow), &normalized_thrust,
+                               &cov_flow, &pstate, &pused);
 }
 
 /// Function definitions
 // Callback function of the optical flow estimate:
 void flow_avoidance_ctrl_optical_flow_cb(uint8_t sender_id, uint32_t stamp, int16_t flow_x,
-                                   int16_t flow_y, int16_t flow_der_x, int16_t flow_der_y, float quality, float size_flow, float dist);
+    int16_t flow_y, int16_t flow_der_x, int16_t flow_der_y, float quality, float size_flow, float dist);
 
 // common functions for different optical flow control strategies:
 static void set_cov_flow(int32_t thrust);
@@ -188,7 +188,7 @@ uint8_t calculateForwards(struct EnuCoor_i *new_coor, float distanceMeters);
 uint8_t moveWaypoint(uint8_t waypoint, struct EnuCoor_i *new_coor)
 {
   printf("Moving waypoint %d to x:%f y:%f\n", waypoint, POS_FLOAT_OF_BFP(new_coor->x),
-                POS_FLOAT_OF_BFP(new_coor->y));
+         POS_FLOAT_OF_BFP(new_coor->y));
   waypoint_set_xy_i(waypoint, new_coor->x, new_coor->y);
   return false;
 }
@@ -207,8 +207,8 @@ uint8_t calculateForwards(struct EnuCoor_i *new_coor, float distanceMeters)
   new_coor->x                       = pos->x + POS_BFP_OF_REAL(sin_heading * (distanceMeters));
   new_coor->y                       = pos->y + POS_BFP_OF_REAL(cos_heading * (distanceMeters));
   printf("Calculated %f m forward position. x: %f  y: %f based on pos(%f, %f) and heading(%f)\n", distanceMeters,
-                POS_FLOAT_OF_BFP(new_coor->x), POS_FLOAT_OF_BFP(new_coor->y), POS_FLOAT_OF_BFP(pos->x), POS_FLOAT_OF_BFP(pos->y),
-                DegOfRad(ANGLE_FLOAT_OF_BFP(eulerAngles->psi)) );
+         POS_FLOAT_OF_BFP(new_coor->x), POS_FLOAT_OF_BFP(new_coor->y), POS_FLOAT_OF_BFP(pos->x), POS_FLOAT_OF_BFP(pos->y),
+         DegOfRad(ANGLE_FLOAT_OF_BFP(eulerAngles->psi)));
   return false;
 }
 
@@ -263,8 +263,8 @@ void flow_avoidance_ctrl_module_init(void)
   AbiBindMsgOPTICAL_FLOW(OFA_OPTICAL_FLOW_ID, &optical_flow_ev, flow_avoidance_ctrl_optical_flow_cb);
   register_periodic_telemetry(DefaultPeriodic, PPRZ_MSG_ID_FLOW_AVOIDANCE, send_flow_avoidance);
 
-  texton_distribution = (float*) calloc(MAX_N_TEXTONS, sizeof(float));
-  last_texton_distribution = (float*) calloc(MAX_N_TEXTONS, sizeof(float));
+  texton_distribution = (float *) calloc(MAX_N_TEXTONS, sizeof(float));
+  last_texton_distribution = (float *) calloc(MAX_N_TEXTONS, sizeof(float));
 
 }
 
@@ -365,7 +365,7 @@ void flow_avoidance_ctrl_module_run(bool in_flight)
 
       // use the flow for control:
       thrust_set = PID_flow_control(of_avoidance_ctrl.flow_setpoint, of_avoidance_ctrl.pgain, of_avoidance_ctrl.igain,
-                                          of_avoidance_ctrl.dgain, dt);
+                                    of_avoidance_ctrl.dgain, dt);
 
       // save the texton distribution:
       save_texton_distribution();
@@ -383,8 +383,8 @@ void flow_avoidance_ctrl_module_run(bool in_flight)
       float error_cov = of_avoidance_ctrl.cov_set_point - cov_flow;
 
       // for logging purposes
-      if(fabsf(error_cov) <= 0.025) oscillating = true;
-      else oscillating = false;
+      if (fabsf(error_cov) <= 0.025) { oscillating = true; }
+      else { oscillating = false; }
 
       // limit the error_cov, which could else become very large:
       if (error_cov > fabsf(of_avoidance_ctrl.cov_set_point)) { error_cov = fabsf(of_avoidance_ctrl.cov_set_point); }
@@ -399,35 +399,36 @@ void flow_avoidance_ctrl_module_run(bool in_flight)
 
       // use the flow for control:
       thrust_set = PID_flow_control(of_avoidance_ctrl.flow_setpoint, pused, of_avoidance_ctrl.igain,
-                                          of_avoidance_ctrl.dgain, dt);
+                                    of_avoidance_ctrl.dgain, dt);
 
     } else if (of_avoidance_ctrl.CONTROL_METHOD == 2) {
-	if(control_phase == 0) {
-          // increase the gain by steps:
-          if(start_gain_increase_time < 0.0) {
-              start_gain_increase_time = get_sys_time_float();
-          }
-          float t = get_sys_time_float();
-
-          // using (int) as a floor function : )
-          pstate = (float)((int)((t-start_gain_increase_time) / step_time)) * gain_increase;
-          pused = pstate;
-
-          thrust_set = PID_flow_control(of_avoidance_ctrl.flow_setpoint, pused, of_avoidance_ctrl.igain, of_avoidance_ctrl.dgain, dt);
-
-          float error_cov = of_avoidance_ctrl.cov_set_point - cov_flow;
-          // for logging purposes
-          if(fabsf(error_cov) <= 0.01) count_covflow++;
-          if(count_covflow > 10) oscillating = true;
-          if(oscillating) {
-              control_phase = 1;
-          }
+      if (control_phase == 0) {
+        // increase the gain by steps:
+        if (start_gain_increase_time < 0.0) {
+          start_gain_increase_time = get_sys_time_float();
         }
-        else {
-            // we keep the same gain for now:
-            thrust_set = PID_flow_control(of_avoidance_ctrl.flow_setpoint, pused, of_avoidance_ctrl.igain, of_avoidance_ctrl.dgain, dt);
-            // TODO: if the drone is stable for many seconds, we should start increasing again.
+        float t = get_sys_time_float();
+
+        // using (int) as a floor function : )
+        pstate = (float)((int)((t - start_gain_increase_time) / step_time)) * gain_increase;
+        pused = pstate;
+
+        thrust_set = PID_flow_control(of_avoidance_ctrl.flow_setpoint, pused, of_avoidance_ctrl.igain, of_avoidance_ctrl.dgain,
+                                      dt);
+
+        float error_cov = of_avoidance_ctrl.cov_set_point - cov_flow;
+        // for logging purposes
+        if (fabsf(error_cov) <= 0.01) { count_covflow++; }
+        if (count_covflow > 10) { oscillating = true; }
+        if (oscillating) {
+          control_phase = 1;
         }
+      } else {
+        // we keep the same gain for now:
+        thrust_set = PID_flow_control(of_avoidance_ctrl.flow_setpoint, pused, of_avoidance_ctrl.igain, of_avoidance_ctrl.dgain,
+                                      dt);
+        // TODO: if the drone is stable for many seconds, we should start increasing again.
+      }
     }
 
     if (in_flight) {
@@ -474,7 +475,7 @@ void set_cov_flow(int32_t thrust)
   if (of_avoidance_ctrl.COV_METHOD == 0 && cov_array_filled > 0) {
     // TODO: step in landing set point causes an incorrectly perceived covariance
     cov_flow = covariance_f(thrust_history, flow_history, of_avoidance_ctrl.window_size);
-  } else if (of_avoidance_ctrl.COV_METHOD == 1 && cov_array_filled > 1){
+  } else if (of_avoidance_ctrl.COV_METHOD == 1 && cov_array_filled > 1) {
     // todo: delay steps should be invariant to the run frequency
     cov_flow = covariance_f(past_flow_history, flow_history, of_avoidance_ctrl.window_size);
   }
@@ -535,7 +536,8 @@ void update_errors(float err, float dt)
 
 // Reading from "sensors":
 void flow_avoidance_ctrl_optical_flow_cb(uint8_t sender_id UNUSED, uint32_t stamp, int16_t flow_x UNUSED,
-                                   int16_t flow_y UNUSED, int16_t flow_der_x, int16_t flow_der_y UNUSED, float quality UNUSED, float size_flow UNUSED, float dist UNUSED)
+    int16_t flow_y UNUSED, int16_t flow_der_x, int16_t flow_der_y UNUSED, float quality UNUSED, float size_flow UNUSED,
+    float dist UNUSED)
 {
   // ugly hack: when front vision, use flow_x (flow_der_x?)
   flow_vision = (float) flow_der_x / 10000.0f; // size_flow;
@@ -563,7 +565,7 @@ void guidance_v_module_enter(void)
 
 void guidance_v_module_run(bool in_flight)
 {
-	flow_avoidance_ctrl_module_run(in_flight);
+  flow_avoidance_ctrl_module_run(in_flight);
 }
 
 // SSL:
@@ -573,11 +575,9 @@ void save_texton_distribution(void)
   int i, same;
   same = 1;
   last_texton_distribution = get_texton_distribution();
-  for(i = 0; i < n_textons; i++)
-  {
+  for (i = 0; i < n_textons; i++) {
     // check if the texton distribution is the same as the previous one:
-    if(texton_distribution[i] != last_texton_distribution[i])
-    {
+    if (texton_distribution[i] != last_texton_distribution[i]) {
       same = 0;
     }
     // update the last texton distribution:
@@ -596,12 +596,9 @@ void save_texton_distribution(void)
   char filename[512];
   sprintf(filename, "%s/Training_set_%05d.dat", STRINGIFY(TEXTON_DISTRIBUTION_PATH), 0);
   distribution_logger = fopen(filename, "a");
-  if(distribution_logger == NULL)
-  {
+  if (distribution_logger == NULL) {
     perror(filename);
-  }
-  else
-  {
+  } else {
     int oscillating = fabsf(cov_flow) > of_avoidance_ctrl.cov_limit;
     printf("Logging with gain %f, cov_flow %f, oscillating: %d\n", pstate, cov_flow, oscillating);
 
@@ -609,11 +606,10 @@ void save_texton_distribution(void)
     fprintf(distribution_logger, "%f ", pstate); // gain measurement
     fprintf(distribution_logger, "%f ", cov_flow); // cov flow measurement
     fprintf(distribution_logger, "%d ", oscillating); // classification
-    for(i = 0; i < n_textons-1; i++)
-    {
+    for (i = 0; i < n_textons - 1; i++) {
       fprintf(distribution_logger, "%f ", texton_distribution[i]);
     }
-    fprintf(distribution_logger, "%f\n", texton_distribution[n_textons-1]);
+    fprintf(distribution_logger, "%f\n", texton_distribution[n_textons - 1]);
     fclose(distribution_logger);
   }
 }
@@ -661,3 +657,82 @@ void load_texton_distribution(void)
   }
 }
 */
+
+float predict_gain(float *distribution)
+{
+  //printf("Start prediction!\n");
+  int i;
+  float sum;
+
+  /*
+  // TODO: is this not slower than what our own implementation would do?
+
+  uint8_t D_1 = n_textons+1;
+  float _distr[D_1];
+  float _pred[1][1];
+
+  // make feature vector:
+  MAKE_MATRIX_PTR(distr, _distr, D_1);
+  for(i = 0; i < n_textons; i++) {
+    distr[i] = distribution[i];
+  }
+  distr[n_textons] = 1.0f; // bias
+
+  // make weight vector:
+  MAKE_MATRIX_PTR(w, weights, D_1);
+  // make resulting prediction:
+  MAKE_MATRIX_PTR(pred, _pred, count);
+
+  // multiply the vectors:
+  MAT_MUL(1, D_1, 1, pred, distr, w);
+
+  return pred[0][0];
+  */
+
+  sum = 0.0f;
+  for (i = 0; i < n_textons; i++) {
+    sum += weights[i] * distribution[i];
+  }
+  if (of_landing_ctrl.use_bias) {
+    sum += weights[n_textons];
+  }
+  // printf("Prediction = %f\n", sum);
+  return sum;
+}
+
+void save_weights(void)
+{
+  // save the weights to a file:
+  int i;
+  char filename[512];
+  sprintf(filename, "%s/Weights_%05d.dat", STRINGIFY(TEXTON_DISTRIBUTION_PATH), 0);
+  weights_file = fopen(filename, "w");
+  if (weights_file == NULL) {
+    perror(filename);
+  } else {
+    // save the information in a single row:
+    for (i = 0; i <= n_textons; i++) {
+      fprintf(weights_file, "%f ", weights[i]);
+    }
+    fclose(weights_file);
+  }
+}
+
+void load_weights(void)
+{
+  int i, read_result;
+  char filename[512];
+  sprintf(filename, "%s/Weights_%05d.dat", STRINGIFY(TEXTON_DISTRIBUTION_PATH), 0);
+  weights_file = fopen(filename, "r");
+  if (weights_file == NULL) {
+    printf("No weights file!\n");
+    perror(filename);
+  } else {
+    // load the weights, stored in a single row:
+    for (i = 0; i <= n_textons; i++) {
+      read_result = fscanf(weights_file, "%f ", &weights[i]);
+      if (read_result == EOF) { break; }
+    }
+    fclose(weights_file);
+  }
+}

@@ -37,11 +37,11 @@
 
 struct OpticalFlowAvoidance {
   float lp_const;               ///< low-pass filter constant
-  float flow_setpoint;    		///< setpoint for constant divergence approach
+  float flow_setpoint;        ///< setpoint for constant divergence approach
   float pgain;                  ///< P-gain for constant optical flow control (from divergence error to thrust)
   float igain;                  ///< I-gain for constant optical flow control
   float dgain;                  ///< D-gain for constant optical flow control
-  float flow;             		///< Flow estimate
+  float flow;                 ///< Flow estimate
   float previous_err;           ///< Previous tracking error
   float sum_err;                ///< integration of the error for I-gain
   float d_err;                  ///< difference of error for the D-gain
@@ -55,7 +55,7 @@ struct OpticalFlowAvoidance {
   uint32_t COV_METHOD;          ///< method to calculate the covariance: between thrust and div (0) or div and div past (1)
   uint32_t delay_steps;         ///< number of delay steps for div past
   uint32_t window_size;         ///< number of time steps in "window" used for getting the covariance
-  float lp_cov_factor;      	///< low-pass factor for the covariance of flow
+  float lp_cov_factor;        ///< low-pass factor for the covariance of flow
 };
 
 extern struct OpticalFlowAvoidance of_avoidance_ctrl;
