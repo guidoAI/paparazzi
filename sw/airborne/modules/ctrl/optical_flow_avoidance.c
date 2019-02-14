@@ -60,6 +60,7 @@
 #include "modules/computer_vision/textons.h"
 float *texton_distribution;
 float *last_texton_distribution;
+float *weights;
 // On Bebop 2:
 #ifdef TEXTONS_DICTIONARY_PATH
 #define TEXTON_DISTRIBUTION_PATH TEXTONS_DICTIONARY_PATH
@@ -67,7 +68,12 @@ float *last_texton_distribution;
 #define TEXTON_DISTRIBUTION_PATH /data/ftp/internal_000
 #endif
 static FILE *distribution_logger = NULL;
+static FILE *weights_file = NULL;
+
 void save_texton_distribution(void);
+float linear_prediction(float *distribution);
+void save_weights(void);
+void load_weights(void);
 
 // variables for moving forward:
 uint8_t safeToGoForwards = false;
@@ -262,10 +268,12 @@ void flow_avoidance_ctrl_module_init(void)
   // register telemetry:
   AbiBindMsgOPTICAL_FLOW(OFA_OPTICAL_FLOW_ID, &optical_flow_ev, flow_avoidance_ctrl_optical_flow_cb);
   register_periodic_telemetry(DefaultPeriodic, PPRZ_MSG_ID_FLOW_AVOIDANCE, send_flow_avoidance);
-
+  // TODO: are these freed?
   texton_distribution = (float *) calloc(MAX_N_TEXTONS, sizeof(float));
   last_texton_distribution = (float *) calloc(MAX_N_TEXTONS, sizeof(float));
-
+  // TODO: only load at init?
+  weights = (float *) calloc(MAX_N_TEXTONS, sizeof(float));
+  load_weights();
 }
 
 /**
@@ -369,9 +377,12 @@ void flow_avoidance_ctrl_module_run(bool in_flight)
 
       // save the texton distribution:
       save_texton_distribution();
+      float pred_cov_flow = linear_prediction(texton_distribution);
+      printf("Cov div predicted: %f, measured: %f\n", pred_cov_flow, cov_flow);
 
       // trigger a stop if the cov div is too high:
-      if (fabsf(cov_flow) > of_avoidance_ctrl.cov_limit) {
+      // if (fabsf(cov_flow) > of_avoidance_ctrl.cov_limit) {
+      if (fabsf(pred_cov_flow) > of_avoidance_ctrl.cov_limit / 2.0f) {
         thrust_set = final_landing_procedure();
         waypoint_set_here_2d(WP_GOAL);
       }
@@ -658,12 +669,12 @@ void load_texton_distribution(void)
 }
 */
 
-float predict_gain(float *distribution)
+float linear_prediction(float *distribution)
 {
   //printf("Start prediction!\n");
   int i;
   float sum;
-
+  int use_bias = 1;
   /*
   // TODO: is this not slower than what our own implementation would do?
 
@@ -693,7 +704,7 @@ float predict_gain(float *distribution)
   for (i = 0; i < n_textons; i++) {
     sum += weights[i] * distribution[i];
   }
-  if (of_landing_ctrl.use_bias) {
+  if (use_bias) { // of_avoidance_ctrl.use_bias
     sum += weights[n_textons];
   }
   // printf("Prediction = %f\n", sum);
@@ -722,7 +733,7 @@ void load_weights(void)
 {
   int i, read_result;
   char filename[512];
-  sprintf(filename, "%s/Weights_%05d.dat", STRINGIFY(TEXTON_DISTRIBUTION_PATH), 0);
+  sprintf(filename, "%s/weights_%05d.dat", STRINGIFY(TEXTON_DISTRIBUTION_PATH), 0);
   weights_file = fopen(filename, "r");
   if (weights_file == NULL) {
     printf("No weights file!\n");
