@@ -7,6 +7,10 @@ Guido de Croon
 
 import numpy as np
 from matplotlib import pyplot as plt
+from sklearn import tree
+from sklearn.neural_network import MLPRegressor
+import graphviz
+import os
 
 f = open('Training_set_00000.dat', 'r');
 array = []
@@ -49,6 +53,34 @@ plt.figure();
 plt.plot(y, covs, 'o')
 plt.xlabel('Estimated cov divs');
 plt.ylabel('Actual cov divs')
+plt.title('Linear fit');
 
 for weight in x:
     print('{0:3.3f} '.format(weight[0]), end='')
+    
+    
+clf = tree.DecisionTreeRegressor(max_depth=4)
+clf = clf.fit(textons, covs);
+y = clf.predict(textons);
+dot_data = tree.export_graphviz(clf, out_file='tree.dot', filled=True, rounded=True, special_characters=True)  
+graph = graphviz.Source(dot_data);
+# dot -Tpng tree.dot -o tree.png
+os.system("dot -Tpng tree.dot -o tree.png")
+
+plt.figure();
+plt.plot(y, covs, 'go', )
+plt.xlabel('Estimated cov divs');
+plt.ylabel('Actual cov divs')
+plt.title('Decision tree');
+
+
+#NN = MLPRegressor(hidden_layer_sizes=(100,), activation=’relu’, solver=’adam’, alpha=0.0001, batch_size=’auto’, learning_rate=’constant’, learning_rate_init=0.001, max_iter=200);
+NN = MLPRegressor(hidden_layer_sizes=(30,),activation='relu', alpha=0.01, max_iter=1000);
+NN = NN.fit(textons, covs.ravel());
+y = NN.predict(textons);
+
+plt.figure();
+plt.plot(y, covs, 'ro')
+plt.xlabel('Estimated cov divs');
+plt.ylabel('Actual cov divs')
+plt.title('MLP');
