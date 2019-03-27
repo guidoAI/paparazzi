@@ -137,6 +137,9 @@ float istate;
 float dstate;
 float vision_time,  prev_vision_time;
 bool landing;
+bool turning;
+float new_heading;
+float turn_degree = 90.0;
 float previous_cov_err;
 int32_t thrust_set;
 float flow_setpoint;
@@ -187,6 +190,8 @@ uint8_t moveWaypointForward(uint8_t waypoint, float distanceMeters);
 // Avoidance control of lateral position with optitrack:
 uint8_t moveWaypoint(uint8_t waypoint, struct EnuCoor_i *new_coor);
 uint8_t calculateForwards(struct EnuCoor_i *new_coor, float distanceMeters);
+float get_heading_after_turn(float turn_degree);
+uint8_t turn_to_new_heading();
 
 /*
  * Sets waypoint 'waypoint' to the coordinates of 'new_coor'
@@ -218,6 +223,14 @@ uint8_t calculateForwards(struct EnuCoor_i *new_coor, float distanceMeters)
   return false;
 }
 
+float get_heading_after_turn(float turn_degree) {
+  struct Int32Eulers *eulerAngles   = stateGetNedToBodyEulers_i();
+  float current_angle = DegOfRad(ANGLE_FLOAT_OF_BFP(eulerAngles->psi));
+  float new_angle = RadOfDeg(current_angle + turn_degree);
+  new_angle = fmod(new_angle, 2*M_PI);
+  return new_angle;
+}
+
 /*
  * Calculates coordinates of distance forward and sets waypoint 'waypoint' to those coordinates
  */
@@ -227,6 +240,27 @@ uint8_t moveWaypointForward(uint8_t waypoint, float distanceMeters)
   calculateForwards(&new_coor, distanceMeters);
   moveWaypoint(waypoint, &new_coor);
   return false;
+}
+
+uint8_t turn_to_new_heading() {
+  // TODO: is once not enough?
+  nav_set_heading_rad(new_heading);
+  struct Int32Eulers *eulerAngles   = stateGetNedToBodyEulers_i();
+  float current_angle = ANGLE_FLOAT_OF_BFP(eulerAngles->psi);
+  float diff1 = fabsf(current_angle - new_heading);
+  float diff2 = fabsf(2*M_PI + current_angle - new_heading);
+  if(diff1 < diff2 && diff1 < 0.01 * M_PI) {
+      // turning done!
+      return 1;
+  }
+  else if(diff2 < diff1 && diff2 < 0.01 * M_PI) {
+      // turning done!
+      return 1;
+  }
+  else {
+      // keep turning
+      return 0;
+  }
 }
 
 
@@ -298,6 +332,8 @@ static void reset_all_vars(void)
     flow_history[i] = 0;
   }
   landing = false;
+  turning = false;
+  new_heading = 0.0;
   lp_cov_flow = 0.0f;
 
   pstate = of_avoidance_ctrl.pgain;
@@ -365,7 +401,12 @@ void flow_avoidance_ctrl_module_run(bool in_flight)
 
     last_time_ofa_run = get_sys_time_float();
 
-    if (of_avoidance_ctrl.CONTROL_METHOD == 0) {
+    // If turning, we first correct the psi, before moving forward with any of the control methods:
+    if(turning) {
+	uint8_t done = turn_to_new_heading();
+	if(done) turning = false; // resume avoidance control.
+    }
+    else if (of_avoidance_ctrl.CONTROL_METHOD == 0) {
       // FIXED GAIN CONTROL, cov_limit for landing:
       float moveDistance = 0.25;
       moveWaypointForward(WP_GOAL, moveDistance);
@@ -377,15 +418,19 @@ void flow_avoidance_ctrl_module_run(bool in_flight)
 
       // save the texton distribution:
       save_texton_distribution();
+
+      // predict cov flow (not necessary here):
       float pred_cov_flow = linear_prediction(texton_distribution);
       printf("Cov div predicted: %f, measured: %f\n", pred_cov_flow, cov_flow);
 
       // trigger a stop if the cov div is too high:
-      // if (fabsf(cov_flow) > of_avoidance_ctrl.cov_limit) {
-      if (fabsf(pred_cov_flow) > of_avoidance_ctrl.cov_limit / 2.0f) {
-        thrust_set = final_landing_procedure();
+      if (fabsf(cov_flow) > of_avoidance_ctrl.cov_limit) {
+        // thrust_set = final_landing_procedure();
         waypoint_set_here_2d(WP_GOAL);
+        new_heading = get_heading_after_turn(turn_degree);
+        turning = true;
       }
+
     } else if (of_avoidance_ctrl.CONTROL_METHOD == 1) {
       // ADAPTIVE GAIN CONTROL:
       // TODO: i-gain and d-gain are currently not adapted
@@ -398,6 +443,7 @@ void flow_avoidance_ctrl_module_run(bool in_flight)
       else { oscillating = false; }
 
       // limit the error_cov, which could else become very large:
+      // TODO: why should error_cov be positive? Are the fabsf correctly used here?
       if (error_cov > fabsf(of_avoidance_ctrl.cov_set_point)) { error_cov = fabsf(of_avoidance_ctrl.cov_set_point); }
       pstate -= (of_avoidance_ctrl.igain_adaptive * pstate) * error_cov;
       if (pstate < MINIMUM_GAIN) { pstate = MINIMUM_GAIN; }
@@ -440,8 +486,30 @@ void flow_avoidance_ctrl_module_run(bool in_flight)
                                       dt);
         // TODO: if the drone is stable for many seconds, we should start increasing again.
       }
+    } else if (of_avoidance_ctrl.CONTROL_METHOD == 3) {
+	// use the predictor to stop, instead of the oscillations:
+	// FIXED GAIN CONTROL, cov_limit for landing:
+	float moveDistance = 0.25;
+	moveWaypointForward(WP_GOAL, moveDistance);
+	nav_set_heading_towards_waypoint(WP_GOAL);
+
+	// use the flow for control:
+	thrust_set = PID_flow_control(of_avoidance_ctrl.flow_setpoint, of_avoidance_ctrl.pgain, of_avoidance_ctrl.igain,
+				      of_avoidance_ctrl.dgain, dt);
+
+	// save the texton distribution:
+	save_texton_distribution();
+	float pred_cov_flow = linear_prediction(texton_distribution);
+	printf("Cov div predicted: %f, measured: %f\n", pred_cov_flow, cov_flow);
+
+	// trigger a stop if the PREDICTION of cov div is too high:
+	if (fabsf(pred_cov_flow) > of_avoidance_ctrl.cov_limit / 2.0f) {
+	  thrust_set = final_landing_procedure();
+	  waypoint_set_here_2d(WP_GOAL);
+	}
     }
 
+    // TODO: is this the landing procedure?
     if (in_flight) {
       Bound(thrust_set, 0.25 * of_avoidance_ctrl.nominal_thrust * MAX_PPRZ, MAX_PPRZ);
       stabilization_cmd[COMMAND_THRUST] = thrust_set;
