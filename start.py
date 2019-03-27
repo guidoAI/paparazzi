@@ -2,7 +2,6 @@
 
 from __future__ import print_function
 
-
 import pygtk
 import gtk
 pygtk.require('2.0')
