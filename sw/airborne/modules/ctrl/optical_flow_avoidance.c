@@ -198,8 +198,7 @@ uint8_t turn_to_new_heading();
  */
 uint8_t moveWaypoint(uint8_t waypoint, struct EnuCoor_i *new_coor)
 {
-  printf("Moving waypoint %d to x:%f y:%f\n", waypoint, POS_FLOAT_OF_BFP(new_coor->x),
-         POS_FLOAT_OF_BFP(new_coor->y));
+  //printf("Moving waypoint %d to x:%f y:%f\n", waypoint, POS_FLOAT_OF_BFP(new_coor->x), POS_FLOAT_OF_BFP(new_coor->y));
   waypoint_set_xy_i(waypoint, new_coor->x, new_coor->y);
   return false;
 }
@@ -217,9 +216,9 @@ uint8_t calculateForwards(struct EnuCoor_i *new_coor, float distanceMeters)
   // Now determine where to place the waypoint you want to go to
   new_coor->x                       = pos->x + POS_BFP_OF_REAL(sin_heading * (distanceMeters));
   new_coor->y                       = pos->y + POS_BFP_OF_REAL(cos_heading * (distanceMeters));
-  printf("Calculated %f m forward position. x: %f  y: %f based on pos(%f, %f) and heading(%f)\n", distanceMeters,
+  /*printf("Calculated %f m forward position. x: %f  y: %f based on pos(%f, %f) and heading(%f)\n", distanceMeters,
          POS_FLOAT_OF_BFP(new_coor->x), POS_FLOAT_OF_BFP(new_coor->y), POS_FLOAT_OF_BFP(pos->x), POS_FLOAT_OF_BFP(pos->y),
-         DegOfRad(ANGLE_FLOAT_OF_BFP(eulerAngles->psi)));
+         DegOfRad(ANGLE_FLOAT_OF_BFP(eulerAngles->psi)));*/
   return false;
 }
 
@@ -228,6 +227,7 @@ float get_heading_after_turn(float turn_degree) {
   float current_angle = DegOfRad(ANGLE_FLOAT_OF_BFP(eulerAngles->psi));
   float new_angle = RadOfDeg(current_angle + turn_degree);
   new_angle = fmod(new_angle, 2*M_PI);
+  // printf("Old angle = %f, new angle = %f\n", current_angle, new_angle);
   return new_angle;
 }
 
@@ -404,6 +404,8 @@ void flow_avoidance_ctrl_module_run(bool in_flight)
     // If turning, we first correct the psi, before moving forward with any of the control methods:
     if(turning) {
 	uint8_t done = turn_to_new_heading();
+	thrust_set = of_avoidance_ctrl.nominal_thrust * MAX_PPRZ;
+	set_cov_flow(thrust_set);
 	if(done) turning = false; // resume avoidance control.
     }
     else if (of_avoidance_ctrl.CONTROL_METHOD == 0) {
