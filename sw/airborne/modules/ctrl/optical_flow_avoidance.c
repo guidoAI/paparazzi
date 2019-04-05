@@ -169,6 +169,7 @@ void flow_avoidance_ctrl_optical_flow_cb(uint8_t sender_id, uint32_t stamp, int1
     int16_t flow_y, int16_t flow_der_x, int16_t flow_der_y, float quality, float size_flow, float dist);
 
 // common functions for different optical flow control strategies:
+void clear_cov_flow();
 static void set_cov_flow(int32_t thrust);
 static int32_t PID_flow_control(float flow_setpoint, float P, float I, float D, float dt);
 static void update_errors(float error, float dt);
@@ -431,11 +432,12 @@ void flow_avoidance_ctrl_module_run(bool in_flight)
 	waypoint_set_here_2d(WP_GOAL);
 
 	// Comment the following one line for turning:
-	thrust_set = final_landing_procedure();
+	// thrust_set = final_landing_procedure();
 
         // Uncomment the following two lines for turning:
-        //new_heading = get_heading_after_turn(turn_degree);
-        //turning = true;
+        new_heading = get_heading_after_turn(turn_degree);
+        clear_cov_flow();
+        turning = true;
       }
 
     } else if (of_avoidance_ctrl.CONTROL_METHOD == 1) {
@@ -539,6 +541,18 @@ uint32_t final_landing_procedure()
   return thrust;
 }
 
+
+void clear_cov_flow() {
+
+  int32_t thrust = of_avoidance_ctrl.nominal_thrust * MAX_PPRZ;
+  normalized_thrust = (float)(thrust / (MAX_PPRZ / 100));
+
+  for (uint16_t i = 0; i < of_avoidance_ctrl.window_size; i++) {
+      thrust_history[i] = normalized_thrust;
+      flow_history[i] = 0;
+    }
+}
+
 /**
  * Set the covariance of the flow and the thrust / past flow
  * This funciton should only be called once per time step
@@ -625,7 +639,6 @@ void flow_avoidance_ctrl_optical_flow_cb(uint8_t sender_id UNUSED, uint32_t stam
     int16_t flow_y UNUSED, int16_t flow_der_x, int16_t flow_der_y UNUSED, float quality UNUSED, float size_flow UNUSED,
     float dist UNUSED)
 {
-  // ugly hack: when front vision, use flow_x (flow_der_x?)
   flow_vision = (float) flow_der_x / 10000.0f; // size_flow;
   vision_time = ((float)stamp) / 1e6;
 }
