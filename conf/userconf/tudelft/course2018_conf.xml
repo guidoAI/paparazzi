@@ -2,7 +2,7 @@
   <aircraft
    name="bebop_orange_avoid"
    ac_id="42"
-   airframe="airframes/tudelft/bebop2_optitrack_visionfront_real.xml"
+   airframe="airframes/tudelft/bebop2_optitrack_visionfront.xml"
    radio="radios/dummy.xml"
    telemetry="telemetry/default_rotorcraft.xml"
    flight_plan="flight_plans/rotorcraft_guido_optitrack.xml"

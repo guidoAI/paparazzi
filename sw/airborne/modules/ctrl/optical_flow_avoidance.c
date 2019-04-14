@@ -415,6 +415,36 @@ void flow_avoidance_ctrl_module_run(bool in_flight)
       moveWaypointForward(WP_GOAL, moveDistance);
       nav_set_heading_towards_waypoint(WP_GOAL);
 
+      // set the flow set point to not loose / gain too much altitude:
+      struct EnuCoor_f *pos_rob = stateGetPositionEnu_f();
+      // hysteresis:
+      float threshold_des;
+      if(of_avoidance_ctrl.flow_setpoint == 0.0f) {
+	  threshold_des = 0.25f;
+      }
+      else {
+	  threshold_des = 0.10f;
+      }
+      static float desired_magnitude = 0.01f;
+      if(pos_rob->z < waypoint_get_alt(WP_GOAL) - threshold_des) {
+	  // apparently, the nominal thrust is not good:
+	  if(of_avoidance_ctrl.flow_setpoint == 0.0f) {
+	      of_avoidance_ctrl.nominal_thrust += 0.005;
+	  }
+	  of_avoidance_ctrl.flow_setpoint = desired_magnitude;
+      }
+      else if(pos_rob->z > waypoint_get_alt(WP_GOAL) + threshold_des) {
+	  // apparently, the nominal thrust is not good:
+	  if(of_avoidance_ctrl.flow_setpoint == 0.0f) {
+	      of_avoidance_ctrl.nominal_thrust -= 0.005;
+	  }
+	  of_avoidance_ctrl.flow_setpoint = -desired_magnitude;
+      }
+      else {
+	  of_avoidance_ctrl.flow_setpoint = 0.0f;
+      }
+      printf("Altitude drone = %f, waypoint = %f, flow set point = %f, nominal thrust = %f\n", pos_rob->z, waypoint_get_alt(WP_GOAL), of_avoidance_ctrl.flow_setpoint, of_avoidance_ctrl.nominal_thrust);
+
       // use the flow for control:
       thrust_set = PID_flow_control(of_avoidance_ctrl.flow_setpoint, of_avoidance_ctrl.pgain, of_avoidance_ctrl.igain,
                                     of_avoidance_ctrl.dgain, dt);
@@ -660,6 +690,8 @@ void guidance_v_module_enter(void)
   // adaptive estimation - assume hover condition when entering the module
   of_avoidance_ctrl.nominal_thrust = (float) stabilization_cmd[COMMAND_THRUST] / MAX_PPRZ;
   thrust_set = of_avoidance_ctrl.nominal_thrust * MAX_PPRZ;
+  // TODO: REMOVE BEFORE FLIGHT:
+  of_avoidance_ctrl.nominal_thrust -= 0.03 * of_avoidance_ctrl.nominal_thrust;
 }
 
 void guidance_v_module_run(bool in_flight)
