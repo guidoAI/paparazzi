@@ -71,9 +71,8 @@
     </module>
 
     <module name="optical_flow_avoidance">
-<!--      <define name="OFL_PGAIN" value="0.05"/>
-      <define name="OFL_IGAIN" value="0.0"/>
--->
+      <define name="OFA_PGAIN" value="0.85"/> 
+      <define name="OFA_COV_LIMIT" value="0.025"/>
     </module>
 
     <module name="video_rtp_stream">

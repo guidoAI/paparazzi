@@ -6,7 +6,7 @@
 
 // Note: use 'git submodule update --init -- sw/ext/tudelft_gazebo_models/'
 // to download the required models.
-#define NPS_GAZEBO_WORLD "cyberzoo_panel.world"
+#define NPS_GAZEBO_WORLD "cyberzoo_4_panels.world"
 </header>
   <waypoints>
     <waypoint name="HOME" x="0.0" y="0.0"/>
