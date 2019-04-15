@@ -546,8 +546,16 @@ void flow_avoidance_ctrl_module_run(bool in_flight)
 
 	// trigger a stop if the PREDICTION of cov div is too high:
 	if (fabsf(pred_cov_flow) > of_avoidance_ctrl.cov_limit / 2.0f) {
-	  thrust_set = final_landing_procedure();
-	  waypoint_set_here_2d(WP_GOAL);
+
+	    waypoint_set_here_2d(WP_GOAL);
+
+	    // Comment the following one line for turning:
+	    // thrust_set = final_landing_procedure();
+
+	    // Uncomment the following two lines for turning:
+	    new_heading = get_heading_after_turn(turn_degree);
+	    clear_cov_flow();
+	    turning = true;
 	}
     }
 
