@@ -10,6 +10,10 @@ from matplotlib import pyplot as plt
 import scipy.stats as st
 from sklearn import tree
 from sklearn.neural_network import MLPRegressor
+from sklearn.svm import SVR
+from sklearn.ensemble import RandomForestRegressor
+from sklearn.neighbors import KNeighborsRegressor
+
 import graphviz
 import os
 
@@ -81,10 +85,11 @@ A_bias = np.ones([n_elements, 1]);
 A = np.concatenate((textons, A_bias), axis=1);
 
 covs = covs.reshape([n_elements, 1]);
+
 # mqximum likelihood:
 # x = np.linalg.pinv(A) @ covs;
 # maximum a posteriori:
-prior = 0.0;
+prior = 1.0;
 AT = np.transpose(A);
 ATA = AT @ A;
 ATA += prior * np.eye(ATA.shape[0]);
@@ -109,7 +114,7 @@ plt.title(str_title);
 for weight in x:
     print('{0:3.3f} '.format(weight[0]), end='')
     
-print('MAE Linear fit = {}'.format(np.mean(abs(y-covs))));
+print('\nMAE Linear fit = {}'.format(np.mean(abs(y-covs))));
     
 clf = tree.DecisionTreeRegressor(max_depth=4)
 clf = clf.fit(textons, covs);
@@ -126,9 +131,11 @@ plt.ylabel('Actual cov divs')
 plt.title('Decision tree');
 
 #NN = MLPRegressor(hidden_layer_sizes=(100,), activation=’relu’, solver=’adam’, alpha=0.0001, batch_size=’auto’, learning_rate=’constant’, learning_rate_init=0.001, max_iter=200);
-NN = MLPRegressor(hidden_layer_sizes=(30,10,3), tol=1E-9, random_state = 9, activation='relu', solver='adam', alpha=0.00001, learning_rate='adaptive', max_iter=100000, verbose = True);
+NN = MLPRegressor(hidden_layer_sizes=(30,10,3), tol=1E-9, random_state = 9, activation='relu', solver='adam', alpha=0.00001, learning_rate='adaptive', max_iter=100000, verbose = False);
 NN.fit(textons, covs.ravel());
 y = NN.predict(textons);
+print('MAE MLP = {}'.format(np.mean(abs(y-covs))));
+print('MSE MLP = {}'.format(np.mean(np.multiply(y-covs, y-covs))));
 
 plt.figure();
 plt.plot(y, covs, 'ro')
@@ -142,5 +149,20 @@ plt.figure();
 plt.hist2d(np.reshape(y, (len(y),)), np.reshape(covs, (len(covs),)), bins=25);
 plt.plot([min(y), max(y)], [min(y), max(y)], 'r');
 plt.title(str_title);
-print('MAE MLP = {}'.format(np.mean(abs(y-covs))));
-print('MSE MLP = {}'.format(np.mean(np.multiply(y-covs, y-covs))));
+
+#sklearn.ensemble.AdaBoostRegressor(base_estimator=None, n_estimators=50, learning_rate=1.0, loss=’linear’, random_state=None)
+RFR = RandomForestRegressor(n_estimators=10, criterion='mae');#(n_estimators=’warn’, criterion=’mse’, max_depth=None, min_samples_split=2, min_samples_leaf=1, min_weight_fraction_leaf=0.0, max_features=’auto’, max_leaf_nodes=None, min_impurity_decrease=0.0, min_impurity_split=None, bootstrap=True, oob_score=False, n_jobs=None, random_state=None, verbose=0, warm_start=False)
+RFR.fit(textons, covs.ravel());
+y = RFR.predict(textons);
+print('MAE Random forest regressor = {}'.format(np.mean(abs(y-covs))));
+
+
+svm_svr = SVR(C=1.0, kernel='poly')# (kernel=’rbf’, degree=3, gamma=’auto_deprecated’, coef0=0.0, tol=0.001, C=1.0, epsilon=0.1, shrinking=True, cache_size=200, verbose=False, max_iter=-1)
+svm_svr.fit(textons, covs.ravel());
+y = svm_svr.predict(textons);
+print('MAE SVM = {}'.format(np.mean(abs(y-covs))));
+
+KNNR = KNeighborsRegressor(n_neighbors=3); #(weights=’uniform’, algorithm=’auto’, leaf_size=30, p=2, metric=’minkowski’, metric_params=None, n_jobs=None, **kwargs)
+KNNR.fit(textons, covs.ravel());
+y = KNNR.predict(textons);
+print('MAE KNN regressor = {}'.format(np.mean(abs(y-covs))));
