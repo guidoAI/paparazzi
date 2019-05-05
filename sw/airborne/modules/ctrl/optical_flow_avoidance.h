@@ -75,6 +75,7 @@ extern void guidance_v_module_run(bool in_flight);
 // used for logging purposes:
 bool oscillating;
 float cov_flow;
+float pred_cov_flow;
 float pstate, pused;
 float last_time_ofa_run;
 

@@ -160,7 +160,7 @@ static void send_flow_avoidance(struct transport_tx *trans, struct link_device *
 {
   pprz_msg_send_FLOW_AVOIDANCE(trans, dev, AC_ID,
                                &(of_avoidance_ctrl.flow), &normalized_thrust,
-                               &cov_flow, &pstate, &pused);
+                               &cov_flow, &pred_cov_flow, &pstate, &pused);
 }
 
 /// Function definitions
@@ -191,7 +191,7 @@ uint8_t moveWaypointForward(uint8_t waypoint, float distanceMeters);
 // Avoidance control of lateral position with optitrack:
 uint8_t moveWaypoint(uint8_t waypoint, struct EnuCoor_i *new_coor);
 uint8_t calculateForwards(struct EnuCoor_i *new_coor, float distanceMeters);
-float get_heading_after_turn(float turn_degree);
+float get_heading_after_turn(float heading_turn_degree);
 uint8_t turn_to_new_heading();
 
 /*
@@ -223,7 +223,7 @@ uint8_t calculateForwards(struct EnuCoor_i *new_coor, float distanceMeters)
   return false;
 }
 
-float get_heading_after_turn(float turn_degree) {
+float get_heading_after_turn(float heading_turn_degree) {
   struct Int32Eulers *eulerAngles   = stateGetNedToBodyEulers_i();
   float current_angle = DegOfRad(ANGLE_FLOAT_OF_BFP(eulerAngles->psi));
   float new_angle = RadOfDeg(current_angle + turn_degree);
@@ -319,6 +319,7 @@ static void reset_all_vars(void)
   thrust_set = of_avoidance_ctrl.nominal_thrust * MAX_PPRZ;
 
   cov_flow = 0.;
+  pred_cov_flow = 0.;
   normalized_thrust = of_avoidance_ctrl.nominal_thrust * 100;
   previous_cov_err = 0.;
   flow_vision = 0.;
@@ -431,7 +432,7 @@ void flow_avoidance_ctrl_module_run(bool in_flight)
 	else {
 	    of_avoidance_ctrl.flow_setpoint = 0.0f;
 	}
-	printf("Altitude drone = %f, waypoint = %f, flow set point = %f, nominal thrust = %f\n", pos_rob->z, waypoint_get_alt(WP_GOAL), of_avoidance_ctrl.flow_setpoint, of_avoidance_ctrl.nominal_thrust);
+	// printf("Altitude drone = %f, waypoint = %f, flow set point = %f, nominal thrust = %f\n", pos_rob->z, waypoint_get_alt(WP_GOAL), of_avoidance_ctrl.flow_setpoint, of_avoidance_ctrl.nominal_thrust);
     }
 
 
@@ -456,7 +457,7 @@ void flow_avoidance_ctrl_module_run(bool in_flight)
       save_texton_distribution();
 
       // predict cov flow (not necessary here):
-      float pred_cov_flow = linear_prediction(texton_distribution);
+      pred_cov_flow = linear_prediction(texton_distribution);
       printf("Cov div predicted: %f, measured: %f\n", pred_cov_flow, cov_flow);
 
       // trigger a stop if the cov div is too high:
@@ -531,7 +532,7 @@ void flow_avoidance_ctrl_module_run(bool in_flight)
     } else if (of_avoidance_ctrl.CONTROL_METHOD == 3) {
 	// use the predictor to stop, instead of the oscillations:
 	// FIXED GAIN CONTROL, cov_limit for landing:
-	float moveDistance = 0.25;
+	float moveDistance = 0.25; // 0.25
 	moveWaypointForward(WP_GOAL, moveDistance);
 	nav_set_heading_towards_waypoint(WP_GOAL);
 
@@ -541,7 +542,7 @@ void flow_avoidance_ctrl_module_run(bool in_flight)
 
 	// save the texton distribution:
 	save_texton_distribution();
-	float pred_cov_flow = linear_prediction(texton_distribution);
+	pred_cov_flow = linear_prediction(texton_distribution);
 	printf("Cov div predicted: %f, measured: %f\n", pred_cov_flow, cov_flow);
 
 	// trigger a stop if the PREDICTION of cov div is too high:
@@ -550,12 +551,12 @@ void flow_avoidance_ctrl_module_run(bool in_flight)
 	    waypoint_set_here_2d(WP_GOAL);
 
 	    // Comment the following one line for turning:
-	    // thrust_set = final_landing_procedure();
+	    thrust_set = final_landing_procedure();
 
 	    // Uncomment the following two lines for turning:
-	    new_heading = get_heading_after_turn(turn_degree);
-	    clear_cov_flow();
-	    turning = true;
+	    //new_heading = get_heading_after_turn(turn_degree);
+	    //clear_cov_flow();
+	    //turning = true;
 	}
     }
 
@@ -737,17 +738,18 @@ void save_texton_distribution(void)
   // If not the same, append the target values (cov_div, gain, class: close or far) and texton values to a .dat file:
   char filename[512];
   sprintf(filename, "%s/Training_set_%05d.dat", STRINGIFY(TEXTON_DISTRIBUTION_PATH), 0);
+  // printf(filename);
   distribution_logger = fopen(filename, "a");
   if (distribution_logger == NULL) {
     perror(filename);
   } else {
-    int oscillating = fabsf(cov_flow) > of_avoidance_ctrl.cov_limit;
-    printf("Logging with gain %f, cov_flow %f, oscillating: %d\n", pstate, cov_flow, oscillating);
+    int oscillating_drone = fabsf(cov_flow) > of_avoidance_ctrl.cov_limit;
+    // printf("Logging with gain %f, cov_flow %f, oscillating: %d\n", pstate, cov_flow, oscillating_drone);
 
     // save the information in a single row:
     fprintf(distribution_logger, "%f ", pstate); // gain measurement
     fprintf(distribution_logger, "%f ", cov_flow); // cov flow measurement
-    fprintf(distribution_logger, "%d ", oscillating); // classification
+    fprintf(distribution_logger, "%d ", oscillating_drone); // classification
     for (i = 0; i < n_textons - 1; i++) {
       fprintf(distribution_logger, "%f ", texton_distribution[i]);
     }
@@ -864,7 +866,7 @@ void load_weights(void)
 {
   int i, read_result;
   char filename[512];
-  sprintf(filename, "%s/weights_%05d.dat", STRINGIFY(TEXTON_DISTRIBUTION_PATH), 0);
+  sprintf(filename, "%s/Weights_%05d.dat", STRINGIFY(TEXTON_DISTRIBUTION_PATH), 0);
   weights_file = fopen(filename, "r");
   if (weights_file == NULL) {
     printf("No weights file!\n");
